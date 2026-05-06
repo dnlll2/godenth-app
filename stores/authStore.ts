@@ -1,0 +1,83 @@
+import { create } from 'zustand'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import api from '../services/api'
+
+interface User {
+  id: number
+  nome: string
+  email: string
+  tipo_profissional: string
+  plano: string
+  disponibilidade: string
+  cidade?: string
+  estado?: string
+  bio?: string
+  especialidade?: string
+  avatar_url?: string
+  cor_tema?: string
+}
+
+interface AuthState {
+  user: User | null
+  token: string | null
+  isLoading: boolean
+  isAuthenticated: boolean
+  login: (email: string, password: string) => Promise<void>
+  register: (data: any) => Promise<void>
+  logout: () => Promise<void>
+  loadUser: () => Promise<void>
+  updateUser: (data: Partial<User>) => void
+}
+
+export const useAuthStore = create<AuthState>((set, get) => ({
+  user: null,
+  token: null,
+  isLoading: true,
+  isAuthenticated: false,
+
+  login: async (email, password) => {
+    const response = await api.post('/auth/login', { email, password })
+    const { user, token } = response.data
+    await AsyncStorage.setItem('godenth_token', token)
+    await AsyncStorage.setItem('godenth_user', JSON.stringify(user))
+    set({ user, token, isAuthenticated: true })
+  },
+
+  register: async (data) => {
+    const response = await api.post('/auth/register', data)
+    const { user, token } = response.data
+    await AsyncStorage.setItem('godenth_token', token)
+    await AsyncStorage.setItem('godenth_user', JSON.stringify(user))
+    set({ user, token, isAuthenticated: true })
+  },
+
+  logout: async () => {
+    await AsyncStorage.removeItem('godenth_token')
+    await AsyncStorage.removeItem('godenth_user')
+    set({ user: null, token: null, isAuthenticated: false })
+  },
+
+  loadUser: async () => {
+    try {
+      const token = await AsyncStorage.getItem('godenth_token')
+      const userStr = await AsyncStorage.getItem('godenth_user')
+      if (token && userStr) {
+        const user = JSON.parse(userStr)
+        set({ user, token, isAuthenticated: true, isLoading: false })
+      } else {
+        set({ isLoading: false })
+      }
+    } catch {
+      set({ isLoading: false })
+    }
+  },
+
+  updateUser: (data) => {
+    const current = get().user
+    if (current) {
+      const updated = { ...current, ...data }
+      set({ user: updated })
+      AsyncStorage.setItem('godenth_user', JSON.stringify(updated))
+    }
+  },
+}))
