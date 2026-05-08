@@ -1,121 +1,134 @@
-import { useState } from 'react'
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
+import { useCallback, useState } from 'react'
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator, Alert } from 'react-native'
+import { router, useFocusEffect } from 'expo-router'
 import api from '../../services/api'
-import { Colors } from '../../constants/colors'
 
-export default function Buscar() {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [searched, setSearched] = useState(false)
+export default function Vagas() {
+  const [vagas, setVagas] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const search = async () => {
-    if (!query.trim()) return
-    setLoading(true)
-    setSearched(true)
+  const loadVagas = async () => {
     try {
-      const [users, pages, vagas] = await Promise.all([
-        api.get(`/users/search?q=${query}`),
-        api.get(`/pages/search?q=${query}`),
-        api.get(`/vagas?cargo=${query}`),
-      ])
-      const combined = [
-        ...users.data.users.map((u: any) => ({ ...u, _type: 'profissional' })),
-        ...pages.data.pages.map((p: any) => ({ ...p, _type: 'empresa' })),
-        ...vagas.data.vagas.map((v: any) => ({ ...v, _type: 'vaga' })),
-      ]
-      setResults(combined)
+      console.log("buscando vagas..."); const res = await api.get('/vagas')
+      setVagas(res.data.vagas || [])
     } catch (err) {
-      console.log('Erro busca:', err)
+      console.log('Erro:', err)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
-  const renderItem = ({ item }: any) => (
-    <TouchableOpacity style={styles.card}>
-      <View style={[styles.avatar, { backgroundColor: item._type === 'profissional' ? Colors.dentista : Colors.primary }]}>
-        <Text style={styles.avatarText}>{item._type === 'vaga' ? '💼' : (item.nome?.charAt(0) || '?')}</Text>
-      </View>
-      <View style={styles.info}>
-        <Text style={styles.name}>{item.nome || item.cargo}</Text>
-        <Text style={styles.sub}>
-          {item._type === 'profissional' ? `${item.tipo_profissional} · ${item.cidade}` :
-           item._type === 'empresa' ? `${item.categoria} · ${item.cidade}` :
-           `${item.contrato} · ${item.salario}`}
-        </Text>
-        <Text style={[styles.badge, { color: item._type === 'vaga' ? Colors.gold : Colors.primary }]}>
-          {item._type === 'profissional' ? '👤 Profissional' : item._type === 'empresa' ? '🏢 Empresa' : '💼 Vaga'}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  )
+  useFocusEffect(useCallback(() => { setLoading(true); loadVagas() }, []))
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Buscar</Text>
-        <View style={styles.searchBar}>
-          <Text style={{ fontSize: 16, color: Colors.text3 }}>🔍</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Dentista, protético, clínica, vaga…"
-            placeholderTextColor={Colors.text3}
-            value={query}
-            onChangeText={setQuery}
-            onSubmitEditing={search}
-            returnKeyType="search"
-          />
-          {query.length > 0 && (
-            <TouchableOpacity onPress={search} style={styles.searchBtn}>
-              <Text style={styles.searchBtnText}>Buscar</Text>
-            </TouchableOpacity>
-          )}
+  const candidatar = async (vaga: any) => {
+    Alert.alert(
+      'Candidatar-se',
+      `Deseja se candidatar para ${vaga.cargo}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Candidatar!',
+          onPress: async () => {
+            try {
+              await api.post(`/vagas/${vaga.id}/candidatar`, { respostas: [] })
+              Alert.alert('✅ Sucesso!', 'Candidatura enviada!')
+            } catch (err: any) {
+              Alert.alert('Erro', err.response?.data?.error || 'Erro ao candidatar')
+            }
+          }
+        }
+      ]
+    )
+  }
+
+  const renderVaga = ({ item }: any) => (
+    <View style={styles.card}>
+      <View style={styles.cardTop}>
+        <View style={styles.logoBox}>
+          <Text style={styles.logoBoxT}>{item.empresa_nome?.charAt(0) || 'C'}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.cargo}>{item.cargo}</Text>
+          <Text style={styles.empresa}>{item.empresa_nome || 'Clínica'}</Text>
+        </View>
+        <View style={[styles.statusBadge, item.status === 'aberta' ? styles.statusAberta : styles.statusFechada]}>
+          <Text style={styles.statusT}>{item.status === 'aberta' ? '🟢 Aberta' : '🔴 Fechada'}</Text>
         </View>
       </View>
 
-      {loading && <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} />}
+      <View style={styles.infos}>
+        {item.contrato ? <View style={styles.tag}><Text style={styles.tagT}>📋 {item.contrato}</Text></View> : null}
+        {item.especialidade ? <View style={styles.tag}><Text style={styles.tagT}>🦷 {item.especialidade}</Text></View> : null}
+        {item.salario ? <View style={styles.tag}><Text style={[styles.tagT, { color: '#00A880' }]}>💰 {item.salario}</Text></View> : null}
+      </View>
 
-      {searched && !loading && (
-        <Text style={styles.count}>{results.length} resultados para "{query}"</Text>
-      )}
+      {item.beneficios ? <Text style={styles.beneficios}>✅ {item.beneficios}</Text> : null}
 
-      <FlatList
-        data={results}
-        keyExtractor={(item, i) => `${item._type}-${item.id}-${i}`}
-        renderItem={renderItem}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          !searched ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyIcon}>🔍</Text>
-              <Text style={styles.emptyTitle}>Busque profissionais,{'\n'}empresas ou vagas</Text>
+      <TouchableOpacity
+        style={[styles.btn, item.status !== 'aberta' && styles.btnDisabled]}
+        onPress={() => item.status === 'aberta' && candidatar(item)}
+        disabled={item.status !== 'aberta'}
+      >
+        <Text style={styles.btnT}>{item.status === 'aberta' ? 'Candidatar-se →' : 'Vaga fechada'}</Text>
+      </TouchableOpacity>
+    </View>
+  )
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#EEF7F2' }}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.back}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>💼 Vagas</Text>
+        <View style={{ width: 32 }} />
+      </View>
+
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#00A880" />
+        </View>
+      ) : (
+        <FlatList
+          data={vagas}
+          keyExtractor={(item: any) => item.id?.toString()}
+          renderItem={renderVaga}
+          contentContainerStyle={vagas.length === 0 ? { flex: 1 } : { padding: 14, gap: 14, paddingBottom: 40 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadVagas() }} tintColor="#00A880" />}
+          ListEmptyComponent={
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 48, marginBottom: 12 }}>💼</Text>
+              <Text style={{ fontSize: 17, fontWeight: '800', color: '#0A1C14' }}>Nenhuma vaga aberta</Text>
+              <Text style={{ fontSize: 13, color: '#7A9E8E', marginTop: 6 }}>Volte em breve!</Text>
             </View>
-          ) : null
-        }
-      />
+          }
+        />
+      )}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
-  header: { backgroundColor: Colors.white, padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  title: { fontSize: 22, fontWeight: '800', color: Colors.text, marginBottom: 12 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.bg, borderWidth: 1.5, borderColor: Colors.border2, borderRadius: 13, paddingHorizontal: 13, paddingVertical: 10 },
-  input: { flex: 1, fontSize: 14, color: Colors.text },
-  searchBtn: { backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
-  searchBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
-  count: { fontSize: 13, fontWeight: '700', color: Colors.text2, paddingHorizontal: 14, paddingTop: 12 },
-  list: { padding: 14, gap: 10, paddingBottom: 80 },
-  card: { backgroundColor: Colors.white, borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: Colors.border },
-  avatar: { width: 46, height: 46, borderRadius: 23, justifyContent: 'center', alignItems: 'center' },
-  avatarText: { color: '#fff', fontWeight: '800', fontSize: 14 },
-  info: { flex: 1 },
-  name: { fontSize: 14, fontWeight: '800', color: Colors.text, marginBottom: 2 },
-  sub: { fontSize: 11, color: Colors.text3, marginBottom: 4 },
-  badge: { fontSize: 10, fontWeight: '700' },
-  emptyBox: { alignItems: 'center', paddingTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: 14 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: Colors.text2, textAlign: 'center', lineHeight: 24 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#007A6E' },
+  back: { fontSize: 24, color: '#fff', fontWeight: '700' },
+  title: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#D0E8DA', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  logoBox: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#007A6E', justifyContent: 'center', alignItems: 'center' },
+  logoBoxT: { color: '#fff', fontWeight: '800', fontSize: 20 },
+  cargo: { fontSize: 16, fontWeight: '800', color: '#0A1C14' },
+  empresa: { fontSize: 12, color: '#7A9E8E', marginTop: 2 },
+  statusBadge: { borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 },
+  statusAberta: { backgroundColor: '#E6F9F3' },
+  statusFechada: { backgroundColor: '#FFE8E8' },
+  statusT: { fontSize: 11, fontWeight: '700' },
+  infos: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  tag: { backgroundColor: '#EEF7F2', borderRadius: 100, paddingHorizontal: 12, paddingVertical: 5, borderWidth: 1, borderColor: '#D0E8DA' },
+  tagT: { fontSize: 12, fontWeight: '600', color: '#3A6550' },
+  beneficios: { fontSize: 12, color: '#3A6550', marginBottom: 14, lineHeight: 18 },
+  btn: { backgroundColor: '#007A6E', borderRadius: 12, padding: 14, alignItems: 'center' },
+  btnDisabled: { backgroundColor: '#AECEBE' },
+  btnT: { color: '#fff', fontWeight: '800', fontSize: 14 },
 })
