@@ -1,3 +1,4 @@
+import { router } from "expo-router"
 import { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, ActivityIndicator } from 'react-native'
 import api from '../../services/api'
@@ -36,7 +37,12 @@ export default function Publicar() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
-      <Text style={styles.title}>Nova publicação</Text>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Text style={styles.backBtnText}>← Voltar</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>Nova publicação</Text>
+      </View>
       <Text style={styles.sub}>Feed limpo e profissional — campos fixos</Text>
 
       <View style={styles.info}>
@@ -69,6 +75,9 @@ export default function Publicar() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+  backBtn: { padding: 4 },
+  backBtnText: { fontSize: 14, fontWeight: '700', color: '#00A880' },
   scroll: { padding: 16, paddingBottom: 80 },
   title: { fontSize: 22, fontWeight: '800', color: Colors.text, marginBottom: 4 },
   sub: { fontSize: 13, color: Colors.text3, marginBottom: 16 },
