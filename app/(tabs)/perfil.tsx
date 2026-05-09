@@ -20,17 +20,8 @@ export default function Perfil() {
   useEffect(() => { loadProfile() }, [])
 
   const handleLogout = async () => {
-    Alert.alert('Sair', 'Deseja sair da conta?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          await logout()
-          router.replace('/(auth)/login')
-        }
-      }
-    ])
+    await logout()
+    router.replace('/(auth)/login')
   }
 
   if (loading) return <View style={styles.center}><ActivityIndicator color="#00A880" /></View>
