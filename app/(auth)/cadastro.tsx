@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Animated, ScrollView, LayoutAnimation, Platform, UIManager } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Animated, ScrollView, Modal, FlatList } from 'react-native'
 import { router } from 'expo-router'
-import { Svg, Path, Circle, Rect } from 'react-native-svg'
-
-if (Platform.OS === 'android') {
-  UIManager.setLayoutAnimationEnabledExperimental?.(true)
-}
 
 const CATEGORIAS = [
   {
@@ -36,14 +31,16 @@ const CATEGORIAS = [
 
 export default function Cadastro() {
   const [showSplash, setShowSplash] = useState(true)
-  const [aberto, setAberto] = useState<string | null>(null)
-  const [selecionadas, setSelecionadas] = useState<string[]>([])
+  const [profissao, setProfissao] = useState<any>(null)
+  const [modalVisible, setModalVisible] = useState(false)
+  const [catSelecionada, setCatSelecionada] = useState<any>(null)
 
   const splashFade = useRef(new Animated.Value(1)).current
   const logoScale = useRef(new Animated.Value(0.5)).current
   const logoOpacity = useRef(new Animated.Value(0)).current
   const taglineOpacity = useRef(new Animated.Value(0)).current
   const pageAnim = useRef(new Animated.Value(0)).current
+  const nivel2Anim = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     Animated.sequence([
@@ -62,15 +59,22 @@ export default function Cadastro() {
     }, 3500)
   }, [])
 
-  const toggleAberto = (key: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-    setAberto(prev => prev === key ? null : key)
+  const abrirCategoria = (cat: any) => {
+    setCatSelecionada(cat)
+    nivel2Anim.setValue(0)
+    Animated.timing(nivel2Anim, { toValue: 1, duration: 300, useNativeDriver: true }).start()
   }
 
-  const toggleProfissao = (prof: string) => {
-    setSelecionadas(prev =>
-      prev.includes(prof) ? prev.filter(p => p !== prof) : [...prev, prof]
-    )
+  const voltarNivel1 = () => {
+    Animated.timing(nivel2Anim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+      setCatSelecionada(null)
+    })
+  }
+
+  const selecionarProfissao = (prof: string) => {
+    setProfissao({ label: prof, categoria: catSelecionada.label, cor: catSelecionada.cor })
+    setModalVisible(false)
+    setCatSelecionada(null)
   }
 
   if (showSplash) {
@@ -92,7 +96,7 @@ export default function Cadastro() {
   }
 
   return (
-    <Animated.View style={[{ flex: 1 }, { opacity: pageAnim }]}>
+    <Animated.View style={[{ flex: 1, backgroundColor: '#EEF7F2' }, { opacity: pageAnim }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.back}>←</Text>
@@ -113,61 +117,107 @@ export default function Cadastro() {
 
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.step}>Passo 1 de 4</Text>
-        <Text style={styles.title}>Qual é a sua{'\n'}área de atuação?</Text>
-        <Text style={styles.sub}>Toque para expandir e selecionar sua profissão</Text>
+        <Text style={styles.title}>Qual é a sua{'\n'}profissão principal?</Text>
+        <Text style={styles.sub}>Selecione a profissão que melhor te define</Text>
 
-        <View style={styles.accordion}>
-          {CATEGORIAS.map(cat => {
-            const isOpen = aberto === cat.key
-            return (
-              <View key={cat.key} style={[styles.acordCard, isOpen && { borderColor: cat.cor }]}>
-                <TouchableOpacity style={styles.acordHeader} onPress={() => toggleAberto(cat.key)}>
-                  <Text style={[styles.acordLabel, isOpen && { color: cat.cor }]}>{cat.label}</Text>
-                  <Text style={[styles.acordArrow, isOpen && { color: cat.cor }]}>{isOpen ? '˅' : '›'}</Text>
-                </TouchableOpacity>
+        <TouchableOpacity style={styles.dropdown} onPress={() => setModalVisible(true)}>
+          {profissao ? (
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.dropdownCat, { color: profissao.cor }]}>{profissao.categoria}</Text>
+              <Text style={styles.dropdownSelected}>{profissao.label}</Text>
+            </View>
+          ) : (
+            <Text style={styles.dropdownPlaceholder}>Toque para selecionar...</Text>
+          )}
+          <Text style={styles.dropdownArrow}>˅</Text>
+        </TouchableOpacity>
 
-                {isOpen && (
-                  <View style={styles.acordBody}>
-                    <View style={[styles.acordDivider, { backgroundColor: cat.cor + '30' }]} />
-                    {cat.profissoes.map(prof => {
-                      const on = selecionadas.includes(prof)
-                      return (
-                        <TouchableOpacity
-                          key={prof}
-                          style={styles.profItem}
-                          onPress={() => toggleProfissao(prof)}
-                        >
-                          <View style={[styles.profCheck, on && { backgroundColor: cat.cor, borderColor: cat.cor }]}>
-                            {on && <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>✓</Text>}
-                          </View>
-                          <Text style={[styles.profLabel, on && { color: cat.cor, fontWeight: '700' }]}>{prof}</Text>
-                        </TouchableOpacity>
-                      )
-                    })}
-                  </View>
-                )}
-              </View>
-            )
-          })}
-        </View>
+        {profissao && (
+          <View style={[styles.selectedCard, { borderColor: profissao.cor }]}>
+            <View style={[styles.selectedDot, { backgroundColor: profissao.cor }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.selectedLabel}>{profissao.label}</Text>
+              <Text style={[styles.selectedCat, { color: profissao.cor }]}>{profissao.categoria}</Text>
+            </View>
+            <TouchableOpacity onPress={() => setProfissao(null)}>
+              <Text style={styles.selectedRemove}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.btn, selecionadas.length === 0 && styles.btnOff]}
-          disabled={selecionadas.length === 0}
+          style={[styles.btn, !profissao && styles.btnOff]}
+          disabled={!profissao}
           onPress={() => router.push({
             pathname: '/(auth)/cadastro3',
-            params: { profissoes: JSON.stringify(selecionadas) }
+            params: { profissao: JSON.stringify(profissao) }
           })}
         >
-          <Text style={styles.btnT}>
-            {selecionadas.length > 0
-              ? `Continuar com ${selecionadas.length} cargo${selecionadas.length > 1 ? 's' : ''} →`
-              : 'Selecione ao menos uma profissão'}
-          </Text>
+          <Text style={styles.btnT}>{profissao ? 'Continuar →' : 'Selecione sua profissão'}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* MODAL */}
+      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => { setModalVisible(false); setCatSelecionada(null) }}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+
+            {/* NIVEL 1 - Categorias */}
+            {!catSelecionada && (
+              <>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Selecione a área</Text>
+                  <TouchableOpacity onPress={() => setModalVisible(false)}>
+                    <Text style={styles.modalClose}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                <FlatList
+                  data={CATEGORIAS}
+                  keyExtractor={item => item.key}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity style={styles.catItem} onPress={() => abrirCategoria(item)}>
+                      <View style={[styles.catDot, { backgroundColor: item.cor }]} />
+                      <Text style={styles.catLabel}>{item.label}</Text>
+                      <Text style={styles.catArrow}>›</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              </>
+            )}
+
+            {/* NIVEL 2 - Profissoes */}
+            {catSelecionada && (
+              <Animated.View style={{ flex: 1, opacity: nivel2Anim }}>
+                <View style={styles.modalHeader}>
+                  <TouchableOpacity style={styles.modalBack} onPress={voltarNivel1}>
+                    <Text style={[styles.modalBackText, { color: catSelecionada.cor }]}>← Voltar</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.modalTitle}>{catSelecionada.label}</Text>
+                  <TouchableOpacity onPress={() => { setModalVisible(false); setCatSelecionada(null) }}>
+                    <Text style={styles.modalClose}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                <FlatList
+                  data={catSelecionada.profissoes}
+                  keyExtractor={item => item}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[styles.profItem, profissao?.label === item && { backgroundColor: catSelecionada.cor + '10' }]}
+                      onPress={() => selecionarProfissao(item)}
+                    >
+                      <Text style={[styles.profLabel, profissao?.label === item && { color: catSelecionada.cor, fontWeight: '800' }]}>{item}</Text>
+                      {profissao?.label === item && <Text style={{ color: catSelecionada.cor, fontWeight: '900' }}>✓</Text>}
+                    </TouchableOpacity>
+                  )}
+                />
+              </Animated.View>
+            )}
+
+          </View>
+        </View>
+      </Modal>
     </Animated.View>
   )
 }
@@ -183,22 +233,35 @@ const styles = StyleSheet.create({
   progressRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#007A6E' },
   bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' },
   barOn: { backgroundColor: '#F5C800' },
-  scroll: { padding: 16, paddingBottom: 100 },
+  scroll: { padding: 20, paddingBottom: 100 },
   step: { fontSize: 11, fontWeight: '800', color: '#00A880', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '800', color: '#0A1C14', lineHeight: 34, marginBottom: 8 },
-  sub: { fontSize: 13, color: '#7A9E8E', marginBottom: 20 },
-  accordion: { gap: 10 },
-  acordCard: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 2, borderColor: '#D0E8DA', overflow: 'hidden' },
-  acordHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
-  acordLabel: { fontSize: 15, fontWeight: '700', color: '#0A1C14', flex: 1 },
-  acordArrow: { fontSize: 20, color: '#7A9E8E', fontWeight: '700' },
-  acordDivider: { height: 1, marginHorizontal: 16, marginBottom: 8 },
-  acordBody: { paddingBottom: 8 },
-  profItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
-  profCheck: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#D0E8DA', justifyContent: 'center', alignItems: 'center' },
-  profLabel: { fontSize: 14, color: '#3A6550', flex: 1 },
+  sub: { fontSize: 13, color: '#7A9E8E', marginBottom: 24 },
+  dropdown: { backgroundColor: '#fff', borderRadius: 14, padding: 16, borderWidth: 2, borderColor: '#D0E8DA', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  dropdownPlaceholder: { fontSize: 15, color: '#AECEBE', flex: 1 },
+  dropdownSelected: { fontSize: 16, fontWeight: '800', color: '#0A1C14' },
+  dropdownCat: { fontSize: 11, fontWeight: '700', marginBottom: 2 },
+  dropdownArrow: { fontSize: 22, color: '#7A9E8E' },
+  selectedCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 2, flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 },
+  selectedDot: { width: 10, height: 10, borderRadius: 5 },
+  selectedLabel: { fontSize: 14, fontWeight: '800', color: '#0A1C14' },
+  selectedCat: { fontSize: 11, marginTop: 2, fontWeight: '700' },
+  selectedRemove: { fontSize: 16, color: '#7A9E8E', padding: 4 },
   footer: { padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#D0E8DA' },
   btn: { backgroundColor: '#007A6E', borderRadius: 14, padding: 16, alignItems: 'center' },
   btnOff: { backgroundColor: '#AECEBE' },
   btnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modal: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#D0E8DA' },
+  modalTitle: { fontSize: 15, fontWeight: '800', color: '#0A1C14', flex: 1, textAlign: 'center' },
+  modalClose: { fontSize: 20, color: '#7A9E8E', padding: 4 },
+  modalBack: { padding: 4 },
+  modalBackText: { fontSize: 14, fontWeight: '700' },
+  catItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderBottomWidth: 1, borderBottomColor: '#EEF7F2' },
+  catDot: { width: 12, height: 12, borderRadius: 6 },
+  catLabel: { fontSize: 15, fontWeight: '600', color: '#0A1C14', flex: 1 },
+  catArrow: { fontSize: 20, color: '#7A9E8E' },
+  profItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#EEF7F2' },
+  profLabel: { fontSize: 15, color: '#0A1C14', flex: 1 },
 })
