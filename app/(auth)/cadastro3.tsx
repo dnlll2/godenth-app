@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native'
+import { useState, useEffect } from 'react'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, FlatList } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useAuthStore } from '../../stores/authStore'
 import api from '../../services/api'
@@ -14,10 +14,34 @@ export default function Cadastro3() {
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
-  const [cidade, setCidade] = useState('')
-  const [estado, setEstado] = useState('')
+  const [cidade, setCidade] = useState<any>(null)
+  const [estado, setEstado] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [estados, setEstados] = useState<any[]>([])
+  const [cidades, setCidades] = useState<any[]>([])
+  const [modalEstado, setModalEstado] = useState(false)
+  const [modalCidade, setModalCidade] = useState(false)
+  const [loadingCidades, setLoadingCidades] = useState(false)
   const { login } = useAuthStore()
+
+  useEffect(() => {
+    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
+      .then(r => r.json())
+      .then(data => setEstados(data))
+      .catch(() => {})
+  }, [])
+
+  const carregarCidades = async (uf: any) => {
+    setEstado(uf)
+    setCidade(null)
+    setLoadingCidades(true)
+    try {
+      const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados/' + uf.id + '/municipios?orderBy=nome')
+      const data = await res.json()
+      setCidades(data)
+    } catch {}
+    setLoadingCidades(false)
+  }
 
   const handleCadastro = async () => {
     if (!nome || !email || !senha) return Alert.alert('Atenção', 'Preencha nome, email e senha')
@@ -109,30 +133,29 @@ export default function Cadastro3() {
           secureTextEntry
         />
 
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Cidade</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="São Paulo"
-              placeholderTextColor="#AECEBE"
-              value={cidade}
-              onChangeText={setCidade}
-            />
-          </View>
-          <View style={{ width: 90 }}>
-            <Text style={styles.label}>Estado</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="SP"
-              placeholderTextColor="#AECEBE"
-              value={estado}
-              onChangeText={t => setEstado(t.toUpperCase())}
-              maxLength={2}
-              autoCapitalize="characters"
-            />
-          </View>
-        </View>
+        <Text style={styles.label}>Estado</Text>
+        <TouchableOpacity style={styles.select} onPress={() => setModalEstado(true)}>
+          <Text style={[styles.selectText, !estado && { color: '#AECEBE' }]}>
+            {estado ? estado.sigla + ' — ' + estado.nome : 'Selecione o estado...'}
+          </Text>
+          <Text style={{ color: '#7A9E8E', fontSize: 18 }}>˅</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.label}>Cidade</Text>
+        <TouchableOpacity
+          style={[styles.select, !estado && { opacity: 0.5 }]}
+          onPress={() => estado && setModalCidade(true)}
+          disabled={!estado}
+        >
+          {loadingCidades ? (
+            <ActivityIndicator size="small" color="#00A880" />
+          ) : (
+            <Text style={[styles.selectText, !cidade && { color: '#AECEBE' }]}>
+              {cidade ? cidade.nome : estado ? 'Selecione a cidade...' : 'Selecione o estado primeiro'}
+            </Text>
+          )}
+          <Text style={{ color: '#7A9E8E', fontSize: 18 }}>˅</Text>
+        </TouchableOpacity>
 
         <View style={styles.infoBox}>
           <Text style={styles.infoIcon}>🔒</Text>
@@ -149,6 +172,60 @@ export default function Cadastro3() {
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnT}>Criar minha conta →</Text>}
         </TouchableOpacity>
       </View>
+
+      <Modal visible={modalEstado} animationType="slide" transparent onRequestClose={() => setModalEstado(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Selecione o Estado</Text>
+              <TouchableOpacity onPress={() => setModalEstado(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={estados}
+              keyExtractor={item => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.modalItem, estado?.id === item.id && styles.modalItemOn]}
+                  onPress={() => { carregarCidades(item); setModalEstado(false) }}
+                >
+                  <Text style={styles.modalItemSigla}>{item.sigla}</Text>
+                  <Text style={[styles.modalItemLabel, estado?.id === item.id && { color: '#00A880', fontWeight: '800' }]}>{item.nome}</Text>
+                  {estado?.id === item.id && <Text style={{ color: '#00A880' }}>✓</Text>}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={modalCidade} animationType="slide" transparent onRequestClose={() => setModalCidade(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Selecione a Cidade</Text>
+              <TouchableOpacity onPress={() => setModalCidade(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={cidades}
+              keyExtractor={item => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.modalItem, cidade?.id === item.id && styles.modalItemOn]}
+                  onPress={() => { setCidade(item); setModalCidade(false) }}
+                >
+                  <Text style={[styles.modalItemLabel, cidade?.id === item.id && { color: '#00A880', fontWeight: '800' }]}>{item.nome}</Text>
+                  {cidade?.id === item.id && <Text style={{ color: '#00A880' }}>✓</Text>}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+
     </View>
   )
 }
@@ -178,4 +255,15 @@ const styles = StyleSheet.create({
   btn: { backgroundColor: '#007A6E', borderRadius: 14, padding: 16, alignItems: 'center' },
   btnOff: { backgroundColor: '#AECEBE' },
   btnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  select: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  selectText: { fontSize: 15, color: '#0A1C14', flex: 1 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modal: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#D0E8DA' },
+  modalTitle: { fontSize: 16, fontWeight: '800', color: '#0A1C14', flex: 1, textAlign: 'center' },
+  modalClose: { fontSize: 20, color: '#7A9E8E' },
+  modalItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderBottomWidth: 1, borderBottomColor: '#EEF7F2' },
+  modalItemOn: { backgroundColor: 'rgba(0,168,128,0.06)' },
+  modalItemSigla: { fontSize: 13, fontWeight: '800', color: '#00A880', width: 30 },
+  modalItemLabel: { fontSize: 15, color: '#0A1C14', flex: 1 },
 })

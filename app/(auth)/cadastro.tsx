@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated, ScrollView, Modal, 
 import { router } from 'expo-router'
 
 const CATEGORIAS = [
-  { key: 'clinico', label: 'Clínico e Profissional Técnico', cor: '#00A880', profissoes: ['Cirurgião-Dentista','Ortodontista','Implantodontista','Endodontista','Periodontista','Odontopediatra','Cirurgião Bucomaxilofacial','Técnico em Prótese Dentária'] },
+  { key: 'clinico', label: 'Clínico e Profissional Técnico', cor: '#00A880', profissoes: ['Cirurgião-Dentista','Técnico em Prótese Dentária'] },
   { key: 'tecnico', label: 'Técnicos e Auxiliares', cor: '#1A6FD4', profissoes: ['Técnico em Saúde Bucal (TSB)','Auxiliar em Saúde Bucal (ASB)','Auxiliar de Prótese Dentária','Técnico em Radiologia'] },
   { key: 'comercial', label: 'Comercial', cor: '#C49800', profissoes: ['Gerente Comercial','Representante Comercial','Recepcionista / Secretária','CRC / Call Center','Consultor de Vendas'] },
   { key: 'administrativo', label: 'Administrativo', cor: '#7B3FC4', profissoes: ['Gerente Administrativo','Auxiliar Administrativo','Financeiro','RH / Recursos Humanos','Contabilidade','TI / Tecnologia'] },
