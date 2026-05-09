@@ -3,30 +3,12 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated, ScrollView, Modal, 
 import { router } from 'expo-router'
 
 const CATEGORIAS = [
-  {
-    key: 'clinico', label: 'Clínico e Profissional Técnico', cor: '#00A880',
-    profissoes: ['Cirurgião-Dentista','Ortodontista','Implantodontista','Endodontista','Periodontista','Odontopediatra','Cirurgião Bucomaxilofacial','Técnico em Prótese Dentária'],
-  },
-  {
-    key: 'tecnico', label: 'Técnicos e Auxiliares', cor: '#1A6FD4',
-    profissoes: ['Técnico em Saúde Bucal (TSB)','Auxiliar em Saúde Bucal (ASB)','Auxiliar de Prótese Dentária','Técnico em Radiologia'],
-  },
-  {
-    key: 'comercial', label: 'Comercial', cor: '#C49800',
-    profissoes: ['Gerente Comercial','Representante Comercial','Recepcionista / Secretária','CRC / Call Center','Consultor de Vendas'],
-  },
-  {
-    key: 'administrativo', label: 'Administrativo', cor: '#7B3FC4',
-    profissoes: ['Gerente Administrativo','Auxiliar Administrativo','Financeiro','RH / Recursos Humanos','Contabilidade','TI / Tecnologia'],
-  },
-  {
-    key: 'marketing', label: 'Marketing e Criação', cor: '#D4186A',
-    profissoes: ['Marketing Digital','Designer Gráfico / UI','Filmmaker / Videomaker','Fotógrafo','Social Media','Gestor de Tráfego','Copywriter'],
-  },
-  {
-    key: 'formacao', label: 'Formação', cor: '#0891B2',
-    profissoes: ['Estudante de Odontologia','Estudante de Prótese Dentária','Estudante de Administração','Estudante de Marketing'],
-  },
+  { key: 'clinico', label: 'Clínico e Profissional Técnico', cor: '#00A880', profissoes: ['Cirurgião-Dentista','Ortodontista','Implantodontista','Endodontista','Periodontista','Odontopediatra','Cirurgião Bucomaxilofacial','Técnico em Prótese Dentária'] },
+  { key: 'tecnico', label: 'Técnicos e Auxiliares', cor: '#1A6FD4', profissoes: ['Técnico em Saúde Bucal (TSB)','Auxiliar em Saúde Bucal (ASB)','Auxiliar de Prótese Dentária','Técnico em Radiologia'] },
+  { key: 'comercial', label: 'Comercial', cor: '#C49800', profissoes: ['Gerente Comercial','Representante Comercial','Recepcionista / Secretária','CRC / Call Center','Consultor de Vendas'] },
+  { key: 'administrativo', label: 'Administrativo', cor: '#7B3FC4', profissoes: ['Gerente Administrativo','Auxiliar Administrativo','Financeiro','RH / Recursos Humanos','Contabilidade','TI / Tecnologia'] },
+  { key: 'marketing', label: 'Marketing e Criação', cor: '#D4186A', profissoes: ['Marketing Digital','Designer Gráfico / UI','Filmmaker / Videomaker','Fotógrafo','Social Media','Gestor de Tráfego','Copywriter'] },
+  { key: 'formacao', label: 'Formação', cor: '#0891B2', profissoes: ['Estudante de Odontologia','Estudante de Prótese Dentária','Estudante de Administração','Estudante de Marketing'] },
 ]
 
 export default function Cadastro() {
@@ -36,14 +18,13 @@ export default function Cadastro() {
   const [modalVisible, setModalVisible] = useState(false)
   const [catSelecionada, setCatSelecionada] = useState<any>(null)
   const [fase, setFase] = useState<'principal' | 'mais_cargos'>('principal')
-  const faseAnim = useRef(new Animated.Value(1)).current
 
   const splashFade = useRef(new Animated.Value(1)).current
   const logoScale = useRef(new Animated.Value(0.5)).current
   const logoOpacity = useRef(new Animated.Value(0)).current
   const taglineOpacity = useRef(new Animated.Value(0)).current
   const pageAnim = useRef(new Animated.Value(0)).current
-  const nivel2Anim = useRef(new Animated.Value(0)).current
+  const faseAnim = useRef(new Animated.Value(1)).current
 
   useEffect(() => {
     Animated.sequence([
@@ -64,14 +45,10 @@ export default function Cadastro() {
 
   const abrirCategoria = (cat: any) => {
     setCatSelecionada(cat)
-    nivel2Anim.setValue(0)
-    Animated.timing(nivel2Anim, { toValue: 1, duration: 300, useNativeDriver: true }).start()
   }
 
   const voltarNivel1 = () => {
-    Animated.timing(nivel2Anim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
-      setCatSelecionada(null)
-    })
+    setCatSelecionada(null)
   }
 
   const selecionarProfissao = (prof: string) => {
@@ -83,6 +60,13 @@ export default function Cadastro() {
     }
     setModalVisible(false)
     setCatSelecionada(null)
+  }
+
+  const irParaMaisCargos = () => {
+    Animated.timing(faseAnim, { toValue: 0, duration: 350, useNativeDriver: true }).start(() => {
+      setFase('mais_cargos')
+      Animated.timing(faseAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start()
+    })
   }
 
   if (showSplash) {
@@ -124,52 +108,63 @@ export default function Cadastro() {
       </View>
 
       <Animated.View style={{ flex: 1, opacity: faseAnim }}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.step}>Passo 1 de 4</Text>
-        <Text style={styles.title}>Qual é a sua{'\n'}profissão principal?</Text>
-        <Text style={styles.sub}>Selecione a profissão que melhor te define</Text>
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <Text style={styles.step}>Passo 1 de 4</Text>
 
-        <TouchableOpacity style={styles.dropdown} onPress={() => setModalVisible(true)}>
-          {profissao ? (
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.dropdownCat, { color: profissao.cor }]}>{profissao.categoria}</Text>
-              <Text style={styles.dropdownSelected}>{profissao.label}</Text>
-            </View>
-          ) : (
-            <Text style={styles.dropdownPlaceholder}>Toque para selecionar...</Text>
-          )}
-          <Text style={styles.dropdownArrow}>˅</Text>
-        </TouchableOpacity>
+          {fase === 'principal' ? (
+            <>
+              <Text style={styles.title}>Qual é a sua{'\n'}profissão principal?</Text>
+              <Text style={styles.sub}>Selecione a profissão que melhor te define</Text>
 
-        {profissao && (
-          <View style={[styles.selectedCard, { borderColor: profissao.cor }]}>
-            <View style={[styles.selectedDot, { backgroundColor: profissao.cor }]} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.selectedLabel}>{profissao.label}</Text>
-              <Text style={[styles.selectedCat, { color: profissao.cor }]}>{profissao.categoria}</Text>
-            </View>
-            <TouchableOpacity onPress={() => setProfissao(null)}>
-              <Text style={styles.selectedRemove}>✕</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </ScrollView>
-
-      {fase === 'mais_cargos' && (
-        <View style={styles.maisCargos}>
-          <Text style={styles.maisCargosTitle}>Você tem mais{'\n'}algum cargo?</Text>
-          <Text style={styles.maisCargosDesc}>Ex: dentista e gerente, representante e social media...</Text>
-          {extras.length > 0 && extras.map((e, i) => (
-            <View key={i} style={[styles.selectedCard, { borderColor: e.cor, marginBottom: 8 }]}>
-              <View style={[styles.selectedDot, { backgroundColor: e.cor }]} />
-              <Text style={{ flex: 1, fontWeight: '700', color: '#0A1C14' }}>{e.label}</Text>
-              <TouchableOpacity onPress={() => setExtras(prev => prev.filter((_, j) => j !== i))}>
-                <Text style={{ color: '#7A9E8E', fontSize: 16 }}>✕</Text>
+              <TouchableOpacity style={styles.dropdown} onPress={() => setModalVisible(true)}>
+                {profissao ? (
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.dropdownCat, { color: profissao.cor }]}>{profissao.categoria}</Text>
+                    <Text style={styles.dropdownSelected}>{profissao.label}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.dropdownPlaceholder}>Toque para selecionar...</Text>
+                )}
+                <Text style={styles.dropdownArrow}>˅</Text>
               </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-      )}
+
+              {profissao && (
+                <View style={[styles.selectedCard, { borderColor: profissao.cor }]}>
+                  <View style={[styles.selectedDot, { backgroundColor: profissao.cor }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.selectedLabel}>{profissao.label}</Text>
+                    <Text style={[styles.selectedCat, { color: profissao.cor }]}>{profissao.categoria}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setProfissao(null)}>
+                    <Text style={styles.selectedRemove}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
+          ) : (
+            <>
+              <Text style={styles.title}>Você tem mais{'\n'}algum cargo?</Text>
+              <Text style={styles.sub}>Ex: dentista e gerente, representante e social media...</Text>
+
+              {extras.map((e, i) => (
+                <View key={i} style={[styles.selectedCard, { borderColor: e.cor, marginBottom: 10 }]}>
+                  <View style={[styles.selectedDot, { backgroundColor: e.cor }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.selectedLabel}>{e.label}</Text>
+                    <Text style={[styles.selectedCat, { color: e.cor }]}>{e.categoria}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setExtras(prev => prev.filter((_, j) => j !== i))}>
+                    <Text style={styles.selectedRemove}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
+                <Text style={styles.addBtnT}>+ Adicionar cargo</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </ScrollView>
       </Animated.View>
 
       <View style={styles.footer}>
@@ -177,36 +172,32 @@ export default function Cadastro() {
           <TouchableOpacity
             style={[styles.btn, !profissao && styles.btnOff]}
             disabled={!profissao}
-            onPress={() => {
-              Animated.timing(faseAnim, { toValue: 0, duration: 350, useNativeDriver: true }).start(() => {
-                setFase('mais_cargos')
-                Animated.timing(faseAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start()
-              })
-            }}
+            onPress={irParaMaisCargos}
           >
             <Text style={styles.btnT}>{profissao ? 'Continuar →' : 'Selecione sua profissão'}</Text>
           </TouchableOpacity>
         ) : (
           <View style={{ gap: 10 }}>
-            <TouchableOpacity style={[styles.btn, { backgroundColor: '#EEF7F2', borderWidth: 2, borderColor: '#00A880' }]}
-              onPress={() => { setModalVisible(true) }}>
-              <Text style={[styles.btnT, { color: '#00A880' }]}>✅ Sim, adicionar outro cargo</Text>
+            <TouchableOpacity
+              style={[styles.btn, { backgroundColor: '#EEF7F2', borderWidth: 2, borderColor: '#007A6E' }]}
+              onPress={() => setModalVisible(true)}
+            >
+              <Text style={[styles.btnT, { color: '#007A6E' }]}>+ Sim, adicionar cargo</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.btn}
-              onPress={() => router.push({ pathname: '/(auth)/cadastro3', params: { profissao: JSON.stringify(profissao), extras: JSON.stringify(extras) } })}>
-              <Text style={styles.btnT}>→ Não, continuar</Text>
+            <TouchableOpacity
+              style={styles.btn}
+              onPress={() => router.push({ pathname: '/(auth)/cadastro3', params: { profissao: JSON.stringify(profissao), extras: JSON.stringify(extras) } })}
+            >
+              <Text style={styles.btnT}>Não, continuar →</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
 
-      {/* MODAL */}
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => { setModalVisible(false); setCatSelecionada(null) }}>
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
-
-            {/* NIVEL 1 - Categorias */}
-            {!catSelecionada && (
+            {!catSelecionada ? (
               <>
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>Selecione a área</Text>
@@ -226,13 +217,10 @@ export default function Cadastro() {
                   )}
                 />
               </>
-            )}
-
-            {/* NIVEL 2 - Profissoes */}
-            {catSelecionada && (
-              <Animated.View style={{ flex: 1, opacity: nivel2Anim }}>
+            ) : (
+              <>
                 <View style={styles.modalHeader}>
-                  <TouchableOpacity style={styles.modalBack} onPress={voltarNivel1}>
+                  <TouchableOpacity onPress={voltarNivel1}>
                     <Text style={[styles.modalBackText, { color: catSelecionada.cor }]}>← Voltar</Text>
                   </TouchableOpacity>
                   <Text style={styles.modalTitle}>{catSelecionada.label}</Text>
@@ -253,9 +241,8 @@ export default function Cadastro() {
                     </TouchableOpacity>
                   )}
                 />
-              </Animated.View>
+              </>
             )}
-
           </View>
         </View>
       </Modal>
@@ -288,6 +275,8 @@ const styles = StyleSheet.create({
   selectedLabel: { fontSize: 14, fontWeight: '800', color: '#0A1C14' },
   selectedCat: { fontSize: 11, marginTop: 2, fontWeight: '700' },
   selectedRemove: { fontSize: 16, color: '#7A9E8E', padding: 4 },
+  addBtn: { backgroundColor: '#fff', borderRadius: 14, padding: 16, borderWidth: 2, borderColor: '#D0E8DA', borderStyle: 'dashed', alignItems: 'center', marginTop: 12 },
+  addBtnT: { fontSize: 14, fontWeight: '700', color: '#00A880' },
   footer: { padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#D0E8DA' },
   btn: { backgroundColor: '#007A6E', borderRadius: 14, padding: 16, alignItems: 'center' },
   btnOff: { backgroundColor: '#AECEBE' },
@@ -297,7 +286,6 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#D0E8DA' },
   modalTitle: { fontSize: 15, fontWeight: '800', color: '#0A1C14', flex: 1, textAlign: 'center' },
   modalClose: { fontSize: 20, color: '#7A9E8E', padding: 4 },
-  modalBack: { padding: 4 },
   modalBackText: { fontSize: 14, fontWeight: '700' },
   catItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderBottomWidth: 1, borderBottomColor: '#EEF7F2' },
   catDot: { width: 12, height: 12, borderRadius: 6 },
@@ -305,7 +293,4 @@ const styles = StyleSheet.create({
   catArrow: { fontSize: 20, color: '#7A9E8E' },
   profItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#EEF7F2' },
   profLabel: { fontSize: 15, color: '#0A1C14', flex: 1 },
-  maisCargos: { padding: 20 },
-  maisCargosTitle: { fontSize: 24, fontWeight: '800', color: '#0A1C14', lineHeight: 32, marginBottom: 8 },
-  maisCargosDesc: { fontSize: 13, color: '#7A9E8E', marginBottom: 16 },
 })
