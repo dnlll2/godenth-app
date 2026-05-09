@@ -32,8 +32,11 @@ const CATEGORIAS = [
 export default function Cadastro() {
   const [showSplash, setShowSplash] = useState(true)
   const [profissao, setProfissao] = useState<any>(null)
+  const [extras, setExtras] = useState<any[]>([])
   const [modalVisible, setModalVisible] = useState(false)
   const [catSelecionada, setCatSelecionada] = useState<any>(null)
+  const [fase, setFase] = useState<'principal' | 'mais_cargos'>('principal')
+  const faseAnim = useRef(new Animated.Value(1)).current
 
   const splashFade = useRef(new Animated.Value(1)).current
   const logoScale = useRef(new Animated.Value(0.5)).current
@@ -72,7 +75,12 @@ export default function Cadastro() {
   }
 
   const selecionarProfissao = (prof: string) => {
-    setProfissao({ label: prof, categoria: catSelecionada.label, cor: catSelecionada.cor })
+    const nova = { label: prof, categoria: catSelecionada.label, cor: catSelecionada.cor }
+    if (fase === 'principal') {
+      setProfissao(nova)
+    } else {
+      setExtras(prev => [...prev.filter(e => e.label !== prof), nova])
+    }
     setModalVisible(false)
     setCatSelecionada(null)
   }
@@ -115,6 +123,7 @@ export default function Cadastro() {
         <View style={styles.bar} />
       </View>
 
+      <Animated.View style={{ flex: 1, opacity: faseAnim }}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.step}>Passo 1 de 4</Text>
         <Text style={styles.title}>Qual é a sua{'\n'}profissão principal?</Text>
@@ -146,17 +155,49 @@ export default function Cadastro() {
         )}
       </ScrollView>
 
+      {fase === 'mais_cargos' && (
+        <View style={styles.maisCargos}>
+          <Text style={styles.maisCargosTitle}>Você tem mais{'\n'}algum cargo?</Text>
+          <Text style={styles.maisCargosDesc}>Ex: dentista e gerente, representante e social media...</Text>
+          {extras.length > 0 && extras.map((e, i) => (
+            <View key={i} style={[styles.selectedCard, { borderColor: e.cor, marginBottom: 8 }]}>
+              <View style={[styles.selectedDot, { backgroundColor: e.cor }]} />
+              <Text style={{ flex: 1, fontWeight: '700', color: '#0A1C14' }}>{e.label}</Text>
+              <TouchableOpacity onPress={() => setExtras(prev => prev.filter((_, j) => j !== i))}>
+                <Text style={{ color: '#7A9E8E', fontSize: 16 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
+      </Animated.View>
+
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.btn, !profissao && styles.btnOff]}
-          disabled={!profissao}
-          onPress={() => router.push({
-            pathname: '/(auth)/cadastro3',
-            params: { profissao: JSON.stringify(profissao) }
-          })}
-        >
-          <Text style={styles.btnT}>{profissao ? 'Continuar →' : 'Selecione sua profissão'}</Text>
-        </TouchableOpacity>
+        {fase === 'principal' ? (
+          <TouchableOpacity
+            style={[styles.btn, !profissao && styles.btnOff]}
+            disabled={!profissao}
+            onPress={() => {
+              Animated.timing(faseAnim, { toValue: 0, duration: 350, useNativeDriver: true }).start(() => {
+                setFase('mais_cargos')
+                Animated.timing(faseAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start()
+              })
+            }}
+          >
+            <Text style={styles.btnT}>{profissao ? 'Continuar →' : 'Selecione sua profissão'}</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ gap: 10 }}>
+            <TouchableOpacity style={[styles.btn, { backgroundColor: '#EEF7F2', borderWidth: 2, borderColor: '#00A880' }]}
+              onPress={() => { setModalVisible(true) }}>
+              <Text style={[styles.btnT, { color: '#00A880' }]}>✅ Sim, adicionar outro cargo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.btn}
+              onPress={() => router.push({ pathname: '/(auth)/cadastro3', params: { profissao: JSON.stringify(profissao), extras: JSON.stringify(extras) } })}>
+              <Text style={styles.btnT}>→ Não, continuar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* MODAL */}
@@ -264,4 +305,7 @@ const styles = StyleSheet.create({
   catArrow: { fontSize: 20, color: '#7A9E8E' },
   profItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#EEF7F2' },
   profLabel: { fontSize: 15, color: '#0A1C14', flex: 1 },
+  maisCargos: { padding: 20 },
+  maisCargosTitle: { fontSize: 24, fontWeight: '800', color: '#0A1C14', lineHeight: 32, marginBottom: 8 },
+  maisCargosDesc: { fontSize: 13, color: '#7A9E8E', marginBottom: 16 },
 })
