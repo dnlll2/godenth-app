@@ -10,8 +10,12 @@
     "build": "expo export --platform web"
   },
   "dependencies": {
+    "@expo-google-fonts/audiowide": "^0.4.1",
+    "@expo-google-fonts/fira-sans": "^0.4.1",
     "@expo-google-fonts/orbitron": "^0.4.2",
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
+    "@expo-google-fonts/raleway": "^0.4.2",
+    "@expo-google-fonts/smooch-sans": "^0.4.2",
     "@expo/metro-runtime": "~6.1.2",
     "@react-native-async-storage/async-storage": "^3.0.2",
     "@react-navigation/bottom-tabs": "^7.15.11",
