@@ -13,6 +13,9 @@ interface User {
   estado?: string
   bio?: string
   especialidade?: string
+  especialidades?: string[]
+  habilidades?: string[]
+  cargos_extras?: any[]
   avatar_url?: string
   cor_tema?: string
 }
