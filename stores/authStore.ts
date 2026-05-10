@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import api from '../services/api'
 
@@ -46,7 +45,7 @@ interface AuthState {
   updateUser: (data: Partial<User>) => void
 }
 
-export const useAuthStore = create<AuthState>()(persist((set, get) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: null,
   isLoading: true,
@@ -99,4 +98,4 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
       AsyncStorage.setItem('godenth_user', JSON.stringify(updated))
     }
   },
-}), { name: 'godenth-store', storage: createJSONStorage(() => AsyncStorage) }))
+}))
