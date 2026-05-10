@@ -9,6 +9,28 @@ const ESPECIALIDADES: any = {
   'Técnico em Saúde Bucal (TSB)': ['Auxílio em Cirurgia','Prevenção e Profilaxia','Radiologia'],
   'Auxiliar em Saúde Bucal (ASB)': ['Auxílio em Cirurgia','Instrumentação','Organização de Consultório'],
   'Auxiliar de Prótese Dentária': ['Gesso','Acabamento e Polimento','Auxiliar de Cadista'],
+  'Gerente Comercial': ['Gestão de Equipe','Metas e KPIs','Negociação','Prospecção'],
+  'Representante Comercial': ['Prospecção','Negociação','Pós-venda','Demonstração de Produtos'],
+  'Recepcionista / Secretária': ['Agendamento','Atendimento ao Paciente','CRM','Faturamento'],
+  'CRC / Call Center': ['Atendimento','Retenção de Clientes','Scripts de Vendas'],
+  'Consultor de Vendas': ['Prospecção','Negociação','CRM','Fechamento de Contratos'],
+  'Gerente Administrativo': ['Gestão de Equipe','Processos','Indicadores','Planejamento'],
+  'Auxiliar Administrativo': ['Organização','Arquivo','Atendimento','Rotinas Administrativas'],
+  'Financeiro': ['Contas a Pagar/Receber','Fluxo de Caixa','Conciliação','DRE'],
+  'RH / Recursos Humanos': ['Recrutamento','Treinamento','Folha de Pagamento','Gestão de Pessoas'],
+  'Contabilidade': ['Lançamentos','Obrigações Fiscais','Relatórios Contábeis'],
+  'TI / Tecnologia': ['Suporte','Redes','Sistemas','Segurança da Informação'],
+  'Marketing Digital': ['Redes Sociais','Tráfego Pago','SEO','E-mail Marketing','Branding'],
+  'Designer Gráfico / UI': ['Identidade Visual','UI/UX','Motion Graphics','Edição de Imagens'],
+  'Filmmaker / Videomaker': ['Captação','Edição de Vídeo','Motion','Color Grading'],
+  'Fotógrafo': ['Fotografia Clínica','Ensaios','Edição','Lightroom/Photoshop'],
+  'Social Media': ['Criação de Conteúdo','Gestão de Perfis','Engajamento','Stories/Reels'],
+  'Gestor de Tráfego': ['Google Ads','Meta Ads','Analytics','Funil de Vendas'],
+  'Copywriter': ['Copy para Redes Sociais','E-mail Marketing','Landing Pages','SEO'],
+  'Estudante de Odontologia': ['Anatomia','Bioquímica','Clínica Integrada','Radiologia'],
+  'Estudante de Prótese Dentária': ['Gesso','Resinas','Anatomia Dental'],
+  'Estudante de Administração': ['Gestão','Finanças','Marketing','RH'],
+  'Estudante de Marketing': ['Marketing Digital','Publicidade','Pesquisa de Mercado'],
 }
 
 export default function Especialidades() {
@@ -40,7 +62,11 @@ export default function Especialidades() {
         <Text style={styles.title}>Suas{'\n'}especialidades</Text>
         <Text style={styles.sub}>Toque para selecionar — aparecem no seu perfil</Text>
         {todasEsp.length === 0 ? (
-          <Text style={{ color: '#7A9E8E', textAlign: 'center', marginTop: 20 }}>Nenhuma especialidade para seu perfil</Text>
+          <View style={{ alignItems: 'center', marginTop: 30, padding: 20 }}>
+            <Text style={{ fontSize: 40, marginBottom: 12 }}>✅</Text>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: '#0A1C14', marginBottom: 6 }}>Tudo certo!</Text>
+            <Text style={{ fontSize: 13, color: '#7A9E8E', textAlign: 'center' }}>Não há especialidades específicas para seu cargo. Continue para o próximo passo.</Text>
+          </View>
         ) : (
           <View style={styles.chips}>
             {todasEsp.map(esp => {
