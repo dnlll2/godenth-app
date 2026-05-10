@@ -127,23 +127,31 @@ export default function Academico() {
               {config.tipo === 'superior' ? (
                 <>
                   <Text style={styles.subLabel}>📚 Graduação</Text>
-                  <View style={styles.card}>
-                    <Text style={styles.cardTitle}>{config.graduacao}</Text>
-                    {prof.label !== 'Cirurgião-Dentista' && (
-                      <Text style={{ fontSize: 11, color: '#AECEBE', marginBottom: 8 }}>Opcional — preencha se aplicável</Text>
-                    )}
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Nome da instituição"
-                      placeholderTextColor="#AECEBE"
-                      value={f.graduacaoInst || ''}
-                      onChangeText={v => updateFormacao(prof.label, 'graduacaoInst', v)}
-                    />
-                    <TouchableOpacity style={styles.select} onPress={() => setModalAno({ prof: prof.label, campo: 'graduacaoAno' })}>
-                      <Text style={[styles.selectText, !f.graduacaoAno && { color: '#AECEBE' }]}>{f.graduacaoAno || 'Ano de conclusão'}</Text>
-                      <Text style={{ color: '#7A9E8E' }}>˅</Text>
+                  {!f.temGraduacao ? (
+                    <TouchableOpacity style={styles.addBtn} onPress={() => updateFormacao(prof.label, 'temGraduacao', true)}>
+                      <Text style={styles.addBtnT}>+ Tenho {config.graduacao}</Text>
                     </TouchableOpacity>
-                  </View>
+                  ) : (
+                    <View style={styles.card}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <Text style={styles.cardTitle}>{config.graduacao}</Text>
+                        <TouchableOpacity onPress={() => updateFormacao(prof.label, 'temGraduacao', false)}>
+                          <Text style={{ color: '#7A9E8E', fontSize: 16 }}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Nome da instituição"
+                        placeholderTextColor="#AECEBE"
+                        value={f.graduacaoInst || ''}
+                        onChangeText={v => updateFormacao(prof.label, 'graduacaoInst', v)}
+                      />
+                      <TouchableOpacity style={styles.select} onPress={() => setModalAno({ prof: prof.label, campo: 'graduacaoAno' })}>
+                        <Text style={[styles.selectText, !f.graduacaoAno && { color: '#AECEBE' }]}>{f.graduacaoAno || 'Ano de conclusão'}</Text>
+                        <Text style={{ color: '#7A9E8E' }}>˅</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
 
                   {config.posGraduacoes.length > 0 && (
                     <>
@@ -182,20 +190,31 @@ export default function Academico() {
               ) : (
                 <>
                   <Text style={styles.subLabel}>📋 Curso Técnico</Text>
-                  <View style={styles.card}>
-                    <Text style={styles.cardTitle}>{config.cursoTecnico}</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Nome da instituição"
-                      placeholderTextColor="#AECEBE"
-                      value={f.tecnicoInst || ''}
-                      onChangeText={v => updateFormacao(prof.label, 'tecnicoInst', v)}
-                    />
-                    <TouchableOpacity style={styles.select} onPress={() => setModalAno({ prof: prof.label, campo: 'tecnicoAno' })}>
-                      <Text style={[styles.selectText, !f.tecnicoAno && { color: '#AECEBE' }]}>{f.tecnicoAno || 'Ano de conclusão'}</Text>
-                      <Text style={{ color: '#7A9E8E' }}>˅</Text>
+                  {!f.temTecnico ? (
+                    <TouchableOpacity style={styles.addBtn} onPress={() => updateFormacao(prof.label, 'temTecnico', true)}>
+                      <Text style={styles.addBtnT}>+ Tenho {config.cursoTecnico}</Text>
                     </TouchableOpacity>
-                  </View>
+                  ) : (
+                    <View style={styles.card}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <Text style={styles.cardTitle}>{config.cursoTecnico}</Text>
+                        <TouchableOpacity onPress={() => updateFormacao(prof.label, 'temTecnico', false)}>
+                          <Text style={{ color: '#7A9E8E', fontSize: 16 }}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Nome da instituição"
+                        placeholderTextColor="#AECEBE"
+                        value={f.tecnicoInst || ''}
+                        onChangeText={v => updateFormacao(prof.label, 'tecnicoInst', v)}
+                      />
+                      <TouchableOpacity style={styles.select} onPress={() => setModalAno({ prof: prof.label, campo: 'tecnicoAno' })}>
+                        <Text style={[styles.selectText, !f.tecnicoAno && { color: '#AECEBE' }]}>{f.tecnicoAno || 'Ano de conclusão'}</Text>
+                        <Text style={{ color: '#7A9E8E' }}>˅</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
 
                   {config.cursosExtras.length > 0 && (
                     <>
