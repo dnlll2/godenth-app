@@ -45,13 +45,8 @@ export default function Cadastro() {
     }, 3500)
   }, [])
 
-  const abrirCategoria = (cat: any) => {
-    setCatSelecionada(cat)
-  }
-
-  const voltarNivel1 = () => {
-    setCatSelecionada(null)
-  }
+  const abrirCategoria = (cat: any) => setCatSelecionada(cat)
+  const voltarNivel1 = () => setCatSelecionada(null)
 
   const selecionarProfissao = (prof: string) => {
     const nova = { label: prof, categoria: catSelecionada.label, cor: catSelecionada.cor }
@@ -69,6 +64,11 @@ export default function Cadastro() {
       setFase('mais_cargos')
       Animated.timing(faseAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start()
     })
+  }
+
+  const continuar = () => {
+    setCadastroData({ profissao, extras })
+    router.push('/(auth)/cadastro3')
   }
 
   if (showSplash) {
@@ -113,14 +113,13 @@ export default function Cadastro() {
 
       <View style={styles.progressRow}>
         <View style={[styles.bar, styles.barOn]} />
-        <View style={styles.bar} />
-        <View style={styles.bar} />
-        <View style={styles.bar} />
+        <View style={[styles.bar, styles.barOn]} />
+        {[3,4,5,6,7].map(i => <View key={i} style={styles.bar} />)}
       </View>
 
       <Animated.View style={{ flex: 1, opacity: faseAnim }}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          <Text style={styles.step}>Passo 1 de 4</Text>
+          <Text style={styles.step}>Passo 2 de 7</Text>
 
           {fase === 'principal' ? (
             <>
@@ -180,25 +179,15 @@ export default function Cadastro() {
 
       <View style={styles.footer}>
         {fase === 'principal' ? (
-          <TouchableOpacity
-            style={[styles.btn, !profissao && styles.btnOff]}
-            disabled={!profissao}
-            onPress={irParaMaisCargos}
-          >
+          <TouchableOpacity style={[styles.btn, !profissao && styles.btnOff]} disabled={!profissao} onPress={irParaMaisCargos}>
             <Text style={styles.btnT}>{profissao ? 'Continuar →' : 'Selecione sua profissão'}</Text>
           </TouchableOpacity>
         ) : (
           <View style={{ gap: 10 }}>
-            <TouchableOpacity
-              style={[styles.btn, { backgroundColor: '#EEF7F2', borderWidth: 2, borderColor: '#007A6E' }]}
-              onPress={() => setModalVisible(true)}
-            >
+            <TouchableOpacity style={[styles.btn, { backgroundColor: '#EEF7F2', borderWidth: 2, borderColor: '#007A6E' }]} onPress={() => setModalVisible(true)}>
               <Text style={[styles.btnT, { color: '#007A6E' }]}>+ Sim, adicionar cargo</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.btn}
-              onPress={() => router.push({ pathname: '/(auth)/especialidades', params: { profissao: JSON.stringify(profissao), extras: JSON.stringify(extras) } })}
-            >
+            <TouchableOpacity style={styles.btn} onPress={continuar}>
               <Text style={styles.btnT}>Não, continuar →</Text>
             </TouchableOpacity>
           </View>
@@ -212,46 +201,29 @@ export default function Cadastro() {
               <>
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>Selecione a área</Text>
-                  <TouchableOpacity onPress={() => setModalVisible(false)}>
-                    <Text style={styles.modalClose}>✕</Text>
-                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setModalVisible(false)}><Text style={styles.modalClose}>✕</Text></TouchableOpacity>
                 </View>
-                <FlatList
-                  data={CATEGORIAS}
-                  keyExtractor={item => item.key}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.catItem} onPress={() => abrirCategoria(item)}>
-                      <View style={[styles.catDot, { backgroundColor: item.cor }]} />
-                      <Text style={styles.catLabel}>{item.label}</Text>
-                      <Text style={styles.catArrow}>›</Text>
-                    </TouchableOpacity>
-                  )}
-                />
+                <FlatList data={CATEGORIAS} keyExtractor={item => item.key} renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.catItem} onPress={() => abrirCategoria(item)}>
+                    <View style={[styles.catDot, { backgroundColor: item.cor }]} />
+                    <Text style={styles.catLabel}>{item.label}</Text>
+                    <Text style={styles.catArrow}>›</Text>
+                  </TouchableOpacity>
+                )} />
               </>
             ) : (
               <>
                 <View style={styles.modalHeader}>
-                  <TouchableOpacity onPress={voltarNivel1}>
-                    <Text style={[styles.modalBackText, { color: catSelecionada.cor }]}>← Voltar</Text>
-                  </TouchableOpacity>
+                  <TouchableOpacity onPress={voltarNivel1}><Text style={[styles.modalBackText, { color: catSelecionada.cor }]}>← Voltar</Text></TouchableOpacity>
                   <Text style={styles.modalTitle}>{catSelecionada.label}</Text>
-                  <TouchableOpacity onPress={() => { setModalVisible(false); setCatSelecionada(null) }}>
-                    <Text style={styles.modalClose}>✕</Text>
-                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setModalVisible(false); setCatSelecionada(null) }}><Text style={styles.modalClose}>✕</Text></TouchableOpacity>
                 </View>
-                <FlatList
-                  data={catSelecionada.profissoes}
-                  keyExtractor={item => item}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={[styles.profItem, profissao?.label === item && { backgroundColor: catSelecionada.cor + '10' }]}
-                      onPress={() => selecionarProfissao(item)}
-                    >
-                      <Text style={[styles.profLabel, profissao?.label === item && { color: catSelecionada.cor, fontWeight: '800' }]}>{item}</Text>
-                      {profissao?.label === item && <Text style={{ color: catSelecionada.cor, fontWeight: '900' }}>✓</Text>}
-                    </TouchableOpacity>
-                  )}
-                />
+                <FlatList data={catSelecionada.profissoes} keyExtractor={item => item} renderItem={({ item }) => (
+                  <TouchableOpacity style={[styles.profItem, profissao?.label === item && { backgroundColor: catSelecionada.cor + '10' }]} onPress={() => selecionarProfissao(item)}>
+                    <Text style={[styles.profLabel, profissao?.label === item && { color: catSelecionada.cor, fontWeight: '800' }]}>{item}</Text>
+                    {profissao?.label === item && <Text style={{ color: catSelecionada.cor, fontWeight: '900' }}>✓</Text>}
+                  </TouchableOpacity>
+                )} />
               </>
             )}
           </View>
@@ -269,7 +241,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#007A6E' },
   back: { fontSize: 24, color: '#fff', fontWeight: '700' },
   logo: { fontSize: 22, fontWeight: '800' },
-  progressRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#007A6E' },
+  progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#007A6E' },
   bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' },
   barOn: { backgroundColor: '#F5C800' },
   scroll: { padding: 20, paddingBottom: 100 },
