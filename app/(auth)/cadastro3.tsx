@@ -2,14 +2,10 @@ import { useState, useEffect } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, FlatList } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useAuthStore } from '../../stores/authStore'
-import api from '../../services/api'
-
-const ESTADOS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
 
 export default function Cadastro3() {
   const { profissao, extras } = useLocalSearchParams<{ profissao: string, extras: string }>()
-  const profissaoObj = JSON.parse(profissao || '{}')
-  const extrasArr = JSON.parse(extras || '[]')
+  const { setCadastroData } = useAuthStore()
 
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
@@ -22,7 +18,6 @@ export default function Cadastro3() {
   const [modalEstado, setModalEstado] = useState(false)
   const [modalCidade, setModalCidade] = useState(false)
   const [loadingCidades, setLoadingCidades] = useState(false)
-  const { login } = useAuthStore()
 
   useEffect(() => {
     fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
@@ -43,30 +38,22 @@ export default function Cadastro3() {
     setLoadingCidades(false)
   }
 
-  const handleCadastro = async () => {
+  const handleContinuar = () => {
     if (!nome || !email || !senha) return Alert.alert('Atenção', 'Preencha nome, email e senha')
     if (senha.length < 6) return Alert.alert('Atenção', 'Senha deve ter pelo menos 6 caracteres')
 
-    setLoading(true)
-      try {
-        router.push({
-          pathname: '/(auth)/especialidades',
-          params: {
-            profissao,
-            extras,
-            nome,
-            email,
-            senha,
-            cidade: cidade?.nome || '',
-            estado: estado?.sigla || '',
-          }
-        })
-      } catch (err: any) {
-        Alert.alert('Erro', 'Erro ao continuar')
-      } finally {
-        setLoading(false)
-      }
-    }
+    setCadastroData({
+      profissao: JSON.parse(profissao || '{}'),
+      extras: JSON.parse(extras || '[]'),
+      nome,
+      email,
+      senha,
+      cidade: cidade?.nome || '',
+      estado: estado?.sigla || '',
+    })
+
+    router.push('/(auth)/especialidades')
+  }
 
   return (
     <View style={styles.container}>
@@ -86,90 +73,43 @@ export default function Cadastro3() {
         <View style={[styles.bar, styles.barOn]} />
         <View style={[styles.bar, styles.barOn]} />
         <View style={styles.bar} />
+        <View style={styles.bar} />
+        <View style={styles.bar} />
+        <View style={styles.bar} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.step}>Passo 3 de 4</Text>
+        <Text style={styles.step}>Passo 3 de 7</Text>
         <Text style={styles.title}>Seus dados{'\n'}pessoais</Text>
         <Text style={styles.sub}>Essas informações formam seu currículo profissional</Text>
 
-        <View style={[styles.profCard, { borderColor: profissaoObj.cor || '#00A880' }]}>
-          <View style={[styles.profDot, { backgroundColor: profissaoObj.cor || '#00A880' }]} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.profLabel}>{profissaoObj.label}</Text>
-            {extrasArr.length > 0 && (
-              <Text style={styles.profExtras}>+{extrasArr.length} cargo{extrasArr.length > 1 ? 's' : ''} adicional{extrasArr.length > 1 ? 'is' : ''}</Text>
-            )}
-          </View>
-        </View>
-
         <Text style={styles.label}>Nome completo *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Seu nome completo"
-          placeholderTextColor="#AECEBE"
-          value={nome}
-          onChangeText={setNome}
-        />
+        <TextInput style={styles.input} placeholder="Seu nome completo" placeholderTextColor="#AECEBE" value={nome} onChangeText={setNome} />
 
         <Text style={styles.label}>E-mail *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="seu@email.com.br"
-          placeholderTextColor="#AECEBE"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
+        <TextInput style={styles.input} placeholder="seu@email.com.br" placeholderTextColor="#AECEBE" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
 
         <Text style={styles.label}>Senha *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Mínimo 6 caracteres"
-          placeholderTextColor="#AECEBE"
-          value={senha}
-          onChangeText={setSenha}
-          secureTextEntry
-        />
+        <TextInput style={styles.input} placeholder="Mínimo 6 caracteres" placeholderTextColor="#AECEBE" value={senha} onChangeText={setSenha} secureTextEntry />
 
         <Text style={styles.label}>Estado</Text>
         <TouchableOpacity style={styles.select} onPress={() => setModalEstado(true)}>
-          <Text style={[styles.selectText, !estado && { color: '#AECEBE' }]}>
-            {estado ? estado.sigla + ' — ' + estado.nome : 'Selecione o estado...'}
-          </Text>
+          <Text style={[styles.selectText, !estado && { color: '#AECEBE' }]}>{estado ? estado.sigla + ' — ' + estado.nome : 'Selecione o estado...'}</Text>
           <Text style={{ color: '#7A9E8E', fontSize: 18 }}>˅</Text>
         </TouchableOpacity>
 
         <Text style={styles.label}>Cidade</Text>
-        <TouchableOpacity
-          style={[styles.select, !estado && { opacity: 0.5 }]}
-          onPress={() => estado && setModalCidade(true)}
-          disabled={!estado}
-        >
-          {loadingCidades ? (
-            <ActivityIndicator size="small" color="#00A880" />
-          ) : (
-            <Text style={[styles.selectText, !cidade && { color: '#AECEBE' }]}>
-              {cidade ? cidade.nome : estado ? 'Selecione a cidade...' : 'Selecione o estado primeiro'}
-            </Text>
+        <TouchableOpacity style={[styles.select, !estado && { opacity: 0.5 }]} onPress={() => estado && setModalCidade(true)} disabled={!estado}>
+          {loadingCidades ? <ActivityIndicator size="small" color="#00A880" /> : (
+            <Text style={[styles.selectText, !cidade && { color: '#AECEBE' }]}>{cidade ? cidade.nome : estado ? 'Selecione a cidade...' : 'Selecione o estado primeiro'}</Text>
           )}
           <Text style={{ color: '#7A9E8E', fontSize: 18 }}>˅</Text>
         </TouchableOpacity>
-
-        <View style={styles.infoBox}>
-          <Text style={styles.infoIcon}>🔒</Text>
-          <Text style={styles.infoText}>Seus dados são protegidos e nunca compartilhados sem sua permissão</Text>
-        </View>
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.btn, (!nome || !email || !senha) && styles.btnOff]}
-          disabled={!nome || !email || !senha || loading}
-          onPress={handleCadastro}
-        >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnT}>Criar minha conta →</Text>}
+        <TouchableOpacity style={[styles.btn, (!nome || !email || !senha) && styles.btnOff]} disabled={!nome || !email || !senha} onPress={handleContinuar}>
+          <Text style={styles.btnT}>Continuar →</Text>
         </TouchableOpacity>
       </View>
 
@@ -178,24 +118,15 @@ export default function Cadastro3() {
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Selecione o Estado</Text>
-              <TouchableOpacity onPress={() => setModalEstado(false)}>
-                <Text style={styles.modalClose}>✕</Text>
-              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setModalEstado(false)}><Text style={styles.modalClose}>✕</Text></TouchableOpacity>
             </View>
-            <FlatList
-              data={estados}
-              keyExtractor={item => item.id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.modalItem, estado?.id === item.id && styles.modalItemOn]}
-                  onPress={() => { carregarCidades(item); setModalEstado(false) }}
-                >
-                  <Text style={styles.modalItemSigla}>{item.sigla}</Text>
-                  <Text style={[styles.modalItemLabel, estado?.id === item.id && { color: '#00A880', fontWeight: '800' }]}>{item.nome}</Text>
-                  {estado?.id === item.id && <Text style={{ color: '#00A880' }}>✓</Text>}
-                </TouchableOpacity>
-              )}
-            />
+            <FlatList data={estados} keyExtractor={item => item.id.toString()} renderItem={({ item }) => (
+              <TouchableOpacity style={[styles.modalItem, estado?.id === item.id && styles.modalItemOn]} onPress={() => { carregarCidades(item); setModalEstado(false) }}>
+                <Text style={styles.modalItemSigla}>{item.sigla}</Text>
+                <Text style={[styles.modalItemLabel, estado?.id === item.id && { color: '#00A880', fontWeight: '800' }]}>{item.nome}</Text>
+                {estado?.id === item.id && <Text style={{ color: '#00A880' }}>✓</Text>}
+              </TouchableOpacity>
+            )} />
           </View>
         </View>
       </Modal>
@@ -205,27 +136,17 @@ export default function Cadastro3() {
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Selecione a Cidade</Text>
-              <TouchableOpacity onPress={() => setModalCidade(false)}>
-                <Text style={styles.modalClose}>✕</Text>
-              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setModalCidade(false)}><Text style={styles.modalClose}>✕</Text></TouchableOpacity>
             </View>
-            <FlatList
-              data={cidades}
-              keyExtractor={item => item.id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.modalItem, cidade?.id === item.id && styles.modalItemOn]}
-                  onPress={() => { setCidade(item); setModalCidade(false) }}
-                >
-                  <Text style={[styles.modalItemLabel, cidade?.id === item.id && { color: '#00A880', fontWeight: '800' }]}>{item.nome}</Text>
-                  {cidade?.id === item.id && <Text style={{ color: '#00A880' }}>✓</Text>}
-                </TouchableOpacity>
-              )}
-            />
+            <FlatList data={cidades} keyExtractor={item => item.id.toString()} renderItem={({ item }) => (
+              <TouchableOpacity style={[styles.modalItem, cidade?.id === item.id && styles.modalItemOn]} onPress={() => { setCidade(item); setModalCidade(false) }}>
+                <Text style={[styles.modalItemLabel, cidade?.id === item.id && { color: '#00A880', fontWeight: '800' }]}>{item.nome}</Text>
+                {cidade?.id === item.id && <Text style={{ color: '#00A880' }}>✓</Text>}
+              </TouchableOpacity>
+            )} />
           </View>
         </View>
       </Modal>
-
     </View>
   )
 }
@@ -235,28 +156,21 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#007A6E' },
   back: { fontSize: 24, color: '#fff', fontWeight: '700' },
   logo: { fontSize: 22, fontWeight: '800' },
-  progressRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#007A6E' },
+  progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#007A6E' },
   bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' },
   barOn: { backgroundColor: '#F5C800' },
   scroll: { padding: 20, paddingBottom: 100 },
   step: { fontSize: 11, fontWeight: '800', color: '#00A880', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '800', color: '#0A1C14', lineHeight: 34, marginBottom: 8 },
   sub: { fontSize: 13, color: '#7A9E8E', marginBottom: 20 },
-  profCard: { backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 2, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 24 },
-  profDot: { width: 10, height: 10, borderRadius: 5 },
-  profLabel: { fontSize: 14, fontWeight: '800', color: '#0A1C14' },
-  profExtras: { fontSize: 11, color: '#7A9E8E', marginTop: 2 },
   label: { fontSize: 12, fontWeight: '700', color: '#3A6550', marginBottom: 6, marginTop: 4 },
   input: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 14, fontSize: 15, color: '#0A1C14', marginBottom: 14 },
-  infoBox: { flexDirection: 'row', gap: 10, backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', marginTop: 8 },
-  infoIcon: { fontSize: 18 },
-  infoText: { flex: 1, fontSize: 12, color: '#7A9E8E', lineHeight: 18 },
+  select: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  selectText: { fontSize: 15, color: '#0A1C14', flex: 1 },
   footer: { padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#D0E8DA' },
   btn: { backgroundColor: '#007A6E', borderRadius: 14, padding: 16, alignItems: 'center' },
   btnOff: { backgroundColor: '#AECEBE' },
   btnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
-  select: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  selectText: { fontSize: 15, color: '#0A1C14', flex: 1 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modal: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#D0E8DA' },

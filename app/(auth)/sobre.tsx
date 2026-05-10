@@ -1,33 +1,29 @@
 import { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router } from 'expo-router'
 import { useAuthStore } from '../../stores/authStore'
 import api from '../../services/api'
 
 const MAX_CHARS = 500
 
 export default function Sobre() {
-  const params = useLocalSearchParams()
+  const { cadastroData, login } = useAuthStore()
   const [bio, setBio] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login } = useAuthStore()
-
-  console.log('PARAMS SOBRE:', JSON.stringify(params))
-  const profissaoObj = JSON.parse((params.profissao as string) || '{}')
 
   const finalizar = async () => {
     setLoading(true)
     try {
       await api.post('/auth/register', {
-        nome: params.nome,
-        email: params.email,
-        password: params.senha,
-        tipo_profissional: profissaoObj.label || 'dentista',
-        cidade: params.cidade,
-        estado: params.estado,
+        nome: cadastroData.nome,
+        email: cadastroData.email,
+        password: cadastroData.senha,
+        tipo_profissional: cadastroData.profissao?.label || 'dentista',
+        cidade: cadastroData.cidade,
+        estado: cadastroData.estado,
         bio,
       })
-      await login(params.email as string, params.senha as string)
+      await login(cadastroData.email!, cadastroData.senha!)
       router.replace('/(tabs)/feed')
     } catch (err: any) {
       Alert.alert('Erro', err.response?.data?.error || 'Erro ao criar conta')
@@ -39,34 +35,21 @@ export default function Sobre() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.back}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.logo}>
-          <Text style={{ color: '#F5C800' }}>Go</Text>
-          <Text style={{ color: '#fff' }}>Denth</Text>
-        </Text>
+        <TouchableOpacity onPress={() => router.back()}><Text style={styles.back}>←</Text></TouchableOpacity>
+        <Text style={styles.logo}><Text style={{ color: '#F5C800' }}>Go</Text><Text style={{ color: '#fff' }}>Denth</Text></Text>
         <View style={{ width: 32 }} />
       </View>
-
       <View style={styles.progressRow}>
-        {[1,2,3,4,5,6,7].map(i => (
-          <View key={i} style={[styles.bar, styles.barOn]} />
-        ))}
+        {[1,2,3,4,5,6,7].map(i => <View key={i} style={[styles.bar, styles.barOn]} />)}
       </View>
-
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.step}>Último passo!</Text>
         <Text style={styles.title}>Fale sobre{'\n'}você</Text>
         <Text style={styles.sub}>Escreva um resumo profissional — aparece no topo do seu perfil</Text>
-        <Text style={{ fontSize: 10, color: 'red', marginBottom: 10 }}>
-          DEBUG: nome={params.nome as string} email={params.email as string}
-        </Text>
-
         <View style={styles.inputBox}>
           <TextInput
             style={styles.textarea}
-            placeholder="Ex: Cirurgião-Dentista com 8 anos de experiência em Implantodontia e Estética. Especialista em casos complexos, apaixonado por resultados naturais e atendimento humanizado. Atuo em São Paulo - SP."
+            placeholder="Ex: Cirurgião-Dentista com 8 anos de experiência em Implantodontia e Estética. Apaixonado por resultados naturais e atendimento humanizado. Atuo em São Paulo - SP."
             placeholderTextColor="#AECEBE"
             value={bio}
             onChangeText={t => t.length <= MAX_CHARS && setBio(t)}
@@ -75,12 +58,9 @@ export default function Sobre() {
             textAlignVertical="top"
           />
           <View style={styles.counter}>
-            <Text style={[styles.counterText, bio.length > MAX_CHARS * 0.9 && { color: '#E53935' }]}>
-              {bio.length}/{MAX_CHARS}
-            </Text>
+            <Text style={[styles.counterText, bio.length > MAX_CHARS * 0.9 && { color: '#E53935' }]}>{bio.length}/{MAX_CHARS}</Text>
           </View>
         </View>
-
         <View style={styles.dicas}>
           <Text style={styles.dicasTitle}>💡 Dicas para um bom resumo:</Text>
           <Text style={styles.dica}>• Mencione anos de experiência</Text>
@@ -89,17 +69,9 @@ export default function Sobre() {
           <Text style={styles.dica}>• Informe sua cidade de atuação</Text>
         </View>
       </ScrollView>
-
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.btn}
-          onPress={finalizar}
-          disabled={loading}
-        >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.btnT}>{bio.length > 0 ? '🚀 Criar minha conta' : 'Pular e criar conta →'}</Text>
-          }
+        <TouchableOpacity style={styles.btn} onPress={finalizar} disabled={loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnT}>{bio.length > 0 ? '🚀 Criar minha conta' : 'Pular e criar conta →'}</Text>}
         </TouchableOpacity>
       </View>
     </View>
