@@ -48,25 +48,25 @@ export default function Cadastro3() {
     if (senha.length < 6) return Alert.alert('Atenção', 'Senha deve ter pelo menos 6 caracteres')
 
     setLoading(true)
-    try {
-      const res = await api.post('/auth/register', {
-        nome,
-        email,
-        password: senha,
-        tipo_profissional: profissaoObj.label || 'dentista',
-        cidade,
-        estado,
-      })
-
-      const { token } = res.data
-      await login(email, senha)
-      router.replace('/(tabs)/feed')
-    } catch (err: any) {
-      Alert.alert('Erro', err.response?.data?.error || 'Erro ao cadastrar')
-    } finally {
-      setLoading(false)
+      try {
+        router.push({
+          pathname: '/(auth)/especialidades',
+          params: {
+            profissao,
+            extras,
+            nome,
+            email,
+            senha,
+            cidade: cidade?.nome || '',
+            estado: estado?.sigla || '',
+          }
+        })
+      } catch (err: any) {
+        Alert.alert('Erro', 'Erro ao continuar')
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
   return (
     <View style={styles.container}>
