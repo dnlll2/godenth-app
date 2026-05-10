@@ -104,3 +104,4 @@ const styles = StyleSheet.create({
   btn: { backgroundColor: '#007A6E', borderRadius: 14, padding: 16, alignItems: 'center' },
   btnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
 })
+// teste
