@@ -14,6 +14,8 @@ export default function Sobre() {
   const finalizar = async () => {
     console.log('DADOS:', JSON.stringify(cadastroData))
     setLoading(true)
+    alert('Nome: ' + cadastroData.nome + ' Email: ' + cadastroData.email + ' Prof: ' + cadastroData.profissao?.label)
+    return
     try {
       await api.post('/auth/register', {
         nome: cadastroData.nome,
