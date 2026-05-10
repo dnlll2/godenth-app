@@ -80,7 +80,7 @@ const HABILIDADES: any = {
 }
 
 export default function Habilidades() {
-  const { cadastroData } = useAuthStore()
+  const { cadastroData, setCadastroData } = useAuthStore()
   const todasProfissoes = [cadastroData.profissao, ...(cadastroData.extras || [])].filter(Boolean)
   const [selecionadas, setSelecionadas] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
