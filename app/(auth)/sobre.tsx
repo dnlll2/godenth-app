@@ -29,7 +29,7 @@ export default function Sobre() {
       await login(cadastroData.email!, cadastroData.senha!)
       router.replace('/(tabs)/feed')
     } catch (err: any) {
-      Alert.alert('Erro', err.response?.data?.error || 'Erro ao criar conta')
+      Alert.alert('Erro', JSON.stringify(err?.response?.data) || String(err))
     } finally {
       setLoading(false)
     }
