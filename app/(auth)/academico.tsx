@@ -2,28 +2,157 @@ import { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Modal, FlatList } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 
-const CURSOS = [
-  'Graduação em Odontologia',
-  'Técnico em Prótese Dentária',
-  'Técnico em Saúde Bucal',
-  'Pós-graduação em Implantodontia',
-  'Pós-graduação em Ortodontia',
-  'Pós-graduação em Endodontia',
-  'Pós-graduação em Periodontia',
-  'Pós-graduação em Odontopediatria',
-  'Pós-graduação em Estética',
-  'Pós-graduação em Cirurgia',
-  'Pós-graduação em Prótese',
-  'Pós-graduação em HOF',
-  'MBA em Gestão de Saúde',
-  'Curso de Especialização',
-  'Outro',
-]
+const CURSOS_POR_PROFISSAO: any = {
+  'Cirurgião-Dentista': [
+    'Graduação em Odontologia',
+    'Pós-graduação em Implantodontia',
+    'Pós-graduação em Ortodontia',
+    'Pós-graduação em Endodontia',
+    'Pós-graduação em Periodontia',
+    'Pós-graduação em Odontopediatria',
+    'Pós-graduação em Estética',
+    'Pós-graduação em Cirurgia Oral',
+    'Pós-graduação em Prótese',
+    'Pós-graduação em HOF',
+    'Outro',
+  ],
+  'Técnico em Prótese Dentária': [
+    'Curso Técnico em Prótese Dentária',
+    'Especialização em CAD/CAM',
+    'Especialização em Cerâmica',
+    'Outro',
+  ],
+  'Técnico em Saúde Bucal (TSB)': [
+    'Curso Técnico em Saúde Bucal',
+    'Especialização em Radiologia',
+    'Outro',
+  ],
+  'Auxiliar em Saúde Bucal (ASB)': [
+    'Curso de Auxiliar em Saúde Bucal',
+    'Outro',
+  ],
+  'Auxiliar de Prótese Dentária': [
+    'Curso de Auxiliar de Prótese Dentária',
+    'Outro',
+  ],
+  'Gerente Comercial': [
+    'Graduação em Administração',
+    'Graduação em Gestão Comercial',
+    'MBA em Vendas',
+    'Outro',
+  ],
+  'Representante Comercial': [
+    'Graduação em Administração',
+    'Curso de Representação Comercial',
+    'Outro',
+  ],
+  'Consultor de Vendas': [
+    'Graduação em Administração',
+    'Curso de Vendas',
+    'Outro',
+  ],
+  'Recepcionista / Secretária': [
+    'Curso de Recepcionista',
+    'Curso de Secretariado',
+    'Outro',
+  ],
+  'CRC / Call Center': [
+    'Curso de Atendimento ao Cliente',
+    'Outro',
+  ],
+  'Gerente Administrativo': [
+    'Graduação em Administração',
+    'MBA em Gestão',
+    'Outro',
+  ],
+  'Auxiliar Administrativo': [
+    'Curso Técnico em Administração',
+    'Graduação em Administração',
+    'Outro',
+  ],
+  'Financeiro': [
+    'Graduação em Ciências Contábeis',
+    'Graduação em Administração',
+    'MBA em Finanças',
+    'Outro',
+  ],
+  'RH / Recursos Humanos': [
+    'Graduação em RH',
+    'Graduação em Psicologia',
+    'MBA em Gestão de Pessoas',
+    'Outro',
+  ],
+  'Contabilidade': [
+    'Graduação em Ciências Contábeis',
+    'Outro',
+  ],
+  'Marketing Digital': [
+    'Graduação em Marketing',
+    'Graduação em Publicidade',
+    'Curso de Marketing Digital',
+    'Outro',
+  ],
+  'Designer Gráfico / UI': [
+    'Graduação em Design',
+    'Curso de Design Gráfico',
+    'Curso de UI/UX',
+    'Outro',
+  ],
+  'Filmmaker / Videomaker': [
+    'Graduação em Cinema',
+    'Curso de Videomaking',
+    'Outro',
+  ],
+  'Fotógrafo': [
+    'Curso de Fotografia',
+    'Outro',
+  ],
+  'Social Media': [
+    'Graduação em Marketing',
+    'Curso de Social Media',
+    'Outro',
+  ],
+  'Gestor de Tráfego': [
+    'Curso de Tráfego Pago',
+    'Certificação Google Ads',
+    'Certificação Meta Ads',
+    'Outro',
+  ],
+  'Copywriter': [
+    'Curso de Copywriting',
+    'Graduação em Letras',
+    'Outro',
+  ],
+  'Estudante de Odontologia': [
+    'Graduação em Odontologia (em curso)',
+    'Outro',
+  ],
+  'Estudante de Prótese Dentária': [
+    'Curso Técnico em Prótese Dentária (em curso)',
+    'Outro',
+  ],
+  'Estudante de Administração': [
+    'Graduação em Administração (em curso)',
+    'Outro',
+  ],
+  'Estudante de Marketing': [
+    'Graduação em Marketing (em curso)',
+    'Outro',
+  ],
+}
 
 const ANOS = Array.from({ length: 40 }, (_, i) => (new Date().getFullYear() - i).toString())
 
 export default function Academico() {
   const params = useLocalSearchParams()
+  const profissaoObj = JSON.parse((params.profissao as string) || '{}')
+  const extrasArr = JSON.parse((params.extras as string) || '[]')
+  const todasProfissoes = [profissaoObj, ...extrasArr]
+  
+  const CURSOS = Array.from(new Set(
+    todasProfissoes.flatMap((p: any) => CURSOS_POR_PROFISSAO[p.label] || [])
+  ))
+
   const [formacoes, setFormacoes] = useState<any[]>([])
   const [curso, setCurso] = useState('')
   const [instituicao, setInstituicao] = useState('')
