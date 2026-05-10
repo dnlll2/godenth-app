@@ -235,12 +235,12 @@ export default function Cadastro() {
 
 const styles = StyleSheet.create({
   splash: { flex: 1, backgroundColor: '#007A6E', justifyContent: 'center', alignItems: 'center' },
-  splashLogo: { fontSize: 64, fontWeight: '900', letterSpacing: 4 },
+  splashLogo: { fontSize: 64, fontFamily: 'Poppins-Black', letterSpacing: 4 },
   splashLine: { width: 50, height: 2, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 1, marginVertical: 12 },
   splashTagline: { fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '600', letterSpacing: 4 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#007A6E' },
   back: { fontSize: 24, color: '#fff', fontWeight: '700' },
-  logo: { fontSize: 22, fontWeight: '800' },
+  logo: { fontSize: 22, fontFamily: 'Poppins-ExtraBold' },
   progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#007A6E' },
   bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' },
   barOn: { backgroundColor: '#F5C800' },

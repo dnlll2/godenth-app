@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A1C14' },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   header: { alignItems: 'center', marginBottom: 40 },
-  logo: { fontSize: 48, fontWeight: '800', letterSpacing: -2 },
+  logo: { fontSize: 48, fontFamily: 'Poppins-ExtraBold', letterSpacing: -2 },
   go: { color: Colors.gold },
   denth: { color: Colors.primary },
   tagline: { color: 'rgba(255,255,255,0.5)', fontSize: 14, marginTop: 6 },

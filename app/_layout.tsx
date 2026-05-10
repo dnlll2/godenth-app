@@ -3,6 +3,7 @@ import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { View, ActivityIndicator } from 'react-native'
 import { useFonts, PlusJakartaSans_400Regular, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans'
+import { Poppins_800ExtraBold, Poppins_900Black } from '@expo-google-fonts/poppins'
 import { useAuthStore } from '../stores/authStore'
 
 export default function RootLayout() {
@@ -13,6 +14,8 @@ export default function RootLayout() {
     'PlusJakartaSans-SemiBold': PlusJakartaSans_600SemiBold,
     'PlusJakartaSans-Bold': PlusJakartaSans_700Bold,
     'PlusJakartaSans-ExtraBold': PlusJakartaSans_800ExtraBold,
+    'Poppins-ExtraBold': Poppins_800ExtraBold,
+    'Poppins-Black': Poppins_900Black,
   })
 
   useEffect(() => { loadUser() }, [])
