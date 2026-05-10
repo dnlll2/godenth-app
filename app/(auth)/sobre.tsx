@@ -12,6 +12,7 @@ export default function Sobre() {
   const [loading, setLoading] = useState(false)
 
   const finalizar = async () => {
+    console.log('DADOS:', JSON.stringify(cadastroData))
     setLoading(true)
     try {
       await api.post('/auth/register', {
