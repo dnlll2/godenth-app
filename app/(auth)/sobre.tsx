@@ -24,6 +24,9 @@ export default function Sobre() {
         cidade: cadastroData.cidade,
         estado: cadastroData.estado,
         bio,
+        cargos_extras: cadastroData.extras || [],
+        especialidades: cadastroData.especialidades || [],
+        habilidades: cadastroData.habilidades || [],
       })
       await login(cadastroData.email!, cadastroData.senha!)
       router.replace('/(tabs)/feed')
