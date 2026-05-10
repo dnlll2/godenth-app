@@ -50,6 +50,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
   isLoading: true,
   isAuthenticated: false,
+  cadastroData: {},
+  setCadastroData: (data) => set(state => ({ cadastroData: { ...state.cadastroData, ...data } })),
 
   login: async (email, password) => {
     const response = await api.post('/auth/login', { email, password })
