@@ -4,8 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { useAuthStore } from '../../stores/authStore'
 
 export default function Cadastro3() {
-  const { profissao, extras } = useLocalSearchParams<{ profissao: string, extras: string }>()
-  const { setCadastroData } = useAuthStore()
+  const { setCadastroData, cadastroData } = useAuthStore()
 
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
@@ -43,8 +42,6 @@ export default function Cadastro3() {
     if (senha.length < 6) return Alert.alert('Atenção', 'Senha deve ter pelo menos 6 caracteres')
 
     setCadastroData({
-      profissao: JSON.parse(profissao || '{}'),
-      extras: JSON.parse(extras || '[]'),
       nome,
       email,
       senha,

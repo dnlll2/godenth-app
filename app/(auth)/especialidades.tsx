@@ -37,6 +37,7 @@ export default function Especialidades() {
   const { cadastroData, setCadastroData } = useAuthStore()
   const [selecionadas, setSelecionadas] = useState<string[]>([])
 
+  console.log('PROFISSAO:', JSON.stringify(cadastroData.profissao))
   const todasProfissoes = [cadastroData.profissao, ...(cadastroData.extras || [])].filter(Boolean)
   const todasEsp: string[] = []
   todasProfissoes.forEach((p: any) => {
