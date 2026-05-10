@@ -75,7 +75,7 @@ export default function Especialidades() {
 
   const finalizar = () => {
     router.push({
-      pathname: '/(auth)/cadastro3',
+      pathname: '/(auth)/academico',
       params: {
         profissao: params.profissao,
         extras: params.extras,
