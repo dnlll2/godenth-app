@@ -12,6 +12,7 @@ export default function Sobre() {
   const [loading, setLoading] = useState(false)
   const { login } = useAuthStore()
 
+  console.log('PARAMS SOBRE:', JSON.stringify(params))
   const profissaoObj = JSON.parse((params.profissao as string) || '{}')
 
   const finalizar = async () => {
@@ -58,6 +59,9 @@ export default function Sobre() {
         <Text style={styles.step}>Último passo!</Text>
         <Text style={styles.title}>Fale sobre{'\n'}você</Text>
         <Text style={styles.sub}>Escreva um resumo profissional — aparece no topo do seu perfil</Text>
+        <Text style={{ fontSize: 10, color: 'red', marginBottom: 10 }}>
+          DEBUG: nome={params.nome as string} email={params.email as string}
+        </Text>
 
         <View style={styles.inputBox}>
           <TextInput

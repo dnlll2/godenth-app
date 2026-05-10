@@ -17,7 +17,23 @@ interface User {
   cor_tema?: string
 }
 
+interface CadastroData {
+  profissao?: any
+  extras?: any[]
+  especialidades?: string[]
+  habilidades?: string[]
+  academico?: any[]
+  nome?: string
+  email?: string
+  senha?: string
+  cidade?: string
+  estado?: string
+  bio?: string
+}
+
 interface AuthState {
+  cadastroData: CadastroData
+  setCadastroData: (data: Partial<CadastroData>) => void
   user: User | null
   token: string | null
   isLoading: boolean
