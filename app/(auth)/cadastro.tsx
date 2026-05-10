@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Animated, ScrollView, Modal, FlatList } from 'react-native'
 import { router } from 'expo-router'
+import { useAuthStore } from '../../stores/authStore'
 
 const CATEGORIAS = [
   { key: 'clinico', label: 'Clínico e Profissional Técnico', cor: '#00A880', profissoes: ['Cirurgião-Dentista','Técnico em Prótese Dentária'] },
@@ -12,6 +13,7 @@ const CATEGORIAS = [
 ]
 
 export default function Cadastro() {
+  const { setCadastroData } = useAuthStore()
   const [showSplash, setShowSplash] = useState(true)
   const [profissao, setProfissao] = useState<any>(null)
   const [extras, setExtras] = useState<any[]>([])
