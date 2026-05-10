@@ -50,8 +50,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
   isLoading: true,
   isAuthenticated: false,
-  cadastroData: {},
-  setCadastroData: (data) => set(state => ({ cadastroData: { ...state.cadastroData, ...data } })),
+  cadastroData: (() => {
+    try {
+      const saved = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('godenth_cadastro') : null
+      return saved ? JSON.parse(saved) : {}
+    } catch { return {} }
+  })(),
+  setCadastroData: (data) => set(state => {
+    const novo = { ...state.cadastroData, ...data }
+    try { if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('godenth_cadastro', JSON.stringify(novo)) } catch {}
+    return { cadastroData: novo }
+  }),
 
   login: async (email, password) => {
     const response = await api.post('/auth/login', { email, password })
