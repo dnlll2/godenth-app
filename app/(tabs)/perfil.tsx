@@ -1,8 +1,10 @@
 import { useCallback, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
+
+const API_BASE = 'https://godenth-api-production.up.railway.app'
 
 const ABAS = ['Sobre', 'Experiência', 'Formação', 'Habilidades']
 
@@ -131,9 +133,35 @@ export default function Perfil() {
             </View>
           ))
         ) : (
-          <TouchableOpacity style={styles.emptyCard}>
+          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil')}>
             <Text style={styles.emptyCardT}>+ Adicionar formação acadêmica</Text>
           </TouchableOpacity>
+        )}
+
+        {(profile?.experiencia || []).length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>💼 Experiência Profissional</Text>
+            {(profile?.experiencia || []).map((e: any, i: number) => (
+              <View key={e.id || i} style={styles.formacaoItem}>
+                <Text style={[styles.formacaoTipo, { color: '#1A6FD4' }]}>{e.cargo}</Text>
+                <Text style={styles.formacaoNome}>{e.empresa}</Text>
+                {(e.inicio || e.fim) && <Text style={styles.formacaoAno}>{e.inicio || '?'} — {e.atual ? 'Atualmente' : (e.fim || '?')}</Text>}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {(profile?.formacao || []).length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>🎓 Formação Acadêmica</Text>
+            {(profile?.formacao || []).map((f: any, i: number) => (
+              <View key={f.id || i} style={styles.formacaoItem}>
+                <Text style={styles.formacaoTipo}>{f.tipo ? `${f.tipo} · ` : ''}{f.curso}</Text>
+                <Text style={styles.formacaoNome}>{f.instituicao}</Text>
+                {(f.ano_inicio || f.ano_conclusao) && <Text style={styles.formacaoAno}>{f.ano_inicio || '?'} — {f.ano_conclusao || 'Em curso'}</Text>}
+              </View>
+            ))}
+          </View>
         )}
       </View>
     )
@@ -175,9 +203,10 @@ export default function Perfil() {
       <View style={styles.cover} />
 
       <View style={styles.avatarRow}>
-        <View style={[styles.avatar, { backgroundColor: tipoCor }]}>
-          <Text style={styles.avatarText}>{profile?.nome?.charAt(0) || 'U'}</Text>
-        </View>
+        {profile?.avatar_url
+          ? <Image source={{ uri: profile.avatar_url.startsWith('http') ? profile.avatar_url : API_BASE + profile.avatar_url }} style={styles.avatarImg} />
+          : <View style={[styles.avatar, { backgroundColor: tipoCor }]}><Text style={styles.avatarText}>{profile?.nome?.charAt(0) || 'U'}</Text></View>
+        }
         <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/(tabs)/editar-perfil')}>
           <Text style={styles.editBtnText}>Editar</Text>
         </TouchableOpacity>
@@ -223,6 +252,7 @@ const styles = StyleSheet.create({
   cover: { height: 80, backgroundColor: '#007A6E' },
   avatarRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: -28, marginBottom: 8 },
   avatar: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#fff' },
+  avatarImg: { width: 60, height: 60, borderRadius: 30, borderWidth: 3, borderColor: '#fff' },
   avatarText: { color: '#fff', fontWeight: '800', fontSize: 22 },
   editBtn: { backgroundColor: '#EEF7F2', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 100, paddingHorizontal: 16, paddingVertical: 7 },
   editBtnText: { fontSize: 13, fontWeight: '800', color: '#00A880' },

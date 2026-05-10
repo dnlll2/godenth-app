@@ -8,7 +8,7 @@ interface User {
   email: string
   tipo_profissional: string
   plano: string
-  disponibilidade: string
+  disponibilidade?: string
   cidade?: string
   estado?: string
   bio?: string
@@ -18,6 +18,12 @@ interface User {
   cargos_extras?: any[]
   avatar_url?: string
   cor_tema?: string
+  celular?: string
+  data_nascimento?: string
+  privacidade?: { ocultar_email?: boolean; ocultar_celular?: boolean; ocultar_idade?: boolean }
+  instagram?: string
+  formacao?: any[]
+  experiencia?: any[]
 }
 
 interface CadastroData {
