@@ -17,7 +17,6 @@ const PROFISSOES: any = {
     { key: 'tsb', label: 'Técnico em Saúde Bucal (TSB)' },
     { key: 'asb', label: 'Auxiliar em Saúde Bucal (ASB)' },
     { key: 'aux_protese', label: 'Auxiliar de Prótese Dentária' },
-    { key: 'tecnico_rx', label: 'Técnico em Radiologia' },
   ],
   comercial: [
     { key: 'gerente_comercial', label: 'Gerente Comercial' },
