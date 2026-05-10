@@ -105,7 +105,7 @@ export default function Cadastro3() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={[styles.btn, (!nome || !email || !senha) && styles.btnOff]} disabled={!nome || !email || !senha} onPress={handleContinuar}>
+        <TouchableOpacity style={[styles.btn, (!nome || !email || !senha || senha.length < 6) && styles.btnOff]} disabled={!nome || !email || !senha || senha.length < 6} onPress={handleContinuar}>
           <Text style={styles.btnT}>Continuar →</Text>
         </TouchableOpacity>
       </View>

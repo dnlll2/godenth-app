@@ -2,21 +2,18 @@ import { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native'
 import { router } from 'expo-router'
 import { useAuthStore } from '../../stores/authStore'
-import api from '../../services/api'
 
 const MAX_CHARS = 500
 
 export default function Sobre() {
-  const { cadastroData, login } = useAuthStore()
+  const { cadastroData, register } = useAuthStore()
   const [bio, setBio] = useState('')
   const [loading, setLoading] = useState(false)
 
   const finalizar = async () => {
-    console.log('DADOS:', JSON.stringify(cadastroData))
     setLoading(true)
-    console.log('enviando:', cadastroData.nome, cadastroData.email, cadastroData.senha)
     try {
-      await api.post('/auth/register', {
+      await register({
         nome: cadastroData.nome,
         email: cadastroData.email,
         password: cadastroData.senha,
@@ -28,10 +25,10 @@ export default function Sobre() {
         especialidades: cadastroData.especialidades || [],
         habilidades: cadastroData.habilidades || [],
       })
-      await login(cadastroData.email!, cadastroData.senha!)
       router.replace('/(tabs)/feed')
     } catch (err: any) {
-      Alert.alert('Erro', JSON.stringify(err?.response?.data) || String(err))
+      const msg = err?.response?.data?.error || 'Erro ao criar conta. Tente novamente.'
+      Alert.alert('Erro', msg)
     } finally {
       setLoading(false)
     }
