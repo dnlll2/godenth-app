@@ -104,17 +104,10 @@ export default function Habilidades() {
     )
   }
 
-  const finalizar = async () => {
-    setLoading(true)
-    try {
-      await api.post('/auth/register', {
-        nome: params.nome,
-        email: params.email,
-        password: params.senha,
-        tipo_profissional: profissaoObj.label || 'dentista',
-        cidade: params.cidade,
-        estado: params.estado,
-      })
+  const finalizar = () => {
+    setCadastroData({ habilidades: selecionadas })
+    router.push('/(auth)/sobre')
+  })
       await login(params.email as string, params.senha as string)
       router.push({ pathname: '/(auth)/sobre', params: { ...params, habilidades: JSON.stringify(selecionadas) } })
     } catch (err: any) {
