@@ -90,7 +90,16 @@ export default function Cadastro() {
   return (
     <Animated.View style={[{ flex: 1, backgroundColor: '#EEF7F2' }, { opacity: pageAnim }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => {
+          if (fase === 'mais_cargos') {
+            Animated.timing(faseAnim, { toValue: 0, duration: 350, useNativeDriver: true }).start(() => {
+              setFase('principal')
+              Animated.timing(faseAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start()
+            })
+          } else {
+            router.back()
+          }
+        }}>
           <Text style={styles.back}>←</Text>
         </TouchableOpacity>
         <Text style={styles.logo}>
