@@ -107,14 +107,6 @@ export default function Habilidades() {
   const finalizar = () => {
     setCadastroData({ habilidades: selecionadas })
     router.push('/(auth)/sobre')
-  })
-      await login(params.email as string, params.senha as string)
-      router.push({ pathname: '/(auth)/sobre', params: { ...params, habilidades: JSON.stringify(selecionadas) } })
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao cadastrar')
-    } finally {
-      setLoading(false)
-    }
   }
 
   return (
