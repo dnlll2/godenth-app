@@ -129,6 +129,9 @@ export default function Academico() {
                   <Text style={styles.subLabel}>📚 Graduação</Text>
                   <View style={styles.card}>
                     <Text style={styles.cardTitle}>{config.graduacao}</Text>
+                    {prof.label !== 'Cirurgião-Dentista' && (
+                      <Text style={{ fontSize: 11, color: '#AECEBE', marginBottom: 8 }}>Opcional — preencha se aplicável</Text>
+                    )}
                     <TextInput
                       style={styles.input}
                       placeholder="Nome da instituição"
