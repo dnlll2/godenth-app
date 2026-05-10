@@ -73,25 +73,15 @@ export default function Especialidades() {
     )
   }
 
-  const finalizar = async () => {
-    setLoading(true)
-    try {
-      await api.post('/auth/register', {
-        nome: params.nome,
-        email: params.email,
-        password: params.senha,
-        tipo_profissional: profissaoObj.label,
-        cidade: params.cidade,
-        estado: params.estado,
-        especialidades: selecionadas,
-      })
-      await login(params.email, params.senha)
-      router.replace('/(tabs)/feed')
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao cadastrar')
-    } finally {
-      setLoading(false)
-    }
+  const finalizar = () => {
+    router.push({
+      pathname: '/(auth)/cadastro3',
+      params: {
+        profissao: params.profissao,
+        extras: params.extras,
+        especialidades: JSON.stringify(selecionadas),
+      }
+    })
   }
 
   return (

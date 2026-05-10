@@ -186,7 +186,7 @@ export default function Cadastro() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.btn}
-              onPress={() => router.push({ pathname: '/(auth)/cadastro3', params: { profissao: JSON.stringify(profissao), extras: JSON.stringify(extras) } })}
+              onPress={() => router.push({ pathname: '/(auth)/especialidades', params: { profissao: JSON.stringify(profissao), extras: JSON.stringify(extras) } })}
             >
               <Text style={styles.btnT}>Não, continuar →</Text>
             </TouchableOpacity>
