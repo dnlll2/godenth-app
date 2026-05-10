@@ -27,7 +27,7 @@ const ESPECIALIDADES: any = {
   'Social Media': ['Criação de Conteúdo','Gestão de Perfis','Engajamento','Stories/Reels'],
   'Gestor de Tráfego': ['Google Ads','Meta Ads','Analytics','Funil de Vendas'],
   'Copywriter': ['Copy para Redes Sociais','E-mail Marketing','Landing Pages','SEO'],
-  'Estudante de Odontologia': ['Anatomia','Bioquímica','Clínica Integrada','Radiologia'],
+  'Estudante de Odontologia': ['Anatomia','Bioquímica','Clínica Integrada'],
   'Estudante de Prótese Dentária': ['Gesso','Resinas','Anatomia Dental'],
   'Estudante de Administração': ['Gestão','Finanças','Marketing','RH'],
   'Estudante de Marketing': ['Marketing Digital','Publicidade','Pesquisa de Mercado'],
@@ -35,17 +35,21 @@ const ESPECIALIDADES: any = {
 
 export default function Especialidades() {
   const { cadastroData, setCadastroData } = useAuthStore()
-  const [selecionadas, setSelecionadas] = useState<string[]>([])
+  const [selecionadas, setSelecionadas] = useState<{ [key: string]: string[] }>({})
 
-  console.log('PROFISSAO:', JSON.stringify(cadastroData.profissao))
   const todasProfissoes = [cadastroData.profissao, ...(cadastroData.extras || [])].filter(Boolean)
-  const todasEsp: string[] = []
-  todasProfissoes.forEach((p: any) => {
-    const lista = ESPECIALIDADES[p.label] || []
-    lista.forEach((e: string) => { if (!todasEsp.includes(e)) todasEsp.push(e) })
-  })
 
-  const toggle = (esp: string) => setSelecionadas(prev => prev.includes(esp) ? prev.filter(e => e !== esp) : [...prev, esp])
+  const toggle = (profLabel: string, esp: string) => {
+    setSelecionadas(prev => {
+      const atual = prev[profLabel] || []
+      return {
+        ...prev,
+        [profLabel]: atual.includes(esp) ? atual.filter(e => e !== esp) : [...atual, esp]
+      }
+    })
+  }
+
+  const totalSelecionadas = Object.values(selecionadas).flat().length
 
   return (
     <View style={styles.container}>
@@ -54,38 +58,70 @@ export default function Especialidades() {
         <Text style={styles.logo}><Text style={{ color: '#F5C800' }}>Go</Text><Text style={{ color: '#fff' }}>Denth</Text></Text>
         <View style={{ width: 32 }} />
       </View>
+
       <View style={styles.progressRow}>
-        {[1,2,3,4].map(i => <View key={i} style={[styles.bar, i <= 4 ? styles.barOn : {}]} />)}
+        {[1,2,3,4].map(i => <View key={i} style={[styles.bar, styles.barOn]} />)}
         {[5,6,7].map(i => <View key={i} style={styles.bar} />)}
       </View>
+
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.step}>Passo 4 de 7</Text>
         <Text style={styles.title}>Suas{'\n'}especialidades</Text>
-        <Text style={styles.sub}>Toque para selecionar — aparecem no seu perfil</Text>
-        {todasEsp.length === 0 ? (
-          <View style={{ alignItems: 'center', marginTop: 30, padding: 20 }}>
+        <Text style={styles.sub}>Selecione o que você domina em cada área</Text>
+
+        {todasProfissoes.map((prof: any) => {
+          const lista = ESPECIALIDADES[prof.label] || []
+          if (lista.length === 0) return null
+          const profSelecionadas = selecionadas[prof.label] || []
+
+          return (
+            <View key={prof.label} style={styles.section}>
+              <View style={[styles.sectionHeader, { borderLeftColor: prof.cor || '#00A880' }]}>
+                <Text style={[styles.sectionTitle, { color: prof.cor || '#00A880' }]}>{prof.label}</Text>
+                {profSelecionadas.length > 0 && (
+                  <View style={[styles.countBadge, { backgroundColor: prof.cor || '#00A880' }]}>
+                    <Text style={styles.countBadgeT}>{profSelecionadas.length}</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.chips}>
+                {lista.map((esp: string) => {
+                  const on = profSelecionadas.includes(esp)
+                  return (
+                    <TouchableOpacity
+                      key={esp}
+                      style={[styles.chip, on && { backgroundColor: prof.cor || '#00A880', borderColor: prof.cor || '#00A880' }]}
+                      onPress={() => toggle(prof.label, esp)}
+                    >
+                      <Text style={[styles.chipT, on && styles.chipTOn]}>{esp}</Text>
+                      {on && <Text style={styles.chipCheck}>✓</Text>}
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
+          )
+        })}
+
+        {todasProfissoes.every((p: any) => (ESPECIALIDADES[p.label] || []).length === 0) && (
+          <View style={{ alignItems: 'center', marginTop: 30 }}>
             <Text style={{ fontSize: 40, marginBottom: 12 }}>✅</Text>
             <Text style={{ fontSize: 16, fontWeight: '800', color: '#0A1C14', marginBottom: 6 }}>Tudo certo!</Text>
-            <Text style={{ fontSize: 13, color: '#7A9E8E', textAlign: 'center' }}>Não há especialidades específicas para seu cargo. Continue para o próximo passo.</Text>
-          </View>
-        ) : (
-          <View style={styles.chips}>
-            {todasEsp.map(esp => {
-              const on = selecionadas.includes(esp)
-              return (
-                <TouchableOpacity key={esp} style={[styles.chip, on && styles.chipOn]} onPress={() => toggle(esp)}>
-                  <Text style={[styles.chipT, on && styles.chipTOn]}>{esp}</Text>
-                  {on && <Text style={styles.chipCheck}>✓</Text>}
-                </TouchableOpacity>
-              )
-            })}
+            <Text style={{ fontSize: 13, color: '#7A9E8E', textAlign: 'center' }}>Não há especialidades para seu cargo.</Text>
           </View>
         )}
-        {selecionadas.length > 0 && <Text style={styles.count}>{selecionadas.length} selecionada{selecionadas.length > 1 ? 's' : ''}</Text>}
+
+        {totalSelecionadas > 0 && (
+          <Text style={styles.count}>{totalSelecionadas} especialidade{totalSelecionadas > 1 ? 's' : ''} selecionada{totalSelecionadas > 1 ? 's' : ''}</Text>
+        )}
       </ScrollView>
+
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.btn} onPress={() => { setCadastroData({ especialidades: selecionadas }); router.push('/(auth)/academico') }}>
-          <Text style={styles.btnT}>{selecionadas.length > 0 ? 'Continuar →' : 'Pular →'}</Text>
+        <TouchableOpacity style={styles.btn} onPress={() => {
+          setCadastroData({ especialidades: Object.values(selecionadas).flat() })
+          router.push('/(auth)/academico')
+        }}>
+          <Text style={styles.btnT}>{totalSelecionadas > 0 ? 'Continuar →' : 'Pular →'}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -104,13 +140,17 @@ const styles = StyleSheet.create({
   step: { fontSize: 11, fontWeight: '800', color: '#00A880', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '800', color: '#0A1C14', lineHeight: 34, marginBottom: 8 },
   sub: { fontSize: 13, color: '#7A9E8E', marginBottom: 24 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  chip: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#D0E8DA', borderRadius: 100, paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  chipOn: { backgroundColor: '#007A6E', borderColor: '#007A6E' },
-  chipT: { fontSize: 13, fontWeight: '600', color: '#3A6550' },
+  section: { marginBottom: 28 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', borderLeftWidth: 3, paddingLeft: 10, marginBottom: 12, gap: 8 },
+  sectionTitle: { fontSize: 14, fontWeight: '800' },
+  countBadge: { borderRadius: 100, width: 20, height: 20, justifyContent: 'center', alignItems: 'center' },
+  countBadgeT: { color: '#fff', fontSize: 10, fontWeight: '900' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#D0E8DA', borderRadius: 100, paddingHorizontal: 14, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  chipT: { fontSize: 12, fontWeight: '600', color: '#3A6550' },
   chipTOn: { color: '#fff' },
-  chipCheck: { color: '#fff', fontSize: 11, fontWeight: '900' },
-  count: { marginTop: 20, fontSize: 13, color: '#00A880', fontWeight: '700', textAlign: 'center' },
+  chipCheck: { color: '#fff', fontSize: 10, fontWeight: '900' },
+  count: { marginTop: 16, fontSize: 13, color: '#00A880', fontWeight: '700', textAlign: 'center' },
   footer: { padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#D0E8DA' },
   btn: { backgroundColor: '#007A6E', borderRadius: 14, padding: 16, alignItems: 'center' },
   btnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
