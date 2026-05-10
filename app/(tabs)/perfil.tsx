@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native'
-import { router } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -20,7 +20,7 @@ export default function Perfil() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { loadProfile() }, [])
+  useFocusEffect(useCallback(() => { loadProfile() }, []))
 
   const handleLogout = async () => {
     await logout()
@@ -178,7 +178,7 @@ export default function Perfil() {
         <View style={[styles.avatar, { backgroundColor: tipoCor }]}>
           <Text style={styles.avatarText}>{profile?.nome?.charAt(0) || 'U'}</Text>
         </View>
-        <TouchableOpacity style={styles.editBtn}>
+        <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/(tabs)/editar-perfil')}>
           <Text style={styles.editBtnText}>Editar</Text>
         </TouchableOpacity>
       </View>

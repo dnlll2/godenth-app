@@ -11,6 +11,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="notificacoes" />
       <Tabs.Screen name="perfil" />
       <Tabs.Screen name="publicar" options={{ href: null }} />
+      <Tabs.Screen name="editar-perfil" options={{ href: null }} />
     </Tabs>
   )
 }
