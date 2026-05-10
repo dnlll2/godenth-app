@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router } from 'expo-router'
 import { useAuthStore } from '../../stores/authStore'
 import api from '../../services/api'
 
@@ -80,10 +80,8 @@ const HABILIDADES: any = {
 }
 
 export default function Habilidades() {
-  const params = useLocalSearchParams()
-  const profissaoObj = JSON.parse((params.profissao as string) || '{}')
-  const extrasArr = JSON.parse((params.extras as string) || '[]')
-  const todasProfissoes = [profissaoObj, ...extrasArr]
+  const { cadastroData } = useAuthStore()
+  const todasProfissoes = [cadastroData.profissao, ...(cadastroData.extras || [])].filter(Boolean)
   const [selecionadas, setSelecionadas] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const { login } = useAuthStore()
