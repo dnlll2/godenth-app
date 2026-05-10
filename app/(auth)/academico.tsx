@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Modal, FlatList } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
+import { useAuthStore } from '../../stores/authStore'
 
 const CURSOS_POR_PROFISSAO: any = {
   'Cirurgião-Dentista': [
@@ -145,9 +146,8 @@ const ANOS = Array.from({ length: 40 }, (_, i) => (new Date().getFullYear() - i)
 
 export default function Academico() {
   const params = useLocalSearchParams()
-  const profissaoObj = JSON.parse((params.profissao as string) || '{}')
-  const extrasArr = JSON.parse((params.extras as string) || '[]')
-  const todasProfissoes = [profissaoObj, ...extrasArr]
+  const { cadastroData } = useAuthStore()
+  const todasProfissoes = [cadastroData.profissao, ...(cadastroData.extras || [])].filter(Boolean)
   
   const CURSOS = Array.from(new Set(
     todasProfissoes.flatMap((p: any) => CURSOS_POR_PROFISSAO[p.label] || [])
