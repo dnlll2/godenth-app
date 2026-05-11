@@ -11,8 +11,11 @@ const api = axios.create({
 // Interceptor — adiciona token JWT em todas as requisições
 api.interceptors.request.use(async (config) => {
   const token = await AsyncStorage.getItem('godenth_token')
+  console.log('[api] request:', config.method?.toUpperCase(), config.url, '| token presente:', !!token)
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  } else {
+    console.warn('[api] ATENÇÃO: token ausente, requisição irá falhar com 401')
   }
   return config
 })

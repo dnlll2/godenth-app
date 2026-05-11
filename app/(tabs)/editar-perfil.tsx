@@ -352,32 +352,54 @@ export default function EditarPerfil() {
   }
 
   const salvar = async () => {
+    console.log('[salvar] função chamada')
     if (!nome.trim()) { Alert.alert('Atenção', 'O nome é obrigatório.'); return }
+
+    console.log('[salvar] setSaving(true)')
     setSaving(true)
 
-    const controller = new AbortController()
-    const tid = setTimeout(() => controller.abort(), 20000)
+    let controller: AbortController | undefined
+    let tid: ReturnType<typeof setTimeout> | undefined
 
     try {
-      await api.put('/users/me', {
+      controller = new AbortController()
+      tid = setTimeout(() => {
+        console.log('[salvar] timeout de 20s — abortando requisição')
+        controller?.abort()
+      }, 20000)
+
+      const payload = {
         nome: nome.trim(), bio, cidade, estado,
         disponibilidade: disponibilidade || null,
         celular, data_nascimento: dataNascimento || null,
         privacidade, instagram,
         especialidades, habilidades, formacao, experiencia,
-      }, { signal: controller.signal })
+      }
+      console.log('[salvar] enviando PUT /users/me com payload:', JSON.stringify(payload))
 
+      const res = await api.put('/users/me', payload, { signal: controller.signal })
+
+      console.log('[salvar] PUT respondeu — status:', res.status, 'data:', JSON.stringify(res.data))
       router.back()
     } catch (err: any) {
-      if (controller.signal.aborted) {
+      console.log('[salvar] ERRO capturado:')
+      console.log('  name:', err?.name)
+      console.log('  message:', err?.message)
+      console.log('  code:', err?.code)
+      console.log('  response status:', err?.response?.status)
+      console.log('  response data:', JSON.stringify(err?.response?.data))
+      console.log('  signal aborted:', controller?.signal?.aborted)
+
+      if (controller?.signal?.aborted) {
         Alert.alert('Tempo esgotado', 'O servidor demorou para responder. Verifique sua conexão e tente novamente.')
       } else if (!err.response) {
-        Alert.alert('Sem conexão', 'Não foi possível conectar ao servidor. Verifique sua internet.')
+        Alert.alert('Sem conexão', `Não foi possível conectar ao servidor.\nErro: ${err.message || 'desconhecido'}`)
       } else {
         Alert.alert('Erro ao salvar', err.response.data?.error || 'Não foi possível salvar o perfil.')
       }
     } finally {
-      clearTimeout(tid)
+      console.log('[salvar] finally — setSaving(false)')
+      if (tid) clearTimeout(tid)
       setSaving(false)
     }
   }
