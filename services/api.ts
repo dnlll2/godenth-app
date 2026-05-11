@@ -5,7 +5,6 @@ const API_URL = 'https://godenth-api-production.up.railway.app'
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
 })
 
 // Token em memória — atualizado pelo authStore após login/logout/loadUser
