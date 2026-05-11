@@ -8,23 +8,30 @@ const api = axios.create({
   timeout: 10000,
 })
 
-// Interceptor — adiciona token JWT em todas as requisições
-api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('godenth_token')
-  console.log('[api] request:', config.method?.toUpperCase(), config.url, '| token presente:', !!token)
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+// Token em memória — atualizado pelo authStore após login/logout/loadUser
+let _token: string | null = null
+
+export const setAuthToken = (token: string | null) => {
+  _token = token
+}
+
+// Interceptor — usa token em memória (síncrono, confiável no web)
+api.interceptors.request.use((config) => {
+  console.log('[api] request:', config.method?.toUpperCase(), config.url, '| token presente:', !!_token)
+  if (_token) {
+    config.headers.Authorization = `Bearer ${_token}`
   } else {
-    console.warn('[api] ATENÇÃO: token ausente, requisição irá falhar com 401')
+    console.warn('[api] token ausente')
   }
   return config
 })
 
-// Interceptor — trata erros globais
+// Interceptor — limpa token em memória e AsyncStorage no 401
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
+      _token = null
       await AsyncStorage.removeItem('godenth_token')
       await AsyncStorage.removeItem('godenth_user')
     }

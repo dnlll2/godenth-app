@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import api from '../services/api'
+import api, { setAuthToken } from '../services/api'
 
 interface User {
   id: number
@@ -74,6 +74,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (email, password) => {
     const response = await api.post('/auth/login', { email, password })
     const { user, token } = response.data
+    setAuthToken(token)
     await AsyncStorage.setItem('godenth_token', token)
     await AsyncStorage.setItem('godenth_user', JSON.stringify(user))
     set({ user, token, isAuthenticated: true })
@@ -82,12 +83,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   register: async (data) => {
     const response = await api.post('/auth/register', data)
     const { user, token } = response.data
+    setAuthToken(token)
     await AsyncStorage.setItem('godenth_token', token)
     await AsyncStorage.setItem('godenth_user', JSON.stringify(user))
     set({ user, token, isAuthenticated: true })
   },
 
   logout: async () => {
+    setAuthToken(null)
     await AsyncStorage.removeItem('godenth_token')
     await AsyncStorage.removeItem('godenth_user')
     set({ user: null, token: null, isAuthenticated: false })
@@ -99,6 +102,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const userStr = await AsyncStorage.getItem('godenth_user')
       if (token && userStr) {
         const user = JSON.parse(userStr)
+        setAuthToken(token)
         set({ user, token, isAuthenticated: true, isLoading: false })
       } else {
         set({ isLoading: false })
