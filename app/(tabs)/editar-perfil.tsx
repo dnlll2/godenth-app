@@ -354,6 +354,10 @@ export default function EditarPerfil() {
   const salvar = async () => {
     if (!nome.trim()) { Alert.alert('Atenção', 'O nome é obrigatório.'); return }
     setSaving(true)
+
+    const controller = new AbortController()
+    const tid = setTimeout(() => controller.abort(), 20000)
+
     try {
       await api.put('/users/me', {
         nome: nome.trim(), bio, cidade, estado,
@@ -361,11 +365,21 @@ export default function EditarPerfil() {
         celular, data_nascimento: dataNascimento || null,
         privacidade, instagram,
         especialidades, habilidades, formacao, experiencia,
-      })
-      Alert.alert('Sucesso', 'Perfil atualizado!', [{ text: 'OK', onPress: () => router.back() }])
+      }, { signal: controller.signal })
+
+      router.back()
     } catch (err: any) {
-      Alert.alert('Erro', err?.response?.data?.error || 'Não foi possível salvar.')
-    } finally { setSaving(false) }
+      if (controller.signal.aborted) {
+        Alert.alert('Tempo esgotado', 'O servidor demorou para responder. Verifique sua conexão e tente novamente.')
+      } else if (!err.response) {
+        Alert.alert('Sem conexão', 'Não foi possível conectar ao servidor. Verifique sua internet.')
+      } else {
+        Alert.alert('Erro ao salvar', err.response.data?.error || 'Não foi possível salvar o perfil.')
+      }
+    } finally {
+      clearTimeout(tid)
+      setSaving(false)
+    }
   }
 
   if (loading) return (
