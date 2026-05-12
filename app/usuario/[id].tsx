@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 
+
 const API_BASE = 'https://godenth-api-production.up.railway.app'
 
 const TIPO_CORES: Record<string, string> = {
@@ -44,7 +45,7 @@ const DISP_META: Record<string, { label: string; cor: string }> = {
   parceria: { label: 'Parcerias', cor: '#7B3FC4' },
 }
 
-const ABAS = ['Sobre', 'Experiência', 'Formação', 'Habilidades']
+const ABAS = ['Sobre', 'Experiência', 'Formação', 'Habilidades', 'Portfólio']
 
 type ConnStatus = 'idle' | 'nao_conectado' | 'pendente_enviado' | 'pendente_recebido' | 'aceita'
 
@@ -60,6 +61,8 @@ export default function PerfilPublico() {
   const [connStatus, setConnStatus] = useState<ConnStatus>('idle')
   const [connId, setConnId] = useState<number | null>(null)
   const [connLoading, setConnLoading] = useState(false)
+  const [portfolio, setPortfolio] = useState<any[]>([])
+  const [portfolioLoaded, setPortfolioLoaded] = useState(false)
 
   const isOwnProfile = me?.id === parseInt(id || '0')
 
@@ -69,6 +72,14 @@ export default function PerfilPublico() {
       .catch(e => console.log(e))
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    if (aba === 'Portfólio' && !portfolioLoaded && id) {
+      api.get(`/portfolio/${id}`)
+        .then(r => { setPortfolio(r.data.portfolio || []); setPortfolioLoaded(true) })
+        .catch(() => setPortfolioLoaded(true))
+    }
+  }, [aba, id])
 
   useEffect(() => {
     if (!id || isOwnProfile) return
@@ -298,6 +309,37 @@ export default function PerfilPublico() {
     )
   }
 
+  const renderPortfolio = () => (
+    <View style={s.tabContent}>
+      {!portfolioLoaded ? (
+        <ActivityIndicator color="#007A6E" style={{ marginTop: 24 }} />
+      ) : portfolio.length === 0 ? (
+        <View style={s.emptyCard}><Text style={s.emptyT}>Nenhum item no portfólio</Text></View>
+      ) : (
+        <View style={s.portGrid}>
+          {portfolio.map(item => {
+            const imgUrl = item.url.startsWith('http') ? item.url : (avatarSrc?.replace(/\/uploads\/.*/, '') || '') + item.url
+            return (
+              <View key={item.id} style={s.portCard}>
+                {item.tipo === 'pdf' ? (
+                  <View style={[s.portImg, { backgroundColor: '#EEF7F2', justifyContent: 'center', alignItems: 'center' }]}>
+                    <Text style={{ fontSize: 32 }}>📄</Text>
+                  </View>
+                ) : (
+                  <Image source={{ uri: 'https://godenth-api-production.up.railway.app' + item.url }} style={s.portImg} resizeMode="cover" />
+                )}
+                <View style={{ padding: 8 }}>
+                  <Text style={s.portTitulo} numberOfLines={1}>{item.titulo}</Text>
+                  {item.descricao ? <Text style={s.portDesc} numberOfLines={2}>{item.descricao}</Text> : null}
+                </View>
+              </View>
+            )
+          })}
+        </View>
+      )}
+    </View>
+  )
+
   return (
     <View style={s.root}>
       <View style={[s.header, { backgroundColor: tipoCor }]}>
@@ -383,7 +425,7 @@ export default function PerfilPublico() {
           )
           return null
         })()}
-        <TouchableOpacity style={[s.actionBtnOutline, { borderColor: tipoCor }]}>
+        <TouchableOpacity style={[s.actionBtnOutline, { borderColor: tipoCor }]} onPress={() => router.push(`/chat/${id}` as any)}>
           <Text style={[s.actionBtnOutlineT, { color: tipoCor }]}>💬 Mensagem</Text>
         </TouchableOpacity>
         {servicosOferecidos.length > 0 && (
@@ -443,6 +485,7 @@ export default function PerfilPublico() {
         {aba === 'Experiência' && renderExperiencia()}
         {aba === 'Formação' && renderFormacao()}
         {aba === 'Habilidades' && renderHabilidades()}
+        {aba === 'Portfólio' && renderPortfolio()}
       </ScrollView>
     </View>
   )
@@ -520,6 +563,11 @@ const s = StyleSheet.create({
   timelineDate: { fontSize: 11, color: '#7A9E8E', marginTop: 2 },
   emptyCard: { backgroundColor: '#fff', borderRadius: 14, padding: 20, borderWidth: 2, borderColor: '#D0E8DA', borderStyle: 'dashed', alignItems: 'center' },
   emptyT: { fontSize: 14, fontWeight: '600', color: '#A0B8AC' },
+  portGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  portCard: { width: '47.5%', backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#D0E8DA' },
+  portImg: { width: '100%', height: 120 },
+  portTitulo: { fontSize: 12, fontWeight: '800', color: '#0A1C14' },
+  portDesc: { fontSize: 11, color: '#7A9E8E', marginTop: 2 },
 
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.48)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: Platform.OS === 'ios' ? 32 : 16 },

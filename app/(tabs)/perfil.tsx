@@ -1,12 +1,13 @@
-import { useCallback, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native'
+import { useCallback, useState, useEffect } from 'react'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, Modal, TextInput } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
+import * as ImagePicker from 'expo-image-picker'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 
 const API_BASE = 'https://godenth-api-production.up.railway.app'
 
-const ABAS = ['Sobre', 'Experiência', 'Formação', 'Habilidades']
+const ABAS = ['Sobre', 'Experiência', 'Formação', 'Habilidades', 'Portfólio']
 
 const TIPO_CORES: Record<string, string> = {
   'Cirurgião-Dentista': '#1A6FD4',
@@ -41,6 +42,13 @@ export default function Perfil() {
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [aba, setAba] = useState('Sobre')
+  const [portfolio, setPortfolio] = useState<any[]>([])
+  const [portfolioLoading, setPortfolioLoading] = useState(false)
+  const [addModal, setAddModal] = useState(false)
+  const [addTitulo, setAddTitulo] = useState('')
+  const [addDesc, setAddDesc] = useState('')
+  const [addUri, setAddUri] = useState<string | null>(null)
+  const [addSaving, setAddSaving] = useState(false)
 
   const loadProfile = async () => {
     try {
@@ -51,6 +59,60 @@ export default function Perfil() {
   }
 
   useFocusEffect(useCallback(() => { loadProfile() }, []))
+
+  useEffect(() => {
+    if (aba === 'Portfólio' && user?.id && portfolio.length === 0) {
+      setPortfolioLoading(true)
+      api.get(`/portfolio/${user.id}`)
+        .then(r => setPortfolio(r.data.portfolio || []))
+        .catch(() => null)
+        .finally(() => setPortfolioLoading(false))
+    }
+  }, [aba, user?.id])
+
+  const pickPortfolioImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== 'granted') { Alert.alert('Permissão necessária', 'Precisamos acessar sua galeria.'); return }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'] as any,
+      allowsEditing: true, quality: 0.75,
+    })
+    if (!result.canceled) setAddUri(result.assets[0].uri)
+  }
+
+  const savePortfolioItem = async () => {
+    if (!addTitulo.trim()) return Alert.alert('Atenção', 'O título é obrigatório')
+    if (!addUri) return Alert.alert('Atenção', 'Selecione uma imagem')
+    setAddSaving(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', { uri: addUri, type: 'image/jpeg', name: 'portfolio.jpg' } as any)
+      const upRes = await api.post('/portfolio/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      const res = await api.post('/portfolio', {
+        titulo: addTitulo.trim(), descricao: addDesc.trim(),
+        tipo: 'foto', url: upRes.data.url,
+      })
+      setPortfolio(prev => [res.data.item, ...prev])
+      setAddModal(false); setAddTitulo(''); setAddDesc(''); setAddUri(null)
+    } catch (err: any) {
+      Alert.alert('Erro', err.response?.data?.error || 'Não foi possível salvar')
+    } finally { setAddSaving(false) }
+  }
+
+  const deletePortfolioItem = (id: number) => {
+    Alert.alert('Remover item', 'Deseja remover este item do portfólio?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Remover', style: 'destructive',
+        onPress: async () => {
+          await api.delete(`/portfolio/${id}`).catch(() => null)
+          setPortfolio(prev => prev.filter(i => i.id !== id))
+        },
+      },
+    ])
+  }
 
   const handleLogout = async () => {
     await logout()
@@ -220,6 +282,87 @@ export default function Perfil() {
     )
   }
 
+  const renderPortfolio = () => (
+    <View style={styles.tabContent}>
+      <TouchableOpacity style={styles.addPortBtn} onPress={() => setAddModal(true)}>
+        <Text style={styles.addPortBtnT}>+ Adicionar ao portfólio</Text>
+      </TouchableOpacity>
+      {portfolioLoading ? (
+        <ActivityIndicator color="#00A880" style={{ marginTop: 24 }} />
+      ) : portfolio.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={{ fontSize: 32, marginBottom: 8 }}>🖼️</Text>
+          <Text style={styles.emptyCardT}>Nenhum item no portfólio ainda</Text>
+        </View>
+      ) : (
+        <View style={styles.portGrid}>
+          {portfolio.map(item => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.portCard}
+              onLongPress={() => deletePortfolioItem(item.id)}
+              activeOpacity={0.85}
+            >
+              <Image
+                source={{ uri: item.url.startsWith('http') ? item.url : API_BASE + item.url }}
+                style={styles.portImg}
+                resizeMode="cover"
+              />
+              <View style={styles.portInfo}>
+                <Text style={styles.portTitulo} numberOfLines={1}>{item.titulo}</Text>
+                {item.descricao ? <Text style={styles.portDesc} numberOfLines={2}>{item.descricao}</Text> : null}
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* Modal de adicionar */}
+      <Modal visible={addModal} animationType="slide" transparent onRequestClose={() => setAddModal(false)}>
+        <View style={styles.portOverlay}>
+          <View style={styles.portSheet}>
+            <View style={styles.portHandle} />
+            <Text style={styles.portSheetTitle}>Adicionar ao portfólio</Text>
+            <TouchableOpacity style={styles.portPickBtn} onPress={pickPortfolioImage}>
+              {addUri
+                ? <Image source={{ uri: addUri }} style={styles.portPickPreview} resizeMode="cover" />
+                : <Text style={styles.portPickBtnT}>📷 Selecionar imagem</Text>}
+            </TouchableOpacity>
+            <TextInput
+              style={styles.portInput}
+              placeholder="Título *"
+              placeholderTextColor="#A0B8AC"
+              value={addTitulo}
+              onChangeText={setAddTitulo}
+              maxLength={100}
+            />
+            <TextInput
+              style={[styles.portInput, { height: 80, textAlignVertical: 'top' }]}
+              placeholder="Descrição (opcional)"
+              placeholderTextColor="#A0B8AC"
+              value={addDesc}
+              onChangeText={setAddDesc}
+              multiline
+              maxLength={300}
+            />
+            <TouchableOpacity
+              style={[styles.portSaveBtn, addSaving && { opacity: 0.6 }]}
+              onPress={savePortfolioItem}
+              disabled={addSaving}
+            >
+              {addSaving
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.portSaveBtnT}>Salvar →</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.portCancelBtn} onPress={() => { setAddModal(false); setAddTitulo(''); setAddDesc(''); setAddUri(null) }}>
+              <Text style={styles.portCancelBtnT}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  )
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { backgroundColor: tipoCor }]}>
@@ -269,6 +412,7 @@ export default function Perfil() {
         {aba === 'Experiência' && renderExperiencia()}
         {aba === 'Formação' && renderFormacao()}
         {aba === 'Habilidades' && renderHabilidades()}
+        {aba === 'Portfólio' && renderPortfolio()}
       </ScrollView>
     </View>
   )
@@ -318,4 +462,25 @@ const styles = StyleSheet.create({
   formacaoAno: { fontSize: 11, color: '#7A9E8E', marginTop: 2 },
   emptyCard: { backgroundColor: '#fff', borderRadius: 14, padding: 20, borderWidth: 2, borderColor: '#D0E8DA', borderStyle: 'dashed', alignItems: 'center' },
   emptyCardT: { fontSize: 14, fontWeight: '700', color: '#00A880' },
+  // portfolio
+  addPortBtn: { backgroundColor: '#00A880', borderRadius: 12, padding: 13, alignItems: 'center', marginBottom: 12 },
+  addPortBtnT: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  portGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  portCard: { width: '47.5%', backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#D0E8DA' },
+  portImg: { width: '100%', height: 120 },
+  portInfo: { padding: 8 },
+  portTitulo: { fontSize: 12, fontWeight: '800', color: '#0A1C14' },
+  portDesc: { fontSize: 11, color: '#7A9E8E', marginTop: 2 },
+  portOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  portSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 32 },
+  portHandle: { width: 40, height: 4, backgroundColor: '#D0E8DA', borderRadius: 2, alignSelf: 'center', marginBottom: 18 },
+  portSheetTitle: { fontSize: 18, fontWeight: '800', color: '#0A1C14', marginBottom: 16 },
+  portPickBtn: { backgroundColor: '#EEF7F2', borderWidth: 2, borderColor: '#D0E8DA', borderStyle: 'dashed', borderRadius: 12, height: 130, justifyContent: 'center', alignItems: 'center', marginBottom: 12, overflow: 'hidden' },
+  portPickBtnT: { fontSize: 14, fontWeight: '700', color: '#00A880' },
+  portPickPreview: { width: '100%', height: 130 },
+  portInput: { backgroundColor: '#EEF7F2', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 10, padding: 12, fontSize: 14, color: '#0A1C14', marginBottom: 10 },
+  portSaveBtn: { backgroundColor: '#00A880', borderRadius: 12, padding: 14, alignItems: 'center', marginBottom: 8 },
+  portSaveBtnT: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  portCancelBtn: { borderRadius: 12, padding: 14, alignItems: 'center' },
+  portCancelBtnT: { fontSize: 14, fontWeight: '700', color: '#7A9E8E' },
 })
