@@ -5,6 +5,7 @@ import {
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import api from '../../services/api'
+import { useAuthStore } from '../../stores/authStore'
 
 const API_BASE = 'https://godenth-api-production.up.railway.app'
 
@@ -45,13 +46,22 @@ const DISP_META: Record<string, { label: string; cor: string }> = {
 
 const ABAS = ['Sobre', 'Experiência', 'Formação', 'Habilidades']
 
+type ConnStatus = 'idle' | 'nao_conectado' | 'pendente_enviado' | 'pendente_recebido' | 'aceita'
+
 export default function PerfilPublico() {
   const { id } = useLocalSearchParams<{ id: string }>()
+  const { user: me } = useAuthStore()
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [aba, setAba] = useState('Sobre')
   const [servicosModal, setServicosModal] = useState(false)
   const [solicitando, setSolicitando] = useState<string | null>(null)
+
+  const [connStatus, setConnStatus] = useState<ConnStatus>('idle')
+  const [connId, setConnId] = useState<number | null>(null)
+  const [connLoading, setConnLoading] = useState(false)
+
+  const isOwnProfile = me?.id === parseInt(id || '0')
 
   useEffect(() => {
     api.get(`/users/${id}`)
@@ -59,6 +69,58 @@ export default function PerfilPublico() {
       .catch(e => console.log(e))
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    if (!id || isOwnProfile) return
+    api.get(`/connections/status/${id}`)
+      .then(r => {
+        setConnStatus(r.data.status as ConnStatus)
+        if (r.data.connection_id) setConnId(r.data.connection_id)
+      })
+      .catch(() => setConnStatus('nao_conectado'))
+  }, [id, isOwnProfile])
+
+  const handleConnect = async () => {
+    if (connLoading) return
+    setConnLoading(true)
+    try {
+      if (connStatus === 'nao_conectado') {
+        const res = await api.post(`/connections/${id}`)
+        setConnId(res.data.connection?.id || null)
+        setConnStatus('pendente_enviado')
+      } else if (connStatus === 'pendente_enviado') {
+        Alert.alert('Solicitação pendente', 'Deseja cancelar a solicitação?', [
+          { text: 'Não', style: 'cancel' },
+          {
+            text: 'Cancelar solicitação', style: 'destructive',
+            onPress: async () => {
+              if (!connId) return
+              await api.delete(`/connections/${connId}`)
+              setConnStatus('nao_conectado'); setConnId(null)
+            },
+          },
+        ])
+      } else if (connStatus === 'pendente_recebido') {
+        if (!connId) return
+        await api.put(`/connections/${connId}/accept`)
+        setConnStatus('aceita')
+      } else if (connStatus === 'aceita') {
+        Alert.alert('Conexão', 'Deseja remover esta conexão?', [
+          { text: 'Não', style: 'cancel' },
+          {
+            text: 'Remover conexão', style: 'destructive',
+            onPress: async () => {
+              if (!connId) return
+              await api.delete(`/connections/${connId}`)
+              setConnStatus('nao_conectado'); setConnId(null)
+            },
+          },
+        ])
+      }
+    } catch (err: any) {
+      Alert.alert('Erro', err.response?.data?.error || 'Algo deu errado')
+    } finally { setConnLoading(false) }
+  }
 
   if (loading) {
     return <View style={s.center}><ActivityIndicator color="#00A880" size="large" /></View>
@@ -293,9 +355,34 @@ export default function PerfilPublico() {
       </View>
 
       <View style={s.actions}>
-        <TouchableOpacity style={[s.actionBtn, { backgroundColor: tipoCor }]}>
-          <Text style={s.actionBtnT}>🤝 Conectar</Text>
-        </TouchableOpacity>
+        {!isOwnProfile && (() => {
+          if (connStatus === 'idle') return (
+            <View style={[s.actionBtn, { backgroundColor: tipoCor + '40', justifyContent: 'center', alignItems: 'center' }]}>
+              <ActivityIndicator color={tipoCor} size="small" />
+            </View>
+          )
+          if (connStatus === 'nao_conectado') return (
+            <TouchableOpacity style={[s.actionBtn, { backgroundColor: tipoCor }]} onPress={handleConnect} disabled={connLoading}>
+              {connLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.actionBtnT}>🤝 Conectar</Text>}
+            </TouchableOpacity>
+          )
+          if (connStatus === 'pendente_enviado') return (
+            <TouchableOpacity style={[s.actionBtnOutline, { borderColor: tipoCor }]} onPress={handleConnect}>
+              <Text style={[s.actionBtnOutlineT, { color: tipoCor }]}>⏳ Pendente</Text>
+            </TouchableOpacity>
+          )
+          if (connStatus === 'pendente_recebido') return (
+            <TouchableOpacity style={[s.actionBtn, { backgroundColor: tipoCor }]} onPress={handleConnect} disabled={connLoading}>
+              {connLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.actionBtnT}>✓ Aceitar</Text>}
+            </TouchableOpacity>
+          )
+          if (connStatus === 'aceita') return (
+            <TouchableOpacity style={[s.actionBtnOutline, { borderColor: tipoCor }]} onPress={handleConnect}>
+              <Text style={[s.actionBtnOutlineT, { color: tipoCor }]}>✓ Conectado</Text>
+            </TouchableOpacity>
+          )
+          return null
+        })()}
         <TouchableOpacity style={[s.actionBtnOutline, { borderColor: tipoCor }]}>
           <Text style={[s.actionBtnOutlineT, { color: tipoCor }]}>💬 Mensagem</Text>
         </TouchableOpacity>

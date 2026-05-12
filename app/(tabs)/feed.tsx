@@ -16,13 +16,17 @@ export default function Feed() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [filtro, setFiltro] = useState('todos')
+  const [unreadCount, setUnreadCount] = useState(0)
   const { user } = useAuthStore()
 
   const loadFeed = async () => {
     try {
       const params = filtro !== 'todos' ? '?tipo_post=' + filtro : ''
-      const res = await api.get('/posts' + params)
-      setPosts(res.data.posts || [])
+      const [postsRes] = await Promise.all([
+        api.get('/posts' + params),
+        api.get('/notifications?limit=1').then(r => setUnreadCount(r.data.unread || 0)).catch(() => null),
+      ])
+      setPosts(postsRes.data.posts || [])
     } catch (err) {
       console.log('Erro:', err)
     } finally {
@@ -91,8 +95,13 @@ export default function Feed() {
           <TouchableOpacity style={styles.ico} onPress={() => router.push('/(tabs)/buscar')}>
             <Text style={{ fontSize: 18 }}>🔍</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.ico} onPress={() => router.push('/(tabs)/notificacoes')}>
+          <TouchableOpacity style={styles.ico} onPress={() => { setUnreadCount(0); router.push('/(tabs)/notificacoes') }}>
             <Text style={{ fontSize: 18 }}>🔔</Text>
+            {unreadCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeT}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/(tabs)/perfil')}>
             <View style={styles.uav}>
@@ -140,7 +149,9 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#007A6E' },
   logo: { fontSize: 26, fontFamily: 'Poppins-ExtraBold', letterSpacing: -0.5 },
   icons: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  ico: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
+  ico: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  notifBadge: { position: 'absolute', top: -3, right: -3, backgroundColor: '#E53935', borderRadius: 9, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3, borderWidth: 1.5, borderColor: '#007A6E' },
+  notifBadgeT: { color: '#fff', fontSize: 9, fontWeight: '800' },
   uav: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1A6FD4', justifyContent: 'center', alignItems: 'center' },
   uavt: { color: '#fff', fontWeight: '800', fontSize: 14 },
   filtrosRow: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#D0E8DA', paddingHorizontal: 14, paddingVertical: 10, gap: 8 },
