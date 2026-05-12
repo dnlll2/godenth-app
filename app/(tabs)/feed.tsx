@@ -47,13 +47,19 @@ export default function Feed() {
         <View style={[styles.stripe, { backgroundColor: cor }]} />
         <View style={styles.cardBody}>
           <View style={styles.cardRow}>
-            <View style={[styles.av, { backgroundColor: cor }]}>
-              <Text style={styles.avt}>{nome.charAt(0)}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.nome}>{nome}</Text>
-              <Text style={styles.loc}>{item.cidade} · {item.estado}</Text>
-            </View>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}
+              onPress={() => item.author_id && router.push(`/usuario/${item.author_id}` as any)}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.av, { backgroundColor: cor }]}>
+                <Text style={styles.avt}>{nome.charAt(0)}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.nome}>{nome}</Text>
+                <Text style={styles.loc}>{item.cidade} · {item.estado}</Text>
+              </View>
+            </TouchableOpacity>
             <View style={[styles.badge, { backgroundColor: cor + '20', borderColor: cor + '60' }]}>
               <Text style={[styles.badgeT, { color: cor }]}>{item.tipo_post?.toUpperCase()}</Text>
             </View>
