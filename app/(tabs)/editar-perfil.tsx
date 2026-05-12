@@ -119,6 +119,22 @@ const HABILIDADES: Record<string, Record<string, string[]>> = {
 
 const ANOS = Array.from({ length: 60 }, (_, i) => String(new Date().getFullYear() - i))
 
+const maskDate = (v: string) => {
+  const d = v.replace(/\D/g, '').slice(0, 8)
+  if (d.length <= 2) return d
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`
+}
+const isoToDisplay = (iso: string) => {
+  const [y, m, d] = iso.split('T')[0].split('-')
+  return `${d}/${m}/${y}`
+}
+const displayToIso = (display: string) => {
+  const p = display.split('/')
+  if (p.length !== 3 || p[2].length < 4) return ''
+  return `${p[2]}-${p[1]}-${p[0]}`
+}
+
 // ── sub-components ────────────────────────────────────────────────────────────
 
 function IBGEModal({ visible, title, data, onSelect, onClose, loading = false }: any) {
@@ -240,7 +256,7 @@ export default function EditarPerfil() {
       setNome(p.nome || '')
       setEmail(p.email || '')
       setCelular(p.celular || '')
-      setDataNascimento(p.data_nascimento ? p.data_nascimento.split('T')[0] : '')
+      setDataNascimento(p.data_nascimento ? isoToDisplay(p.data_nascimento) : '')
       setPrivacidade(p.privacidade || { ocultar_email: false, ocultar_celular: false, ocultar_idade: false })
       setCidade(p.cidade || '')
       setEstado(p.estado || '')
@@ -289,7 +305,7 @@ export default function EditarPerfil() {
     try {
       const fd = new FormData()
       fd.append('avatar', { uri, type: 'image/jpeg', name: 'avatar.jpg' } as any)
-      const res = await api.post('/users/me/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const res = await api.post('/users/me/avatar', fd)
       setAvatarRemote(API_BASE + res.data.avatar_url)
     } catch {
       Alert.alert('Erro', 'Não foi possível enviar a foto.')
@@ -371,7 +387,7 @@ export default function EditarPerfil() {
       const payload = {
         nome: nome.trim(), bio, cidade, estado,
         disponibilidade: disponibilidade || null,
-        celular, data_nascimento: dataNascimento || null,
+        celular, data_nascimento: displayToIso(dataNascimento) || null,
         privacidade, instagram,
         especialidades, habilidades, formacao, experiencia,
       }
@@ -465,8 +481,9 @@ export default function EditarPerfil() {
             placeholder="Seu nome completo" placeholderTextColor="#A0B8AC" />
 
           <Text style={s.fieldLbl}>Data de nascimento</Text>
-          <TextInput style={s.input} value={dataNascimento} onChangeText={setDataNascimento}
-            placeholder="AAAA-MM-DD" placeholderTextColor="#A0B8AC" keyboardType="numbers-and-punctuation" />
+          <TextInput style={s.input} value={dataNascimento}
+            onChangeText={v => setDataNascimento(maskDate(v))}
+            placeholder="DD/MM/AAAA" placeholderTextColor="#A0B8AC" keyboardType="number-pad" maxLength={10} />
 
           <Text style={s.fieldLbl}>E-mail <Text style={s.readOnlyTag}>(não editável)</Text></Text>
           <View style={[s.input, s.inputReadOnly]}>

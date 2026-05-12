@@ -8,6 +8,34 @@ const API_BASE = 'https://godenth-api-production.up.railway.app'
 
 const ABAS = ['Sobre', 'Experiência', 'Formação', 'Habilidades']
 
+const TIPO_CORES: Record<string, string> = {
+  'Cirurgião-Dentista': '#1A6FD4',
+  'Técnico em Prótese Dentária': '#7B3FC4',
+  'Técnico em Saúde Bucal (TSB)': '#0891B2',
+  'Auxiliar em Saúde Bucal (ASB)': '#0891B2',
+  'Auxiliar de Prótese Dentária': '#7B3FC4',
+  'Gerente Comercial': '#334155',
+  'Representante Comercial': '#D4600A',
+  'Recepcionista / Secretária': '#00A880',
+  'CRC / Call Center': '#00A880',
+  'Consultor de Vendas': '#D4600A',
+  'Gerente Administrativo': '#334155',
+  'Auxiliar Administrativo': '#334155',
+  'Financeiro': '#334155',
+  'RH / Recursos Humanos': '#334155',
+  'Contabilidade': '#334155',
+  'Marketing Digital': '#D4186A',
+  'Designer Gráfico / UI': '#D4186A',
+  'Filmmaker / Videomaker': '#D4186A',
+  'Fotógrafo': '#D4186A',
+  'Social Media': '#D4186A',
+  'Gestor de Tráfego': '#D4186A',
+  'Estudante de Odontologia': '#1A6FD4',
+  'Estudante de Prótese Dentária': '#7B3FC4',
+  'Estudante de Administração': '#334155',
+  'Estudante de Marketing': '#D4186A',
+}
+
 export default function Perfil() {
   const { user, logout } = useAuthStore()
   const [profile, setProfile] = useState<any>(null)
@@ -31,7 +59,7 @@ export default function Perfil() {
 
   if (loading) return <View style={styles.center}><ActivityIndicator color="#00A880" /></View>
 
-  const tipoCor = '#00A880'
+  const tipoCor = TIPO_CORES[profile?.tipo_profissional] || '#007A6E'
 
   const renderSobre = () => (
     <View style={styles.tabContent}>
@@ -194,13 +222,17 @@ export default function Perfil() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: tipoCor }]}>
         <TouchableOpacity onPress={() => router.back()}><Text style={styles.back}>←</Text></TouchableOpacity>
         <Text style={styles.headerTitle}>Meu Perfil</Text>
         <TouchableOpacity onPress={handleLogout}><Text style={styles.logout}>Sair</Text></TouchableOpacity>
       </View>
 
-      <View style={styles.cover} />
+      <View style={[styles.cover, { backgroundColor: tipoCor }]}>
+        <Text style={styles.coverWatermark} numberOfLines={1} ellipsizeMode="clip">
+          {(profile?.tipo_profissional || '').toUpperCase()}
+        </Text>
+      </View>
 
       <View style={styles.avatarRow}>
         {profile?.avatar_url
@@ -245,11 +277,12 @@ export default function Perfil() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#EEF7F2' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#007A6E' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14 },
   back: { fontSize: 24, color: '#fff', fontWeight: '700' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
   logout: { fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
-  cover: { height: 80, backgroundColor: '#007A6E' },
+  cover: { height: 100, overflow: 'hidden' },
+  coverWatermark: { position: 'absolute', bottom: -8, left: 10, right: 10, fontSize: 58, fontWeight: '900', color: 'rgba(255,255,255,0.13)', letterSpacing: 3 },
   avatarRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: -28, marginBottom: 8 },
   avatar: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#fff' },
   avatarImg: { width: 60, height: 60, borderRadius: 30, borderWidth: 3, borderColor: '#fff' },
