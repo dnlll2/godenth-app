@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Image, Platform,
+  ActivityIndicator, Image, Platform, Modal, Alert,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import api from '../../services/api'
@@ -50,6 +50,8 @@ export default function PerfilPublico() {
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [aba, setAba] = useState('Sobre')
+  const [servicosModal, setServicosModal] = useState(false)
+  const [solicitando, setSolicitando] = useState<string | null>(null)
 
   useEffect(() => {
     api.get(`/users/${id}`)
@@ -77,6 +79,18 @@ export default function PerfilPublico() {
   const tipoCor = TIPO_CORES[profile.tipo_profissional] || '#007A6E'
   const priv = profile.privacidade || {}
   const disp = profile.disponibilidade ? DISP_META[profile.disponibilidade] : null
+  const servicosOferecidos: string[] = profile.servicos || []
+
+  const solicitarServico = async (servicoNome: string) => {
+    setSolicitando(servicoNome)
+    try {
+      await api.post('/servicos/solicitar', { destinatario_id: profile.id, servico_nome: servicoNome })
+      Alert.alert('✅ Solicitação enviada!', `${profile.nome} receberá uma notificação com seu pedido.`)
+    } catch (err: any) {
+      Alert.alert('Erro', err.response?.data?.error || 'Não foi possível enviar a solicitação.')
+    } finally { setSolicitando(null) }
+  }
+
   const avatarSrc = profile.avatar_url
     ? (profile.avatar_url.startsWith('http') ? profile.avatar_url : API_BASE + profile.avatar_url)
     : null
@@ -285,7 +299,45 @@ export default function PerfilPublico() {
         <TouchableOpacity style={[s.actionBtnOutline, { borderColor: tipoCor }]}>
           <Text style={[s.actionBtnOutlineT, { color: tipoCor }]}>💬 Mensagem</Text>
         </TouchableOpacity>
+        {servicosOferecidos.length > 0 && (
+          <TouchableOpacity style={[s.actionBtnOutline, { borderColor: tipoCor }]} onPress={() => setServicosModal(true)}>
+            <Text style={[s.actionBtnOutlineT, { color: tipoCor }]}>🛠️ Serviços</Text>
+          </TouchableOpacity>
+        )}
       </View>
+
+      {/* Modal de serviços */}
+      <Modal visible={servicosModal} transparent animationType="slide" onRequestClose={() => setServicosModal(false)}>
+        <View style={s.overlay}>
+          <View style={s.sheet}>
+            <View style={s.sheetHandle} />
+            <Text style={s.sheetTitle}>Serviços de {profile.nome.split(' ')[0]}</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: '75%' }}>
+              {servicosOferecidos.map((nome, i) => (
+                <View key={i} style={s.servicoItem}>
+                  <View style={s.servicoInfo}>
+                    <View style={[s.servicoDot, { backgroundColor: tipoCor }]} />
+                    <Text style={s.servicoNome}>{nome}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[s.solicitarBtn, { backgroundColor: tipoCor }, solicitando === nome && { opacity: 0.6 }]}
+                    onPress={() => solicitarServico(nome)}
+                    disabled={solicitando !== null}
+                  >
+                    {solicitando === nome
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <Text style={s.solicitarBtnT}>Solicitar</Text>
+                    }
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+            <TouchableOpacity style={s.sheetClose} onPress={() => setServicosModal(false)}>
+              <Text style={s.sheetCloseT}>Fechar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <View style={s.abas}>
         {ABAS.map(a => (
@@ -381,4 +433,18 @@ const s = StyleSheet.create({
   timelineDate: { fontSize: 11, color: '#7A9E8E', marginTop: 2 },
   emptyCard: { backgroundColor: '#fff', borderRadius: 14, padding: 20, borderWidth: 2, borderColor: '#D0E8DA', borderStyle: 'dashed', alignItems: 'center' },
   emptyT: { fontSize: 14, fontWeight: '600', color: '#A0B8AC' },
+
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.48)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: Platform.OS === 'ios' ? 32 : 16 },
+  sheetHandle: { width: 40, height: 4, backgroundColor: '#D0E8DA', borderRadius: 2, alignSelf: 'center', marginBottom: 18 },
+  sheetTitle: { fontSize: 18, fontWeight: '800', color: '#0A1C14', marginBottom: 16 },
+  sheetClose: { backgroundColor: '#F2F5F4', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 14 },
+  sheetCloseT: { fontSize: 14, fontWeight: '800', color: '#3A6550' },
+
+  servicoItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F2F5F4', gap: 12 },
+  servicoInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  servicoDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  servicoNome: { fontSize: 14, fontWeight: '600', color: '#0A1C14', flex: 1 },
+  solicitarBtn: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, minWidth: 82, alignItems: 'center' },
+  solicitarBtnT: { color: '#fff', fontSize: 12, fontWeight: '800' },
 })

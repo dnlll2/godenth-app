@@ -243,6 +243,9 @@ export default function EditarPerfil() {
   const [eFim, setEFim] = useState('')
   const [eAtual, setEAtual] = useState(false)
 
+  const [servicos, setServicos] = useState<string[]>([])
+  const [servicosDisponiveis, setServicosDisponiveis] = useState<any[]>([])
+
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -269,8 +272,15 @@ export default function EditarPerfil() {
       setInstagram(p.instagram || '')
       setTipoProf(p.tipo_profissional || '')
       setCargosExtras(p.cargos_extras || [])
+      setServicos(p.servicos || [])
       if (p.avatar_url) setAvatarRemote(p.avatar_url.startsWith('http') ? p.avatar_url : API_BASE + p.avatar_url)
       if (p.estado) loadCidades(p.estado)
+      if (p.tipo_profissional) {
+        try {
+          const sRes = await api.get(`/servicos?tipo_profissional=${encodeURIComponent(p.tipo_profissional)}`)
+          setServicosDisponiveis(sRes.data.servicos || [])
+        } catch { }
+      }
     } catch (err) { console.log(err) }
     finally { setLoading(false) }
   }
@@ -389,7 +399,7 @@ export default function EditarPerfil() {
         disponibilidade: disponibilidade || null,
         celular, data_nascimento: displayToIso(dataNascimento) || null,
         privacidade, instagram,
-        especialidades, habilidades, formacao, experiencia,
+        especialidades, habilidades, formacao, experiencia, servicos,
       }
       console.log('[salvar] enviando PUT /users/me com payload:', JSON.stringify(payload))
 
@@ -725,7 +735,31 @@ export default function EditarPerfil() {
           </>
         )}
 
-        {/* 11. Redes Sociais */}
+        {/* 11. Meus Serviços */}
+        {servicosDisponiveis.length > 0 && (
+          <>
+            <Text style={s.sectionLabel}>Meus Serviços</Text>
+            <View style={s.card}>
+              <Text style={s.chipHint}>Selecione os serviços que você oferece aos seus clientes</Text>
+              <View style={s.chipsWrap}>
+                {servicosDisponiveis.map((srv: any) => {
+                  const on = servicos.includes(srv.nome)
+                  return (
+                    <TouchableOpacity
+                      key={srv.id}
+                      style={[s.chip, on && s.chipEspOn]}
+                      onPress={() => setServicos(prev => on ? prev.filter(n => n !== srv.nome) : [...prev, srv.nome])}
+                    >
+                      <Text style={[s.chipT, on && s.chipTOn]}>{on ? '✓ ' : ''}{srv.nome}</Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
+          </>
+        )}
+
+        {/* 12. Redes Sociais */}
         <Text style={s.sectionLabel}>Redes Sociais</Text>
         <View style={s.card}>
           <Text style={s.fieldLbl}>Instagram</Text>
