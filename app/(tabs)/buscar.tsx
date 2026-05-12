@@ -56,12 +56,12 @@ const PROFISSOES: Record<string, { key: string; label: string }[]> = {
 }
 
 const CATEGORIAS: Record<string, { label: string; cor: string }> = {
-  clinico:       { label: 'Clínico e Profissional Técnico', cor: '#00A880' },
-  tecnico:       { label: 'Técnicos e Auxiliares',          cor: '#1A6FD4' },
-  comercial:     { label: 'Comercial',                       cor: '#C49800' },
-  administrativo:{ label: 'Administrativo',                  cor: '#7B3FC4' },
-  marketing:     { label: 'Marketing e Criação',             cor: '#D4186A' },
-  formacao:      { label: 'Formação',                        cor: '#0891B2' },
+  clinico:        { label: 'Clínico e Profissional Técnico', cor: '#00A880' },
+  tecnico:        { label: 'Técnicos e Auxiliares',          cor: '#1A6FD4' },
+  comercial:      { label: 'Comercial',                       cor: '#C49800' },
+  administrativo: { label: 'Administrativo',                  cor: '#7B3FC4' },
+  marketing:      { label: 'Marketing e Criação',             cor: '#D4186A' },
+  formacao:       { label: 'Formação',                        cor: '#0891B2' },
 }
 
 const ESPECIALIDADES: Record<string, string[]> = {
@@ -150,12 +150,56 @@ const HABILIDADES: Record<string, Record<string, string[]>> = {
     'Digital':  ['Gestão de Redes Sociais','Criação de Conteúdo (Posts/Stories)','Resposta a Comentários/Directs'],
     'Produção': ['Edição de Vídeos','Fotografia de Portfólio','Gestão de Tráfego Pago'],
   },
-  'Designer Gráfico / UI':   { 'Produção': ['Edição de Vídeos','Fotografia de Portfólio','Criação de Conteúdo'] },
+  'Designer Gráfico / UI': {
+    'Digital':  ['Gestão de Redes Sociais','Criação de Conteúdo'],
+    'Produção': ['Edição de Vídeos','Fotografia de Portfólio'],
+  },
   'Filmmaker / Videomaker':  { 'Produção': ['Edição de Vídeos de Antes e Depois','Fotografia de Portfólio','Gestão de Tráfego Pago'] },
   'Social Media':            { 'Digital':  ['Gestão de Redes Sociais','Criação de Conteúdo (Posts/Stories)','Resposta a Comentários/Directs'] },
   'Gestor de Tráfego':       { 'Produção': ['Gestão de Tráfego Pago (Google/Meta)','Análise de Métricas','Criação de Campanhas'] },
-  'Estudante de Odontologia':{ 'Acadêmico':['Auxílio em Pesquisas','Organização de Eventos','Monitoria de Disciplinas'], 'Prático':['Estágio Observacional','Instrumentação em Clínicas','Organização de Materiais'] },
-  'Estudante de Prótese Dentária':{ 'Acadêmico':['Auxílio em Pesquisas','Organização de Eventos'], 'Prático':['Estágio Observacional','Organização de Materiais'] },
+  'Estudante de Odontologia': {
+    'Acadêmico': ['Auxílio em Pesquisas','Organização de Eventos','Monitoria de Disciplinas'],
+    'Prático':   ['Estágio Observacional','Instrumentação em Clínicas','Organização de Materiais'],
+  },
+  'Estudante de Prótese Dentária': {
+    'Acadêmico': ['Auxílio em Pesquisas','Organização de Eventos'],
+    'Prático':   ['Estágio Observacional','Organização de Materiais'],
+  },
+}
+
+// opções de formação por profissão (espelha FORMACAO_POR_PROFISSAO do cadastro)
+const FORMACAO_OPCOES: Record<string, string[]> = {
+  'Cirurgião-Dentista':           ['Graduação em Odontologia','Implantodontia','Ortodontia','Endodontia','Periodontia','Odontopediatria','Estética','Cirurgia Oral','Prótese','HOF','Odontogeriatria'],
+  'Ortodontista':                 ['Graduação em Odontologia','Ortodontia','Alinhadores Invisíveis'],
+  'Implantodontista':             ['Graduação em Odontologia','Implantodontia','Enxerto Ósseo','All-on-4 / All-on-6'],
+  'Endodontista':                 ['Graduação em Odontologia','Endodontia'],
+  'Periodontista':                ['Graduação em Odontologia','Periodontia'],
+  'Odontopediatra':               ['Graduação em Odontologia','Odontopediatria'],
+  'Cirurgião Bucomaxilofacial':   ['Graduação em Odontologia','Cirurgia Oral','Cirurgia Ortognática'],
+  'Técnico em Prótese Dentária':  ['Técnico em Prótese Dentária','CAD/CAM','Cerâmica','Zircônia','Impressão 3D','Overdenture'],
+  'Técnico em Saúde Bucal (TSB)': ['Técnico em Saúde Bucal','Radiologia','Biossegurança','Atendimento ao Paciente'],
+  'Auxiliar em Saúde Bucal (ASB)':['Auxiliar em Saúde Bucal','Biossegurança','Atendimento ao Paciente','Primeiros Socorros'],
+  'Auxiliar de Prótese Dentária': ['Auxiliar de Prótese Dentária','Gesso','Acabamento','CAD/CAM Básico'],
+  'Gerente Comercial':            ['Graduação em Administração','MBA em Vendas','MBA em Gestão','Liderança e Coaching'],
+  'Representante Comercial':      ['Graduação em Administração','MBA em Vendas','Gestão Comercial'],
+  'Recepcionista / Secretária':   ['Secretariado / Administração','Atendimento ao Cliente','CRM','Faturamento de Convênios'],
+  'CRC / Call Center':            ['Curso de Atendimento ao Cliente','Scripts de Vendas','Retenção'],
+  'Consultor de Vendas':          ['Graduação em Administração','MBA em Vendas','Gestão Comercial'],
+  'Gerente Administrativo':       ['Graduação em Administração','MBA em Gestão','MBA em Saúde','Liderança'],
+  'Auxiliar Administrativo':      ['Técnico em Administração','Excel Avançado','Rotinas Administrativas'],
+  'Financeiro':                   ['Graduação em Ciências Contábeis','MBA em Finanças','Controladoria'],
+  'RH / Recursos Humanos':        ['Graduação em RH / Psicologia','MBA em Gestão de Pessoas','Coaching'],
+  'Contabilidade':                ['Graduação em Ciências Contábeis','MBA em Controladoria','Auditoria'],
+  'Marketing Digital':            ['Graduação em Marketing','MBA em Marketing Digital','Growth Hacking'],
+  'Designer Gráfico / UI':        ['Graduação em Design','UI/UX','Motion Graphics'],
+  'Filmmaker / Videomaker':       ['Curso de Videomaking / Cinema','Color Grading','Motion','Drone'],
+  'Fotógrafo':                    ['Curso de Fotografia','Fotografia Clínica','Lightroom','Photoshop'],
+  'Social Media':                 ['Curso de Social Media / Marketing','Copywriting','Reels','Engajamento'],
+  'Gestor de Tráfego':            ['Curso de Tráfego Pago','Google Ads','Meta Ads','Analytics'],
+  'Estudante de Odontologia':     ['Graduação em Odontologia (em curso)'],
+  'Estudante de Prótese Dentária':['Técnico em Prótese Dentária (em curso)'],
+  'Estudante de Administração':   ['Graduação em Administração (em curso)'],
+  'Estudante de Marketing':       ['Graduação em Marketing (em curso)'],
 }
 
 const DISPONIBILIDADES = [
@@ -217,6 +261,7 @@ function IBGEModal({ visible, title, data, onSelect, onClose, loading = false }:
 type FilterState = {
   tipo: string; especialidade: string; habilidade: string; disponibilidade: string
   estadoSigla: string; estadoNome: string; cidade: string
+  formacao: string; anos_min: string; anos_max: string
 }
 
 function FilterModal({ visible, initial, onApply, onClose }: {
@@ -232,6 +277,9 @@ function FilterModal({ visible, initial, onApply, onClose }: {
   const [estadoSigla, setEstadoSigla] = useState(initial.estadoSigla)
   const [estadoNome, setEstadoNome] = useState(initial.estadoNome)
   const [cidade, setCidade] = useState(initial.cidade)
+  const [formacao, setFormacao] = useState(initial.formacao)
+  const [anos_min, setAnosMin] = useState(initial.anos_min)
+  const [anos_max, setAnosMax] = useState(initial.anos_max)
 
   const [estados, setEstados] = useState<any[]>([])
   const [cidades, setCidades] = useState<any[]>([])
@@ -239,12 +287,12 @@ function FilterModal({ visible, initial, onApply, onClose }: {
   const [cidadeModal, setCidadeModal] = useState(false)
   const [loadingCidades, setLoadingCidades] = useState(false)
 
-  // Sync with initial when modal opens
   useEffect(() => {
     if (visible) {
       setTipo(initial.tipo); setEspecialidade(initial.especialidade)
       setHabilidade(initial.habilidade); setDisponibilidade(initial.disponibilidade)
       setEstadoSigla(initial.estadoSigla); setEstadoNome(initial.estadoNome); setCidade(initial.cidade)
+      setFormacao(initial.formacao); setAnosMin(initial.anos_min); setAnosMax(initial.anos_max)
     }
   }, [visible])
 
@@ -269,21 +317,23 @@ function FilterModal({ visible, initial, onApply, onClose }: {
   const clearEstado = () => { setEstadoSigla(''); setEstadoNome(''); setCidade(''); setCidades([]) }
 
   const selectTipo = (label: string) => {
-    setTipo(label); setEspecialidade(''); setHabilidade('')
+    setTipo(label); setEspecialidade(''); setHabilidade(''); setFormacao('')
   }
 
   const espOptions = tipo ? (ESPECIALIDADES[tipo] || []) : []
   const habCats = tipo ? (HABILIDADES[tipo] || {}) : {}
+  const formacaoOptions = tipo ? (FORMACAO_OPCOES[tipo] || []) : []
   const tipoColor = Object.values(CATEGORIAS).find(c =>
     Object.values(PROFISSOES).flat().some(p => p.label === tipo)
   )?.cor || Colors.primary
 
-  const activeCount = [tipo, especialidade, habilidade, disponibilidade, estadoSigla, cidade].filter(Boolean).length
+  const activeCount = [tipo, especialidade, habilidade, disponibilidade, estadoSigla, cidade, formacao, anos_min, anos_max].filter(Boolean).length
 
-  const apply = () => onApply({ tipo, especialidade, habilidade, disponibilidade, estadoSigla, estadoNome, cidade })
+  const apply = () => onApply({ tipo, especialidade, habilidade, disponibilidade, estadoSigla, estadoNome, cidade, formacao, anos_min, anos_max })
 
   const clearAll = () => {
     setTipo(''); setEspecialidade(''); setHabilidade(''); setDisponibilidade('')
+    setFormacao(''); setAnosMin(''); setAnosMax('')
     clearEstado()
   }
 
@@ -345,7 +395,7 @@ function FilterModal({ visible, initial, onApply, onClose }: {
             {cidade ? <TouchableOpacity style={s.clearX} onPress={() => setCidade('')}><Text style={s.clearXT}>×</Text></TouchableOpacity> : null}
           </View>
 
-          {/* Profissão — categorias idênticas ao cadastro */}
+          {/* Profissão */}
           <Text style={s.secLabel}>Profissão</Text>
           {Object.entries(CATEGORIAS).map(([catKey, cat]) => (
             <View key={catKey} style={s.catSection}>
@@ -369,7 +419,7 @@ function FilterModal({ visible, initial, onApply, onClose }: {
             </View>
           ))}
 
-          {/* Especialidade — só aparece quando há tipo selecionado */}
+          {/* Especialidade */}
           {espOptions.length > 0 && (
             <>
               <Text style={s.secLabel}>Especialidade</Text>
@@ -391,7 +441,7 @@ function FilterModal({ visible, initial, onApply, onClose }: {
             </>
           )}
 
-          {/* Habilidade — só aparece quando há tipo selecionado */}
+          {/* Habilidade */}
           {Object.keys(habCats).length > 0 && (
             <>
               <Text style={s.secLabel}>Habilidade</Text>
@@ -421,11 +471,65 @@ function FilterModal({ visible, initial, onApply, onClose }: {
             </>
           )}
 
-          {tipo && espOptions.length === 0 && Object.keys(habCats).length === 0 && (
+          {/* Formação Acadêmica — só aparece quando há tipo selecionado */}
+          {formacaoOptions.length > 0 && (
+            <>
+              <Text style={s.secLabel}>Formação Acadêmica</Text>
+              <Text style={s.secHint}>Selecione uma (opcional)</Text>
+              <View style={s.chipsRow}>
+                {formacaoOptions.map(f => {
+                  const on = formacao === f
+                  return (
+                    <TouchableOpacity key={f}
+                      style={[s.chip, on && { borderColor: tipoColor, backgroundColor: tipoColor + '18' }]}
+                      onPress={() => setFormacao(on ? '' : f)}>
+                      <Text style={[s.chipT, on && { color: tipoColor, fontWeight: '800' }]}>
+                        {on ? '✓ ' : ''}{f}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </>
+          )}
+
+          {tipo && espOptions.length === 0 && Object.keys(habCats).length === 0 && formacaoOptions.length === 0 && (
             <View style={s.emptyHint}>
-              <Text style={s.emptyHintT}>Nenhuma especialidade ou habilidade cadastrada para este cargo</Text>
+              <Text style={s.emptyHintT}>Nenhum dado adicional para este cargo</Text>
             </View>
           )}
+
+          {/* Anos de Experiência */}
+          <Text style={s.secLabel}>Anos de Experiência</Text>
+          <View style={s.anosRow}>
+            <View style={s.anosField}>
+              <Text style={s.anosLabel}>Mínimo</Text>
+              <TextInput
+                style={s.anosInput}
+                value={anos_min}
+                onChangeText={v => setAnosMin(v.replace(/[^0-9]/g, ''))}
+                placeholder="0"
+                placeholderTextColor={Colors.text3}
+                keyboardType="number-pad"
+                maxLength={2}
+              />
+            </View>
+            <View style={s.anosSep}>
+              <Text style={s.anosSepT}>—</Text>
+            </View>
+            <View style={s.anosField}>
+              <Text style={s.anosLabel}>Máximo</Text>
+              <TextInput
+                style={s.anosInput}
+                value={anos_max}
+                onChangeText={v => setAnosMax(v.replace(/[^0-9]/g, ''))}
+                placeholder="∞"
+                placeholderTextColor={Colors.text3}
+                keyboardType="number-pad"
+                maxLength={2}
+              />
+            </View>
+          </View>
 
           <View style={{ height: 16 }} />
         </ScrollView>
@@ -454,6 +558,7 @@ function FilterModal({ visible, initial, onApply, onClose }: {
 const EMPTY_FILTERS: FilterState = {
   tipo: '', especialidade: '', habilidade: '', disponibilidade: '',
   estadoSigla: '', estadoNome: '', cidade: '',
+  formacao: '', anos_min: '', anos_max: '',
 }
 
 export default function Buscar() {
@@ -470,15 +575,18 @@ export default function Buscar() {
 
   const activeCount = Object.entries(filters).filter(([k, v]) => v && k !== 'estadoNome').length
 
-  const buildParams = (p = 1) => {
+  const buildParams = (f: FilterState, p = 1) => {
     const params: Record<string, any> = { page: p, limit: 20 }
     if (q.trim()) params.q = q.trim()
-    if (filters.tipo) params.tipo = filters.tipo
-    if (filters.cidade) params.cidade = filters.cidade
-    if (filters.estadoSigla) params.estado = filters.estadoSigla
-    if (filters.especialidade) params.especialidade = filters.especialidade
-    if (filters.habilidade) params.habilidade = filters.habilidade
-    if (filters.disponibilidade) params.disponibilidade = filters.disponibilidade
+    if (f.tipo) params.tipo = f.tipo
+    if (f.cidade) params.cidade = f.cidade
+    if (f.estadoSigla) params.estado = f.estadoSigla
+    if (f.especialidade) params.especialidade = f.especialidade
+    if (f.habilidade) params.habilidade = f.habilidade
+    if (f.disponibilidade) params.disponibilidade = f.disponibilidade
+    if (f.formacao) params.formacao = f.formacao
+    if (f.anos_min) params.anos_min = f.anos_min
+    if (f.anos_max) params.anos_max = f.anos_max
     return params
   }
 
@@ -486,15 +594,7 @@ export default function Buscar() {
     const f = overrideFilters ?? filters
     setLoading(true); setSearched(true); setPage(1)
     try {
-      const params: Record<string, any> = { page: 1, limit: 20 }
-      if (q.trim()) params.q = q.trim()
-      if (f.tipo) params.tipo = f.tipo
-      if (f.cidade) params.cidade = f.cidade
-      if (f.estadoSigla) params.estado = f.estadoSigla
-      if (f.especialidade) params.especialidade = f.especialidade
-      if (f.habilidade) params.habilidade = f.habilidade
-      if (f.disponibilidade) params.disponibilidade = f.disponibilidade
-      const res = await api.get('/users/search', { params })
+      const res = await api.get('/users/search', { params: buildParams(f, 1) })
       setUsers(res.data.users || [])
       setHasMore(res.data.has_more || false)
     } catch (err) { console.log(err) }
@@ -506,7 +606,7 @@ export default function Buscar() {
     setLoadingMore(true)
     const next = page + 1
     try {
-      const res = await api.get('/users/search', { params: buildParams(next) })
+      const res = await api.get('/users/search', { params: buildParams(filters, next) })
       setUsers(prev => [...prev, ...(res.data.users || [])])
       setPage(next); setHasMore(res.data.has_more || false)
     } catch (err) { console.log(err) }
@@ -515,6 +615,13 @@ export default function Buscar() {
 
   const applyFilters = (f: FilterState) => {
     setFilters(f); setFilterModal(false); search(f)
+  }
+
+  const anosLabel = (f: FilterState) => {
+    if (f.anos_min && f.anos_max) return `${f.anos_min}–${f.anos_max} anos`
+    if (f.anos_min) return `${f.anos_min}+ anos`
+    if (f.anos_max) return `até ${f.anos_max} anos`
+    return ''
   }
 
   const renderUser = ({ item }: any) => {
@@ -594,7 +701,7 @@ export default function Buscar() {
       {activeCount > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.activeFiltersBar} contentContainerStyle={{ gap: 8, paddingHorizontal: 14, paddingVertical: 8 }}>
           {filters.tipo ? (
-            <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, tipo: '', especialidade: '', habilidade: '' })}>
+            <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, tipo: '', especialidade: '', habilidade: '', formacao: '' })}>
               <Text style={s.activeTagT}>{filters.tipo} ×</Text>
             </TouchableOpacity>
           ) : null}
@@ -606,6 +713,11 @@ export default function Buscar() {
           {filters.habilidade ? (
             <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, habilidade: '' })}>
               <Text style={s.activeTagT}>{filters.habilidade} ×</Text>
+            </TouchableOpacity>
+          ) : null}
+          {filters.formacao ? (
+            <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, formacao: '' })}>
+              <Text style={s.activeTagT}>{filters.formacao} ×</Text>
             </TouchableOpacity>
           ) : null}
           {filters.disponibilidade ? (
@@ -621,6 +733,11 @@ export default function Buscar() {
           {filters.cidade ? (
             <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, cidade: '' })}>
               <Text style={s.activeTagT}>{filters.cidade} ×</Text>
+            </TouchableOpacity>
+          ) : null}
+          {(filters.anos_min || filters.anos_max) ? (
+            <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, anos_min: '', anos_max: '' })}>
+              <Text style={s.activeTagT}>{anosLabel(filters)} ×</Text>
             </TouchableOpacity>
           ) : null}
           <TouchableOpacity style={s.clearAllTag} onPress={() => applyFilters(EMPTY_FILTERS)}>
@@ -707,7 +824,6 @@ const s = StyleSheet.create({
   clearAllTag: { backgroundColor: Colors.bg, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 100, paddingHorizontal: 12, paddingVertical: 6 },
   clearAllTagT: { fontSize: 12, fontWeight: '700', color: Colors.text3 },
 
-  // Results
   card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
   av: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   avT: { color: '#fff', fontWeight: '800', fontSize: 18 },
@@ -767,6 +883,18 @@ const s = StyleSheet.create({
 
   emptyHint: { padding: 16, backgroundColor: '#fff', borderRadius: 12, marginTop: 8, alignItems: 'center' },
   emptyHintT: { fontSize: 13, color: Colors.text3, textAlign: 'center' },
+
+  // Anos de experiência
+  anosRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  anosField: { flex: 1 },
+  anosLabel: { fontSize: 11, fontWeight: '700', color: Colors.text3, marginBottom: 6 },
+  anosInput: {
+    backgroundColor: '#fff', borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13,
+    fontSize: 16, fontWeight: '700', color: Colors.text, textAlign: 'center',
+  },
+  anosSep: { paddingTop: 22 },
+  anosSepT: { fontSize: 18, color: Colors.text3, fontWeight: '300' },
 
   // Seletores IBGE
   selectorRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
