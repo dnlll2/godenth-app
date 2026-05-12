@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  TextInput, ActivityIndicator, Platform, ScrollView,
+  TextInput, ActivityIndicator, Platform, ScrollView, Modal,
 } from 'react-native'
 import { router } from 'expo-router'
 import api from '../../services/api'
@@ -27,15 +27,75 @@ const DISP_COR: Record<string, string> = {
   parceria: '#7B3FC4', explorando: '#7A9E8E',
 }
 
+// ── IBGEModal (mesmo padrão de editar-perfil) ─────────────────────────────────
+
+function IBGEModal({ visible, title, data, onSelect, onClose, loading = false }: {
+  visible: boolean; title: string; data: any[]; onSelect: (item: any) => void;
+  onClose: () => void; loading?: boolean
+}) {
+  const [busca, setBusca] = useState('')
+  const filtered = data.filter(d =>
+    (d.nome || d.sigla || '').toLowerCase().includes(busca.toLowerCase())
+  )
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={s.overlay}>
+        <View style={s.sheet}>
+          <View style={s.sheetHandle} />
+          <Text style={s.sheetTitle}>{title}</Text>
+          <TextInput
+            style={s.sheetSearch}
+            value={busca}
+            onChangeText={setBusca}
+            placeholder="Buscar..."
+            placeholderTextColor="#A0B8AC"
+            autoFocus
+          />
+          {loading ? (
+            <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={item => String(item.id)}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={s.listItem}
+                  onPress={() => { setBusca(''); onSelect(item) }}
+                >
+                  <Text style={s.listItemT}>{item.nome}</Text>
+                  {item.sigla ? <Text style={s.listItemSub}>{item.sigla}</Text> : null}
+                </TouchableOpacity>
+              )}
+            />
+          )}
+          <TouchableOpacity style={s.sheetClose} onPress={() => { setBusca(''); onClose() }}>
+            <Text style={s.sheetCloseT}>Fechar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
+// ── main ──────────────────────────────────────────────────────────────────────
+
 export default function Buscar() {
   const [q, setQ] = useState('')
   const [tipo, setTipo] = useState('')
   const [cidade, setCidade] = useState('')
-  const [estado, setEstado] = useState('')
+  const [estadoSigla, setEstadoSigla] = useState('')
+  const [estadoNome, setEstadoNome] = useState('')
   const [especialidade, setEspecialidade] = useState('')
   const [habilidade, setHabilidade] = useState('')
   const [disponibilidade, setDisponibilidade] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+
+  const [estados, setEstados] = useState<any[]>([])
+  const [cidades, setCidades] = useState<any[]>([])
+  const [estadoModal, setEstadoModal] = useState(false)
+  const [cidadeModal, setCidadeModal] = useState(false)
+  const [loadingCidades, setLoadingCidades] = useState(false)
 
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -44,12 +104,46 @@ export default function Buscar() {
   const [hasMore, setHasMore] = useState(false)
   const [searched, setSearched] = useState(false)
 
+  useEffect(() => { loadEstados() }, [])
+
+  const loadEstados = async () => {
+    try {
+      const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
+      setEstados(await res.json())
+    } catch { }
+  }
+
+  const loadCidades = async (sigla: string) => {
+    setLoadingCidades(true)
+    try {
+      const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${sigla}/municipios?orderBy=nome`)
+      setCidades(await res.json())
+    } catch { }
+    finally { setLoadingCidades(false) }
+  }
+
+  const selectEstado = (est: any) => {
+    setEstadoSigla(est.sigla)
+    setEstadoNome(est.nome)
+    setCidade('')
+    setCidades([])
+    setEstadoModal(false)
+    loadCidades(est.sigla)
+  }
+
+  const clearEstado = () => {
+    setEstadoSigla('')
+    setEstadoNome('')
+    setCidade('')
+    setCidades([])
+  }
+
   const buildParams = (p = 1) => {
     const params: Record<string, any> = { page: p, limit: 20 }
     if (q.trim()) params.q = q.trim()
     if (tipo) params.tipo = tipo
-    if (cidade.trim()) params.cidade = cidade.trim()
-    if (estado.trim()) params.estado = estado.trim().toUpperCase().slice(0, 2)
+    if (cidade) params.cidade = cidade
+    if (estadoSigla) params.estado = estadoSigla
     if (especialidade.trim()) params.especialidade = especialidade.trim()
     if (habilidade.trim()) params.habilidade = habilidade.trim()
     if (disponibilidade) params.disponibilidade = disponibilidade
@@ -82,11 +176,11 @@ export default function Buscar() {
   }
 
   const clearFilters = () => {
-    setTipo(''); setCidade(''); setEstado('')
+    setTipo(''); clearEstado()
     setEspecialidade(''); setHabilidade(''); setDisponibilidade('')
   }
 
-  const activeFiltersCount = [tipo, cidade, estado, especialidade, habilidade, disponibilidade].filter(Boolean).length
+  const activeFiltersCount = [tipo, cidade, estadoSigla, especialidade, habilidade, disponibilidade].filter(Boolean).length
 
   const renderUser = ({ item }: any) => {
     const dispCor = item.disponibilidade ? DISP_COR[item.disponibilidade] : null
@@ -180,20 +274,51 @@ export default function Buscar() {
 
       {showFilters && (
         <View style={s.filtersPanel}>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <View style={s.filterRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.filterLabel}>Cidade</Text>
-                <TextInput style={s.filterInput} value={cidade} onChangeText={setCidade}
-                  placeholder="ex: São Paulo" placeholderTextColor={Colors.text3} />
-              </View>
-              <View style={{ width: 80 }}>
-                <Text style={s.filterLabel}>Estado</Text>
-                <TextInput style={s.filterInput} value={estado} onChangeText={setEstado}
-                  placeholder="SP" maxLength={2} placeholderTextColor={Colors.text3} autoCapitalize="characters" />
-              </View>
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+            {/* Localização via IBGE */}
+            <Text style={s.filterLabel}>Estado</Text>
+            <View style={s.selectorRow}>
+              <TouchableOpacity
+                style={[s.selector, { flex: 1 }]}
+                onPress={() => setEstadoModal(true)}
+              >
+                <Text style={[s.selectorText, !estadoSigla && s.ph]} numberOfLines={1}>
+                  {estadoNome || 'Selecionar estado'}
+                </Text>
+                <Text style={s.selectorChevron}>›</Text>
+              </TouchableOpacity>
+              {estadoSigla ? (
+                <TouchableOpacity style={s.clearSelector} onPress={clearEstado}>
+                  <Text style={s.clearSelectorT}>×</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
-            <View style={s.filterRow}>
+
+            <Text style={[s.filterLabel, { marginTop: 10 }]}>Município</Text>
+            <View style={s.selectorRow}>
+              <TouchableOpacity
+                style={[s.selector, { flex: 1 }, !estadoSigla && s.selectorDisabled]}
+                onPress={() => estadoSigla && setCidadeModal(true)}
+                disabled={!estadoSigla}
+              >
+                <Text style={[s.selectorText, !cidade && s.ph]} numberOfLines={1}>
+                  {cidade || (estadoSigla ? 'Selecionar município' : 'Selecione o estado primeiro')}
+                </Text>
+                {loadingCidades
+                  ? <ActivityIndicator size="small" color={Colors.text3} />
+                  : <Text style={s.selectorChevron}>›</Text>
+                }
+              </TouchableOpacity>
+              {cidade ? (
+                <TouchableOpacity style={s.clearSelector} onPress={() => setCidade('')}>
+                  <Text style={s.clearSelectorT}>×</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {/* Especialidade e Habilidade */}
+            <View style={[s.filterRow, { marginTop: 10 }]}>
               <View style={{ flex: 1 }}>
                 <Text style={s.filterLabel}>Especialidade</Text>
                 <TextInput style={s.filterInput} value={especialidade} onChangeText={setEspecialidade}
@@ -240,9 +365,11 @@ export default function Buscar() {
 
             {activeFiltersCount > 0 && (
               <TouchableOpacity style={s.clearBtn} onPress={clearFilters}>
-                <Text style={s.clearBtnT}>Limpar filtros</Text>
+                <Text style={s.clearBtnT}>Limpar todos os filtros</Text>
               </TouchableOpacity>
             )}
+
+            <View style={{ height: 16 }} />
           </ScrollView>
         </View>
       )}
@@ -280,6 +407,23 @@ export default function Buscar() {
           }
         />
       )}
+
+      {/* IBGE Modals */}
+      <IBGEModal
+        visible={estadoModal}
+        title="Selecionar Estado"
+        data={estados}
+        onSelect={selectEstado}
+        onClose={() => setEstadoModal(false)}
+      />
+      <IBGEModal
+        visible={cidadeModal}
+        title="Selecionar Município"
+        data={cidades}
+        onSelect={(cid: any) => { setCidade(cid.nome); setCidadeModal(false) }}
+        onClose={() => setCidadeModal(false)}
+        loading={loadingCidades}
+      />
     </View>
   )
 }
@@ -325,7 +469,7 @@ const s = StyleSheet.create({
 
   filtersPanel: {
     backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: Colors.border,
-    paddingHorizontal: 16, paddingVertical: 14, maxHeight: 340,
+    paddingHorizontal: 16, paddingTop: 14, maxHeight: 400,
   },
   filterRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   filterLabel: { fontSize: 11, fontWeight: '800', color: Colors.text2, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
@@ -334,6 +478,25 @@ const s = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, color: Colors.text,
     backgroundColor: Colors.bg,
   },
+
+  // Seletores IBGE
+  selectorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+  selector: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.bg, borderRadius: 10, borderWidth: 1.5, borderColor: Colors.border,
+    paddingHorizontal: 12, paddingVertical: 12,
+  },
+  selectorDisabled: { opacity: 0.45 },
+  selectorText: { flex: 1, fontSize: 13, color: Colors.text, fontWeight: '600' },
+  selectorChevron: { fontSize: 20, color: Colors.text3 },
+  ph: { color: Colors.text3, fontWeight: '400' },
+  clearSelector: {
+    width: 36, height: 42, borderRadius: 10, borderWidth: 1.5,
+    borderColor: Colors.border, backgroundColor: Colors.bg,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  clearSelectorT: { fontSize: 18, color: Colors.text3, fontWeight: '700' },
+
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   chip: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 100, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: Colors.bg },
   chipOn: { borderColor: Colors.primary, backgroundColor: Colors.primary + '12' },
@@ -367,4 +530,25 @@ const s = StyleSheet.create({
   emptySub: { fontSize: 13, color: Colors.text3, textAlign: 'center', lineHeight: 20 },
   loadMoreBtn: { margin: 16, padding: 14, alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border },
   loadMoreT: { fontSize: 14, fontWeight: '700', color: Colors.text2 },
+
+  // IBGEModal
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.48)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: 20, paddingTop: 12, maxHeight: '82%',
+  },
+  sheetHandle: { width: 40, height: 4, backgroundColor: Colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: 18 },
+  sheetTitle: { fontSize: 18, fontWeight: '800', color: Colors.text, marginBottom: 14 },
+  sheetSearch: {
+    backgroundColor: Colors.bg, borderRadius: 12, padding: 12,
+    fontSize: 15, color: Colors.text, marginBottom: 12,
+  },
+  listItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: Colors.bg,
+  },
+  listItemT: { fontSize: 15, color: Colors.text, fontWeight: '600' },
+  listItemSub: { fontSize: 12, color: Colors.text3, fontWeight: '700' },
+  sheetClose: { backgroundColor: Colors.bg, borderRadius: 12, padding: 14, alignItems: 'center', marginVertical: 14 },
+  sheetCloseT: { fontSize: 14, fontWeight: '800', color: Colors.text2 },
 })
