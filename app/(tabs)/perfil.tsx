@@ -4,6 +4,7 @@ import { router, useFocusEffect } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
+import { PlanColors } from '../../constants/colors'
 
 const API_BASE = 'https://godenth-api-production.up.railway.app'
 
@@ -49,6 +50,8 @@ export default function Perfil() {
   const [addDesc, setAddDesc] = useState('')
   const [addUri, setAddUri] = useState<string | null>(null)
   const [addSaving, setAddSaving] = useState(false)
+  const [myPages, setMyPages] = useState<any[]>([])
+  const [pagesLoaded, setPagesLoaded] = useState(false)
 
   const loadProfile = async () => {
     try {
@@ -58,7 +61,12 @@ export default function Perfil() {
     finally { setLoading(false) }
   }
 
-  useFocusEffect(useCallback(() => { loadProfile() }, []))
+  useFocusEffect(useCallback(() => {
+    loadProfile()
+    api.get('/pages/my')
+      .then(r => { setMyPages(r.data.pages || []); setPagesLoaded(true) })
+      .catch(() => setPagesLoaded(true))
+  }, []))
 
   useEffect(() => {
     if (aba === 'Portfólio' && user?.id && portfolio.length === 0) {
@@ -143,8 +151,43 @@ export default function Perfil() {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>💼 Plano</Text>
-        <Text style={styles.cardText}>{profile?.plano === 'gratuito' ? '🆓 Gratuito' : profile?.plano === 'premium' ? '⚡ Premium' : '⭐ Black'}</Text>
+        <Text style={[styles.cardText, { color: PlanColors[profile?.plano as keyof typeof PlanColors] || '#7A9E8E', fontWeight: '700' }]}>
+          {profile?.plano === 'gratuito' ? '🆓 Gratuito' : profile?.plano === 'premium' ? '⚡ Premium' : '⭐ Black'}
+        </Text>
       </View>
+
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>🏢 Minhas páginas</Text>
+          <TouchableOpacity onPress={() => router.push('/criar-pagina' as any)}>
+            <Text style={styles.cardAction}>+ Criar</Text>
+          </TouchableOpacity>
+        </View>
+        {!pagesLoaded ? (
+          <ActivityIndicator color="#00A880" size="small" />
+        ) : myPages.length === 0 ? (
+          <TouchableOpacity onPress={() => router.push('/criar-pagina' as any)}>
+            <Text style={styles.emptyCardT}>Crie uma página para sua empresa →</Text>
+          </TouchableOpacity>
+        ) : myPages.map(p => (
+          <TouchableOpacity key={p.id} style={styles.pageRow} onPress={() => router.push(`/pagina/${p.id}` as any)}>
+            <View style={[styles.pageInitial, { backgroundColor: p.cor || '#00A880' }]}>
+              <Text style={styles.pageInitialT}>{p.nome?.charAt(0) || 'P'}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.pageNome} numberOfLines={1}>{p.nome}</Text>
+              <Text style={styles.pageCat}>{p.categoria}</Text>
+            </View>
+            <Text style={styles.pageArrow}>›</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {profile?.plano === 'black' && (
+        <TouchableOpacity style={styles.adminBtn} onPress={() => router.push('/admin' as any)}>
+          <Text style={styles.adminBtnT}>⭐ Painel Admin</Text>
+        </TouchableOpacity>
+      )}
     </View>
   )
 
@@ -462,6 +505,16 @@ const styles = StyleSheet.create({
   formacaoAno: { fontSize: 11, color: '#7A9E8E', marginTop: 2 },
   emptyCard: { backgroundColor: '#fff', borderRadius: 14, padding: 20, borderWidth: 2, borderColor: '#D0E8DA', borderStyle: 'dashed', alignItems: 'center' },
   emptyCardT: { fontSize: 14, fontWeight: '700', color: '#00A880' },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  cardAction: { fontSize: 13, fontWeight: '800', color: '#00A880' },
+  pageRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#EEF7F2' },
+  pageInitial: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  pageInitialT: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  pageNome: { fontSize: 13, fontWeight: '700', color: '#0A1C14' },
+  pageCat: { fontSize: 11, color: '#7A9E8E', marginTop: 1 },
+  pageArrow: { fontSize: 20, color: '#D0E8DA', fontWeight: '300' },
+  adminBtn: { backgroundColor: '#0A1C14', borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#C49800' },
+  adminBtnT: { fontSize: 14, fontWeight: '800', color: '#C49800' },
   // portfolio
   addPortBtn: { backgroundColor: '#00A880', borderRadius: 12, padding: 13, alignItems: 'center', marginBottom: 12 },
   addPortBtnT: { color: '#fff', fontWeight: '800', fontSize: 14 },
