@@ -7,23 +7,23 @@ import { router, useLocalSearchParams } from 'expo-router'
 import api from '../../services/api'
 import { Colors } from '../../constants/colors'
 
-const CAT_COR: Record<string, string> = {
-  clinica: Colors.clinica,
-  laboratorio: Colors.laboratorio,
-  fabricante: Colors.fabricante,
-  ensino: Colors.ensino,
-  marketing: Colors.marketing,
-  gestao: Colors.gestao,
-  servicos: Colors.servicos,
-}
+const CATEGORIAS = [
+  { key: 'clinica', label: '🦷 Clínica Odontológica', cor: Colors.clinica },
+  { key: 'laboratorio', label: '🔬 Laboratório de Prótese', cor: Colors.laboratorio },
+  { key: 'fabricante', label: '🏭 Fabricante / Distribuidora', cor: Colors.fabricante },
+  { key: 'ensino', label: '🎓 Instituição de Ensino', cor: Colors.ensino },
+  { key: 'marketing', label: '📣 Marketing & Comunicação', cor: Colors.marketing },
+  { key: 'gestao', label: '💼 Gestão & Consultoria', cor: Colors.gestao },
+  { key: 'servicos', label: '🛠️ Serviços Profissionais', cor: Colors.servicos },
+]
 
 export default function EditarPagina() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  const [nome, setNome] = useState('')
   const [categoria, setCategoria] = useState('')
+  const [nome, setNome] = useState('')
   const [descricao, setDescricao] = useState('')
   const [cidade, setCidade] = useState('')
   const [estado, setEstado] = useState('')
@@ -31,14 +31,14 @@ export default function EditarPagina() {
   const [site, setSite] = useState('')
   const [cnpj, setCnpj] = useState('')
 
-  const cor = CAT_COR[categoria] || Colors.primary
+  const corAtual = CATEGORIAS.find(c => c.key === categoria)?.cor || Colors.primary
 
   useEffect(() => {
     api.get(`/pages/${id}`)
       .then(r => {
         const p = r.data
-        setNome(p.nome || '')
         setCategoria(p.categoria || '')
+        setNome(p.nome || '')
         setDescricao(p.descricao || '')
         setCidade(p.cidade || '')
         setEstado(p.estado || '')
@@ -54,7 +54,7 @@ export default function EditarPagina() {
     if (!nome.trim()) return Alert.alert('Atenção', 'O nome é obrigatório')
     setSaving(true)
     try {
-      await api.put(`/pages/${id}`, { nome, descricao, cidade, estado, telefone, site, cnpj, cor })
+      await api.put(`/pages/${id}`, { nome, descricao, cidade, estado, telefone, site, cnpj, cor: corAtual })
       Alert.alert('✅ Salvo!', 'As alterações foram salvas.', [
         { text: 'OK', onPress: () => router.back() },
       ])
@@ -69,7 +69,7 @@ export default function EditarPagina() {
 
   return (
     <View style={s.root}>
-      <View style={[s.header, { backgroundColor: cor }]}>
+      <View style={[s.header, { backgroundColor: corAtual }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <Text style={s.back}>←</Text>
         </TouchableOpacity>
@@ -78,6 +78,19 @@ export default function EditarPagina() {
       </View>
 
       <ScrollView contentContainerStyle={s.scroll}>
+        <Text style={s.sectionTitle}>Categoria</Text>
+        <View style={s.grid}>
+          {CATEGORIAS.map(c => (
+            <TouchableOpacity
+              key={c.key}
+              style={[s.catBtn, categoria === c.key && { borderColor: c.cor, backgroundColor: c.cor + '12' }]}
+              onPress={() => setCategoria(c.key)}
+            >
+              <Text style={[s.catLabel, categoria === c.key && { color: c.cor }]}>{c.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <Text style={s.sectionTitle}>Informações básicas</Text>
         <Text style={s.label}>Nome da página *</Text>
         <TextInput style={s.input} placeholder="Nome da empresa" placeholderTextColor={Colors.text3} value={nome} onChangeText={setNome} />
@@ -107,7 +120,7 @@ export default function EditarPagina() {
         <Text style={s.label}>CNPJ</Text>
         <TextInput style={s.input} placeholder="00.000.000/0000-00" placeholderTextColor={Colors.text3} value={cnpj} onChangeText={setCnpj} keyboardType="numeric" />
 
-        <TouchableOpacity style={[s.btn, { backgroundColor: cor }, saving && { opacity: 0.7 }]} onPress={handleSalvar} disabled={saving}>
+        <TouchableOpacity style={[s.btn, { backgroundColor: corAtual }, saving && { opacity: 0.7 }]} onPress={handleSalvar} disabled={saving}>
           {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Salvar alterações →</Text>}
         </TouchableOpacity>
       </ScrollView>
@@ -128,6 +141,9 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
   scroll: { padding: 16, paddingBottom: 80 },
   sectionTitle: { fontSize: 11, fontWeight: '800', color: Colors.text2, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 16, marginBottom: 10 },
+  grid: { gap: 8 },
+  catBtn: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 13, padding: 13, backgroundColor: Colors.white },
+  catLabel: { fontSize: 14, fontWeight: '600', color: Colors.text2 },
   label: { fontSize: 12, fontWeight: '700', color: Colors.text2, marginBottom: 6, marginTop: 4 },
   input: { backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12, padding: 13, fontSize: 14, color: Colors.text, marginBottom: 12 },
   textarea: { height: 100 },

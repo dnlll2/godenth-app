@@ -31,7 +31,7 @@ interface CadastroData {
   extras?: any[]
   especialidades?: string[]
   habilidades?: string[]
-  academico?: any[]
+  academico?: { [key: string]: any }
   nome?: string
   email?: string
   senha?: string

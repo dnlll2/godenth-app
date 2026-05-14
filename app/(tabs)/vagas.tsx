@@ -8,8 +8,6 @@ import { router, useFocusEffect } from 'expo-router'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 
-const API_BASE = 'https://godenth-api-production.up.railway.app'
-
 const CONTRATOS = ['CLT', 'PJ', 'Freelancer', 'Estágio']
 
 const CONTRATO_COR: Record<string, string> = {
@@ -18,6 +16,8 @@ const CONTRATO_COR: Record<string, string> = {
   Freelancer: '#C49800',
   Estágio: '#7B3FC4',
 }
+
+// ─── Modal: Criar Vaga ────────────────────────────────────────────────────────
 
 function CriarVagaModal({ visible, onClose, onCreated, myPages }: {
   visible: boolean; onClose: () => void; onCreated: () => void; myPages: any[]
@@ -114,6 +114,118 @@ function CriarVagaModal({ visible, onClose, onCreated, myPages }: {
   )
 }
 
+// ─── Modal: Detalhe da Vaga ───────────────────────────────────────────────────
+
+function VagaDetalheModal({ vaga, isOwner, onClose, onCandidatar }: {
+  vaga: any | null; isOwner: boolean; onClose: () => void; onCandidatar: (id: number) => Promise<void>
+}) {
+  const [loading, setLoading] = useState(false)
+  const [candidatou, setCandidatou] = useState(false)
+
+  if (!vaga) return null
+
+  const cor = CONTRATO_COR[vaga.contrato] || '#00A880'
+
+  const handleCandidatar = async () => {
+    setLoading(true)
+    try {
+      await onCandidatar(vaga.id)
+      setCandidatou(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Modal visible={!!vaga} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={dm.overlay}>
+        <View style={dm.sheet}>
+          <View style={dm.handle} />
+
+          {/* Header */}
+          <View style={dm.header}>
+            <TouchableOpacity onPress={onClose} style={dm.closeBtn}>
+              <Text style={dm.closeT}>✕</Text>
+            </TouchableOpacity>
+            <View style={[dm.badge, { backgroundColor: cor + '18', borderColor: cor + '55' }]}>
+              <Text style={[dm.badgeT, { color: cor }]}>{vaga.contrato}</Text>
+            </View>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={dm.scroll}>
+            {/* Cargo e empresa */}
+            <Text style={dm.cargo}>{vaga.cargo}</Text>
+            <TouchableOpacity onPress={() => { onClose(); router.push(`/pagina/${vaga.page_id}` as any) }}>
+              <Text style={[dm.empresa, { color: cor }]}>{vaga.empresa_nome} →</Text>
+            </TouchableOpacity>
+
+            {(vaga.cidade || vaga.estado) && (
+              <Text style={dm.loc}>📍 {[vaga.cidade, vaga.estado].filter(Boolean).join(', ')}</Text>
+            )}
+
+            {/* Detalhes */}
+            {vaga.salario && (
+              <View style={dm.row}>
+                <Text style={dm.rowLabel}>💰 Salário</Text>
+                <Text style={dm.rowValue}>{vaga.salario}</Text>
+              </View>
+            )}
+
+            {vaga.especialidade && (
+              <View style={dm.row}>
+                <Text style={dm.rowLabel}>⭐ Especialidade</Text>
+                <Text style={dm.rowValue}>{vaga.especialidade}</Text>
+              </View>
+            )}
+
+            {vaga.beneficios && (
+              <View style={[dm.row, { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}>
+                <Text style={dm.rowLabel}>🎁 Benefícios</Text>
+                <Text style={dm.rowValue}>{vaga.beneficios}</Text>
+              </View>
+            )}
+
+            {vaga.empresa_desc && (
+              <View style={[dm.row, { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}>
+                <Text style={dm.rowLabel}>🏢 Sobre a empresa</Text>
+                <Text style={dm.rowValue}>{vaga.empresa_desc}</Text>
+              </View>
+            )}
+
+            <Text style={dm.data}>
+              Publicada em {new Date(vaga.created_at).toLocaleDateString('pt-BR')}
+            </Text>
+          </ScrollView>
+
+          {/* Botão */}
+          {isOwner ? (
+            <View style={dm.ownerNote}>
+              <Text style={dm.ownerNoteT}>Você é o dono desta vaga</Text>
+            </View>
+          ) : candidatou ? (
+            <View style={[dm.candidatarBtn, { backgroundColor: '#059669' }]}>
+              <Text style={dm.candidatarBtnT}>✓ Candidatura enviada!</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[dm.candidatarBtn, { backgroundColor: cor }, loading && { opacity: 0.7 }]}
+              onPress={handleCandidatar}
+              disabled={loading}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={dm.candidatarBtnT}>Candidatar-se →</Text>
+              }
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
+// ─── Tela principal ───────────────────────────────────────────────────────────
+
 export default function Vagas() {
   const [vagas, setVagas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -122,6 +234,7 @@ export default function Vagas() {
   const [busca, setBusca] = useState('')
   const [myPages, setMyPages] = useState<any[]>([])
   const [criarModal, setCriarModal] = useState(false)
+  const [selectedVaga, setSelectedVaga] = useState<any | null>(null)
   const { user } = useAuthStore()
 
   const loadVagas = async () => {
@@ -142,24 +255,22 @@ export default function Vagas() {
   useFocusEffect(useCallback(() => { setLoading(true); loadVagas() }, [filtro, busca]))
 
   const candidatar = async (vagaId: number) => {
-    try {
-      await api.post(`/vagas/${vagaId}/candidatar`, { respostas: [] })
-      Alert.alert('✅ Candidatura enviada!', 'Sua candidatura foi registrada com sucesso.')
-    } catch (err: any) {
-      Alert.alert('Aviso', err.response?.data?.error || 'Erro ao candidatar')
-    }
+    await api.post(`/vagas/${vagaId}/candidatar`, { respostas: [] })
+      .then(() => Alert.alert('✅ Candidatura enviada!', 'Sua candidatura foi registrada com sucesso.'))
+      .catch((err: any) => {
+        const msg = err.response?.data?.error || 'Erro ao candidatar'
+        Alert.alert('Aviso', msg)
+        throw err
+      })
   }
+
+  const isOwnerOf = (vaga: any) => myPages.some(p => p.id === vaga.page_id)
 
   const renderVaga = ({ item }: any) => {
     const cor = CONTRATO_COR[item.contrato] || '#00A880'
-    const isOwner = myPages.some(p => p.id === item.page_id)
 
     return (
-      <TouchableOpacity
-        style={s.card}
-        onPress={() => router.push(`/pagina/${item.page_id}` as any)}
-        activeOpacity={0.88}
-      >
+      <TouchableOpacity style={s.card} onPress={() => setSelectedVaga(item)} activeOpacity={0.88}>
         <View style={[s.stripe, { backgroundColor: cor }]} />
         <View style={s.cardBody}>
           <View style={s.topRow}>
@@ -184,18 +295,9 @@ export default function Vagas() {
             {item.salario ? <Text style={s.info}>💰 {item.salario}</Text> : null}
           </View>
 
-          {item.beneficios ? <Text style={s.beneficios}>{item.beneficios}</Text> : null}
-
           <View style={s.footer}>
             <Text style={s.data}>{new Date(item.created_at).toLocaleDateString('pt-BR')}</Text>
-            {!isOwner && (
-              <TouchableOpacity
-                style={[s.btn, { backgroundColor: cor }]}
-                onPress={() => candidatar(item.id)}
-              >
-                <Text style={s.btnT}>Candidatar →</Text>
-              </TouchableOpacity>
-            )}
+            <Text style={[s.verDetalhes, { color: cor }]}>Ver detalhes →</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -232,7 +334,7 @@ export default function Vagas() {
         {['', ...CONTRATOS].map(c => (
           <TouchableOpacity
             key={c || 'todos'}
-            style={[s.filtro, filtro === c && s.filtroOn, filtro === c && c && { backgroundColor: CONTRATO_COR[c], borderColor: CONTRATO_COR[c] }]}
+            style={[s.filtro, filtro === c && s.filtroOn, filtro === c && c ? { backgroundColor: CONTRATO_COR[c], borderColor: CONTRATO_COR[c] } : undefined]}
             onPress={() => setFiltro(c)}
           >
             <Text style={[s.filtroT, filtro === c && s.filtroTOn]}>{c || 'Todos'}</Text>
@@ -269,9 +371,18 @@ export default function Vagas() {
         onCreated={() => { setCriarModal(false); setLoading(true); loadVagas() }}
         myPages={myPages}
       />
+
+      <VagaDetalheModal
+        vaga={selectedVaga}
+        isOwner={selectedVaga ? isOwnerOf(selectedVaga) : false}
+        onClose={() => setSelectedVaga(null)}
+        onCandidatar={candidatar}
+      />
     </View>
   )
 }
+
+// ─── Estilos ──────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#007A6E' },
@@ -299,11 +410,36 @@ const s = StyleSheet.create({
   esp: { fontSize: 12, color: '#3A6550', fontWeight: '600', marginBottom: 8 },
   infoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 6 },
   info: { fontSize: 12, color: '#7A9E8E' },
-  beneficios: { fontSize: 12, color: '#7A9E8E', fontStyle: 'italic', marginBottom: 8 },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 1, borderTopColor: '#EEF7F2', marginTop: 4 },
   data: { fontSize: 11, color: '#7A9E8E', fontWeight: '600' },
-  btn: { borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
-  btnT: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  verDetalhes: { fontSize: 12, fontWeight: '800' },
+})
+
+const dm = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.52)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: 20, paddingTop: 12, paddingBottom: Platform.OS === 'ios' ? 36 : 20,
+    maxHeight: '88%',
+  },
+  handle: { width: 40, height: 4, backgroundColor: '#D0E8DA', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  closeBtn: { padding: 4 },
+  closeT: { fontSize: 18, color: '#7A9E8E', fontWeight: '700' },
+  badge: { borderWidth: 1, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 6 },
+  badgeT: { fontSize: 12, fontWeight: '800' },
+  scroll: { paddingBottom: 16 },
+  cargo: { fontSize: 22, fontWeight: '900', color: '#0A1C14', marginBottom: 4 },
+  empresa: { fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  loc: { fontSize: 13, color: '#7A9E8E', marginBottom: 16 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#EEF7F2', gap: 12 },
+  rowLabel: { fontSize: 12, fontWeight: '800', color: '#7A9E8E', textTransform: 'uppercase', letterSpacing: 0.5 },
+  rowValue: { fontSize: 14, fontWeight: '600', color: '#0A1C14', flex: 1, textAlign: 'right' },
+  data: { fontSize: 12, color: '#AECEBE', marginTop: 16, textAlign: 'center' },
+  candidatarBtn: { borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8 },
+  candidatarBtnT: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  ownerNote: { backgroundColor: '#EEF7F2', borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8 },
+  ownerNoteT: { fontSize: 14, fontWeight: '700', color: '#7A9E8E' },
 })
 
 const cm = StyleSheet.create({
