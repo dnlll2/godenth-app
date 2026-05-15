@@ -2,6 +2,7 @@ import { useCallback, useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, Modal, TextInput } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 import { PlanColors } from '../../constants/colors'
@@ -127,6 +128,11 @@ export default function Perfil() {
     router.replace('/(auth)/login')
   }
 
+  const handleVerOnboarding = async () => {
+    await AsyncStorage.removeItem('godenth_onboarding_seen')
+    router.replace('/onboarding')
+  }
+
   if (loading) return <View style={styles.center}><ActivityIndicator color="#00A880" /></View>
 
   const tipoCor = TIPO_CORES[profile?.tipo_profissional] || '#007A6E'
@@ -188,6 +194,11 @@ export default function Perfil() {
           <Text style={styles.adminBtnT}>⚙️ Administração</Text>
         </TouchableOpacity>
       )}
+
+      {/* TEMP: botão de teste do onboarding */}
+      <TouchableOpacity style={styles.debugBtn} onPress={handleVerOnboarding}>
+        <Text style={styles.debugBtnT}>🎬 Ver Onboarding</Text>
+      </TouchableOpacity>
     </View>
   )
 
@@ -515,6 +526,8 @@ const styles = StyleSheet.create({
   pageArrow: { fontSize: 20, color: '#D0E8DA', fontWeight: '300' },
   adminBtn: { backgroundColor: '#0A1C14', borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#C49800' },
   adminBtnT: { fontSize: 14, fontWeight: '800', color: '#C49800' },
+  debugBtn: { backgroundColor: '#EEF7F2', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1.5, borderColor: '#00A880', borderStyle: 'dashed' },
+  debugBtnT: { fontSize: 13, fontWeight: '700', color: '#00A880' },
   // portfolio
   addPortBtn: { backgroundColor: '#00A880', borderRadius: 12, padding: 13, alignItems: 'center', marginBottom: 12 },
   addPortBtnT: { color: '#fff', fontWeight: '800', fontSize: 14 },
