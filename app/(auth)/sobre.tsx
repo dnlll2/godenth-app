@@ -13,6 +13,7 @@ export default function Sobre() {
   const finalizar = async () => {
     setLoading(true)
     try {
+      console.log('[sobre] chamando register com:', { nome: cadastroData.nome, email: cadastroData.email })
       await register({
         nome: cadastroData.nome,
         email: cadastroData.email,
@@ -25,9 +26,11 @@ export default function Sobre() {
         especialidades: cadastroData.especialidades || [],
         habilidades: cadastroData.habilidades || [],
       })
+      console.log('[sobre] register ok — redirecionando para /onboarding')
       router.replace('/onboarding')
     } catch (err: any) {
       const msg = err?.response?.data?.error || 'Erro ao criar conta. Tente novamente.'
+      console.log('[sobre] erro no register:', err?.response?.data || err?.message)
       Alert.alert('Erro', msg)
     } finally {
       setLoading(false)
