@@ -635,7 +635,7 @@ export default function Buscar() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text style={s.nome} numberOfLines={1}>{item.nome}</Text>
             {item.plano === 'premium' && <View style={s.planoBadge}><Text style={s.planoBadgeT}>PRO</Text></View>}
-            {item.plano === 'black' && <View style={[s.planoBadge, { backgroundColor: Colors.gold + '22', borderColor: Colors.gold + '60' }]}><Text style={[s.planoBadgeT, { color: Colors.gold }]}>BLACK</Text></View>}
+            {item.plano === 'black' && <View style={[s.planoBadge, { backgroundColor: Colors.gold + '22', borderColor: Colors.gold + '60' }]}><Text style={[s.planoBadgeT, { color: Colors.gold }]}>Admin</Text></View>}
           </View>
           <Text style={s.tipo} numberOfLines={1}>{item.tipo_profissional}</Text>
           {item.especialidade ? <Text style={s.esp} numberOfLines={1}>{item.especialidade}</Text> : null}

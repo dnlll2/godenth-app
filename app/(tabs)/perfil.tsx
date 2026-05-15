@@ -152,7 +152,7 @@ export default function Perfil() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>💼 Plano</Text>
         <Text style={[styles.cardText, { color: PlanColors[profile?.plano as keyof typeof PlanColors] || '#7A9E8E', fontWeight: '700' }]}>
-          {profile?.plano === 'gratuito' ? '🆓 Gratuito' : profile?.plano === 'premium' ? '⚡ Premium' : '⭐ Black'}
+          {profile?.plano === 'gratuito' ? '🆓 Gratuito' : profile?.plano === 'premium' ? '⚡ Premium' : 'Administrador'}
         </Text>
       </View>
 
@@ -185,7 +185,7 @@ export default function Perfil() {
 
       {profile?.plano === 'black' && (
         <TouchableOpacity style={styles.adminBtn} onPress={() => router.push('/admin' as any)}>
-          <Text style={styles.adminBtnT}>⭐ Painel Admin</Text>
+          <Text style={styles.adminBtnT}>⚙️ Administração</Text>
         </TouchableOpacity>
       )}
     </View>
