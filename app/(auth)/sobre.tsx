@@ -25,7 +25,7 @@ export default function Sobre() {
         especialidades: cadastroData.especialidades || [],
         habilidades: cadastroData.habilidades || [],
       })
-      router.replace('/')
+      router.replace('/onboarding')
     } catch (err: any) {
       const msg = err?.response?.data?.error || 'Erro ao criar conta. Tente novamente.'
       Alert.alert('Erro', msg)
