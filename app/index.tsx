@@ -9,9 +9,11 @@ export default function Index() {
   const { isAuthenticated, isLoading } = useAuthStore()
 
   useEffect(() => {
+    console.log('[index] useEffect — isLoading:', isLoading, '| isAuthenticated:', isAuthenticated)
     if (!isLoading) {
       if (isAuthenticated) {
         AsyncStorage.getItem('godenth_onboarding_seen').then(seen => {
+          console.log('[index] godenth_onboarding_seen:', seen)
           if (seen) {
             router.replace('/(tabs)/feed')
           } else {

@@ -87,6 +87,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await AsyncStorage.setItem('godenth_token', token)
     await AsyncStorage.setItem('godenth_user', JSON.stringify(user))
     set({ user, token, isAuthenticated: true })
+    console.log('[authStore] register concluído — isAuthenticated: true')
   },
 
   logout: async () => {
