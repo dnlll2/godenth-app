@@ -4,8 +4,18 @@ import {
   TextInput, ActivityIndicator, Platform, ScrollView, Modal,
 } from 'react-native'
 import { router } from 'expo-router'
+import Svg, { Circle, Line } from 'react-native-svg'
 import api from '../../services/api'
 import { Colors } from '../../constants/colors'
+
+function SearchBoxIcon() {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 24 24">
+      <Circle cx="10.5" cy="10.5" r="6.5" stroke={Colors.text3} strokeWidth={2} fill="none" strokeLinecap="round" />
+      <Line x1="15.5" y1="15.5" x2="21" y2="21" stroke={Colors.text3} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  )
+}
 
 // ── dados espelhados do cadastro ──────────────────────────────────────────────
 
@@ -668,7 +678,7 @@ export default function Buscar() {
 
       <View style={s.searchRow}>
         <View style={s.searchBox}>
-          <Text style={s.searchIcon}>🔍</Text>
+          <View style={{ marginRight: 6 }}><SearchBoxIcon /></View>
           <TextInput
             style={s.searchInput}
             placeholder="Nome, especialidade, habilidade..."
@@ -801,7 +811,6 @@ const s = StyleSheet.create({
     backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border,
     paddingHorizontal: 12, height: 44,
   },
-  searchIcon: { fontSize: 15, marginRight: 6 },
   searchInput: { flex: 1, fontSize: 14, color: Colors.text, height: 44 },
   filterBtn: {
     width: 44, height: 44, borderRadius: 12, borderWidth: 1.5,

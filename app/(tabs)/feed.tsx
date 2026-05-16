@@ -6,8 +6,31 @@ import {
 } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
+import Svg, { Circle, Line, Path } from 'react-native-svg'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
+
+const HIC = '#fff'
+const HIB = { stroke: HIC, strokeWidth: 1.7, fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+
+function HeaderSearch() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24">
+      <Circle cx="10.5" cy="10.5" r="6.5" {...HIB} />
+      <Line x1="15.5" y1="15.5" x2="21" y2="21" {...HIB} />
+    </Svg>
+  )
+}
+
+function HeaderBell() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24">
+      <Path d="M10,7 C10,5.3 14,5.3 14,7" {...HIB} />
+      <Path d="M5,17 C5,12 7.5,8 12,8 C16.5,8 19,12 19,17 L20,19 L4,19 Z" {...HIB} />
+      <Path d="M10,19 C10,20.7 14,20.7 14,19" {...HIB} />
+    </Svg>
+  )
+}
 
 const API_BASE = 'https://godenth-api-production.up.railway.app'
 
@@ -287,10 +310,10 @@ export default function Feed() {
             <Text style={{ fontSize: 20, lineHeight: 22 }}>+</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.ico} onPress={() => router.push('/(tabs)/buscar')}>
-            <Text style={{ fontSize: 18 }}>🔍</Text>
+            <HeaderSearch />
           </TouchableOpacity>
           <TouchableOpacity style={styles.ico} onPress={() => { setUnreadCount(0); router.push('/(tabs)/notificacoes') }}>
-            <Text style={{ fontSize: 18 }}>🔔</Text>
+            <HeaderBell />
             {unreadCount > 0 && (
               <View style={styles.notifBadge}>
                 <Text style={styles.notifBadgeT}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
