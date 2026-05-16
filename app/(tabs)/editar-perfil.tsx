@@ -336,6 +336,10 @@ export default function EditarPerfil() {
 
   useEffect(() => { loadProfile(); loadEstados() }, [])
 
+  useEffect(() => {
+    if (abaParam && validAbas.includes(abaParam)) setAbaAtiva(abaParam)
+  }, [abaParam])
+
   const loadProfile = async () => {
     try {
       const res = await api.get('/users/me')

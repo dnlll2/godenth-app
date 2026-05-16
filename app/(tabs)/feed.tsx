@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   RefreshControl, ActivityIndicator, Modal, TextInput,
-  KeyboardAvoidingView, Platform, ScrollView, Image, Alert,
+  KeyboardAvoidingView, Platform, ScrollView, Image, Alert, Share,
 } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import Svg, { Circle, Line, Path } from 'react-native-svg'
@@ -174,11 +174,9 @@ function PostModal({ visible, onClose, onPublished, user }: {
 
   useEffect(() => {
     if (visible) {
-      const uc = user?.cidade || ''
-      const ue = user?.estado || ''
-      setCidade(uc)
-      setEstado(ue)
-      setLocLocked(!!(uc || ue))
+      setCidade(user?.cidade || '')
+      setEstado(user?.estado || '')
+      setLocLocked(true)
     }
   }, [visible])
 
@@ -357,7 +355,7 @@ function PostModal({ visible, onClose, onPublished, user }: {
                         📍 {[cidade, estado].filter(Boolean).join(' · ') || 'Não informada'}
                       </Text>
                       <TouchableOpacity style={pm.locUnlockBtn} onPress={handleUnlock}>
-                        <Text style={pm.locUnlockT}>🔓 Trocar</Text>
+                        <Text style={pm.locUnlockT}>🔒</Text>
                       </TouchableOpacity>
                     </View>
                   ) : (
@@ -504,7 +502,22 @@ export default function Feed() {
               <TouchableOpacity
                 hitSlop={{ top: 8, bottom: 8, left: 12, right: 8 }}
                 onPress={() => Alert.alert('Publicação', 'O que deseja fazer?', [
-                  { text: 'Reportar conteúdo', style: 'destructive', onPress: () => Alert.alert('Obrigado', 'Publicação reportada. Vamos analisar em breve.') },
+                  {
+                    text: 'Reportar publicação',
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        await api.post(`/posts/${item.id}/report`)
+                        Alert.alert('Obrigado', 'Publicação reportada. Nossa equipe vai analisar em breve.')
+                      } catch {
+                        Alert.alert('Erro', 'Não foi possível reportar. Tente novamente.')
+                      }
+                    },
+                  },
+                  {
+                    text: 'Copiar link',
+                    onPress: () => Share.share({ message: `https://godenth.com/post/${item.id}` }),
+                  },
                   { text: 'Cancelar', style: 'cancel' },
                 ])}
               >

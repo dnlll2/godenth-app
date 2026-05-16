@@ -155,7 +155,7 @@ export default function Perfil() {
           <Text style={styles.cardText}>{profile.bio}</Text>
         </View>
       ) : (
-        <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil?aba=pessoal' as any)}>
+        <TouchableOpacity style={styles.emptyCard} onPress={() => router.push({ pathname: '/(tabs)/editar-perfil', params: { aba: 'pessoal' } } as any)}>
           <Text style={styles.emptyCardT}>+ Adicionar resumo profissional</Text>
         </TouchableOpacity>
       )}
@@ -219,7 +219,7 @@ export default function Perfil() {
         )}
 
         {especialidades.length === 0 && extras.length === 0 && (
-          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil?aba=experiencia' as any)}>
+          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push({ pathname: '/(tabs)/editar-perfil', params: { aba: 'experiencia' } } as any)}>
             <Text style={styles.emptyCardT}>+ Adicionar experiência</Text>
           </TouchableOpacity>
         )}
@@ -260,7 +260,7 @@ export default function Perfil() {
             </View>
           ))
         ) : (
-          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil?aba=formacao' as any)}>
+          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push({ pathname: '/(tabs)/editar-perfil', params: { aba: 'formacao' } } as any)}>
             <Text style={styles.emptyCardT}>+ Adicionar formação acadêmica</Text>
           </TouchableOpacity>
         )}
@@ -323,7 +323,7 @@ export default function Perfil() {
             </View>
           </View>
         ) : (
-          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil?aba=profissional' as any)}>
+          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push({ pathname: '/(tabs)/editar-perfil', params: { aba: 'profissional' } } as any)}>
             <Text style={styles.emptyCardT}>+ Adicionar habilidades</Text>
           </TouchableOpacity>
         )}
