@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  View, Text, ScrollView, FlatList, TouchableOpacity, StyleSheet,
   ActivityIndicator, Image, Linking, Platform, Alert,
   Modal, TextInput, KeyboardAvoidingView, Dimensions,
 } from 'react-native'
@@ -44,6 +44,18 @@ type ModalTipo = 'vaga' | 'curso' | 'treinamento' | 'palestra' | 'evento' | null
 function resolveUrl(url?: string | null) {
   if (!url) return null
   return url.startsWith('http') ? url : API_BASE + url
+}
+
+const maskDate = (val: string) => {
+  const n = val.replace(/\D/g, '').slice(0, 8)
+  if (n.length <= 2) return n
+  if (n.length <= 4) return `${n.slice(0, 2)}/${n.slice(2)}`
+  return `${n.slice(0, 2)}/${n.slice(2, 4)}/${n.slice(4)}`
+}
+const dateDisplayToIso = (display: string) => {
+  const p = display.split('/')
+  if (p.length !== 3 || p[2].length < 4) return ''
+  return `${p[2]}-${p[1]}-${p[0]}`
 }
 
 function timeAgo(dateStr: string) {
@@ -415,6 +427,69 @@ const TIPOS_ABREV_VAGA: Record<string, string> = {
   Recepcionista: 'Recep.', Marketing: 'Mkt',
 }
 
+const CARGOS_VAGA = [
+  'Cirurgião-Dentista', 'Técnico em Prótese Dentária', 'ASB', 'TSB',
+  'Recepcionista', 'Auxiliar Administrativo', 'Marketing', 'Gestor Comercial', 'TI',
+]
+
+const CARGO_PARA_OPCAO: Record<string, string> = {
+  'Cirurgião-Dentista': 'Cirurgião-Dentista',
+  'Técnico em Prótese Dentária': 'Técnico em Prótese Dentária',
+  'ASB': 'Auxiliar de Saúde Bucal (ASB)',
+  'TSB': 'Técnico em Saúde Bucal (TSB)',
+  'Recepcionista': 'Recepcionista',
+  'Marketing': 'Marketing',
+}
+
+// ─── Modal IBGE (reutilizável dentro de VagaModal) ───────────────────────────
+function VIBGEModal({ visible, title, data, onSelect, onClose, loading = false }: {
+  visible: boolean; title: string; data: any[]; onSelect: (item: any) => void; onClose: () => void; loading?: boolean
+}) {
+  const [busca, setBusca] = useState('')
+  const filtered = data.filter((d: any) =>
+    (d.nome || d.sigla || '').toLowerCase().includes(busca.toLowerCase())
+  )
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={m.overlay}>
+        <View style={[m.sheet, { maxHeight: '80%' }]}>
+          <View style={m.handle} />
+          <Text style={m.title}>{title}</Text>
+          <TextInput
+            style={[m.input, { marginBottom: 8 }]}
+            value={busca} onChangeText={setBusca}
+            placeholder="Buscar..." placeholderTextColor={Colors.text3} autoFocus
+          />
+          {loading ? (
+            <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={item => String(item.id)}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border }}
+                  onPress={() => { setBusca(''); onSelect(item) }}
+                >
+                  <Text style={{ fontSize: 15, color: Colors.text, fontWeight: '600' }}>{item.nome}</Text>
+                  {item.sigla && <Text style={{ fontSize: 12, color: Colors.text3 }}>{item.sigla}</Text>}
+                </TouchableOpacity>
+              )}
+            />
+          )}
+          <TouchableOpacity
+            style={{ backgroundColor: Colors.bg, borderRadius: 12, padding: 13, alignItems: 'center', marginTop: 8 }}
+            onPress={onClose}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text2 }}>Fechar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
 // ─── Modal: Vaga (4 etapas) ───────────────────────────────────────────────────
 function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
   visible: boolean; pageId: string; pageName: string; onClose: () => void; onCreated: () => void
@@ -438,9 +513,20 @@ function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
   const [perguntas, setPerguntas] = useState<string[]>([])
   const [novaPergunta, setNovaPergunta] = useState('')
   const [saving, setSaving] = useState(false)
+  const [cargoModal, setCargoModal] = useState(false)
+  const [estadoModal, setEstadoModal] = useState(false)
+  const [cidadeModal, setCidadeModal] = useState(false)
+  const [estados, setEstados] = useState<any[]>([])
+  const [cidades, setCidades] = useState<any[]>([])
+  const [loadingCidades, setLoadingCidades] = useState(false)
 
   useEffect(() => {
-    if (visible) api.get('/vagas/opcoes').then(r => setOpcoes(r.data.opcoes || {})).catch(() => {})
+    if (!visible) return
+    api.get('/vagas/opcoes').then(r => setOpcoes(r.data.opcoes || {})).catch(() => {})
+    if (estados.length === 0) {
+      fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
+        .then(r => r.json()).then(setEstados).catch(() => {})
+    }
   }, [visible])
 
   const reset = () => {
@@ -448,8 +534,21 @@ function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
     setCidade(''); setEstado(''); setPrazo(''); setDescricao(''); setBeneficios('')
     setTipoFiltro(''); setReqObrig([]); setReqDesej([])
     setNovoObrig(''); setNovoDesej(''); setPerguntas([]); setNovaPergunta('')
+    setCidades([])
   }
   const close = () => { reset(); onClose() }
+
+  const onSelectEstado = (e: any) => {
+    setEstado(e.sigla)
+    setCidade('')
+    setCidades([])
+    setEstadoModal(false)
+    setLoadingCidades(true)
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${e.sigla}/municipios?orderBy=nome`)
+      .then(r => r.json())
+      .then(data => { setCidades(data); setLoadingCidades(false) })
+      .catch(() => setLoadingCidades(false))
+  }
 
   const getChipState = (c: string) => reqObrig.includes(c) ? 'obrig' : reqDesej.includes(c) ? 'desej' : 'none'
   const toggleChip = (c: string) => {
@@ -476,8 +575,8 @@ function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
         page_id: parseInt(pageId), cargo: cargo.trim(), contrato,
         salario_min: salarioMin ? parseInt(salarioMin) : null,
         salario_max: salarioMax ? parseInt(salarioMax) : null,
-        cidade: cidade.trim() || null, estado: estado.trim().toUpperCase().slice(0, 2) || null,
-        prazo_candidatura: prazo.trim() || null,
+        cidade: cidade.trim() || null, estado: estado || null,
+        prazo_candidatura: dateDisplayToIso(prazo) || null,
         descricao: descricao.trim() || null, beneficios: beneficios.trim() || null,
         requisitos_obrigatorios: reqObrig, requisitos_desejaveis: reqDesej, perguntas,
       })
@@ -512,7 +611,9 @@ function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <Text style={m.subtitle}>Publicando por: {pageName}</Text>
               <Text style={m.label}>Cargo *</Text>
-              <TextInput style={m.input} placeholder="Ex: Cirurgião-Dentista" placeholderTextColor={Colors.text3} value={cargo} onChangeText={setCargo} />
+              <TouchableOpacity style={[m.input, { justifyContent: 'center' }]} onPress={() => setCargoModal(true)}>
+                <Text style={{ fontSize: 14, color: cargo ? Colors.text : Colors.text3 }}>{cargo || 'Selecionar cargo...'}</Text>
+              </TouchableOpacity>
               <Text style={m.label}>Tipo de contrato *</Text>
               <View style={m.chips}>
                 {TIPOS_CONTRATO.map(c => (
@@ -526,13 +627,23 @@ function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
                 <TextInput style={[m.input, { flex: 1 }]} placeholder="Mínimo" placeholderTextColor={Colors.text3} value={salarioMin} onChangeText={setSalarioMin} keyboardType="numeric" />
                 <TextInput style={[m.input, { flex: 1 }]} placeholder="Máximo" placeholderTextColor={Colors.text3} value={salarioMax} onChangeText={setSalarioMax} keyboardType="numeric" />
               </View>
-              <Text style={m.label}>Localização</Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TextInput style={[m.input, { flex: 2 }]} placeholder="Cidade" placeholderTextColor={Colors.text3} value={cidade} onChangeText={setCidade} />
-                <TextInput style={[m.input, { flex: 1 }]} placeholder="UF" placeholderTextColor={Colors.text3} value={estado} onChangeText={setEstado} maxLength={2} autoCapitalize="characters" />
-              </View>
+              <Text style={m.label}>Estado</Text>
+              <TouchableOpacity style={[m.input, { justifyContent: 'center' }]} onPress={() => setEstadoModal(true)}>
+                <Text style={{ fontSize: 14, color: estado ? Colors.text : Colors.text3 }}>
+                  {estado ? (estados.find(e => e.sigla === estado)?.nome || estado) : 'Selecionar estado...'}
+                </Text>
+              </TouchableOpacity>
+              <Text style={m.label}>Cidade</Text>
+              <TouchableOpacity
+                style={[m.input, { justifyContent: 'center', opacity: estado ? 1 : 0.4 }]}
+                onPress={() => { if (estado) setCidadeModal(true) }}
+              >
+                <Text style={{ fontSize: 14, color: cidade ? Colors.text : Colors.text3 }}>
+                  {cidade || (estado ? 'Selecionar cidade...' : 'Selecione o estado primeiro')}
+                </Text>
+              </TouchableOpacity>
               <Text style={m.label}>Prazo (opcional)</Text>
-              <TextInput style={m.input} placeholder="AAAA-MM-DD" placeholderTextColor={Colors.text3} value={prazo} onChangeText={setPrazo} />
+              <TextInput style={m.input} placeholder="DD/MM/AAAA" placeholderTextColor={Colors.text3} value={prazo} onChangeText={v => setPrazo(maskDate(v))} keyboardType="numeric" maxLength={10} />
               <Text style={m.label}>Descrição</Text>
               <TextInput style={[m.input, m.textarea]} placeholder="Descreva os requisitos…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={3} textAlignVertical="top" />
               <Text style={m.label}>Benefícios</Text>
@@ -675,8 +786,9 @@ function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
                 style={{ flex: 1, backgroundColor: Colors.primary, borderRadius: 12, padding: 13, alignItems: 'center' }}
                 onPress={() => {
                   if (step === 1) {
-                    if (!cargo.trim()) return Alert.alert('Atenção', 'Informe o cargo.')
+                    if (!cargo) return Alert.alert('Atenção', 'Selecione o cargo.')
                     if (!contrato) return Alert.alert('Atenção', 'Selecione o tipo de contrato.')
+                    setTipoFiltro(CARGO_PARA_OPCAO[cargo] || '')
                   }
                   setStep(step + 1)
                 }}
@@ -690,6 +802,54 @@ function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
             )}
           </View>
         </View>
+
+        {/* ── Cargo picker ──────────────────────────────────────────── */}
+        <Modal visible={cargoModal} transparent animationType="slide" onRequestClose={() => setCargoModal(false)}>
+          <View style={m.overlay}>
+            <View style={[m.sheet, { maxHeight: '70%' }]}>
+              <View style={m.handle} />
+              <Text style={m.title}>Cargo</Text>
+              <FlatList
+                data={CARGOS_VAGA}
+                keyExtractor={item => item}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border }}
+                    onPress={() => { setCargo(item); setCargoModal(false) }}
+                  >
+                    <Text style={{ fontSize: 15, color: Colors.text, fontWeight: '600' }}>{item}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+              <TouchableOpacity
+                style={{ backgroundColor: Colors.bg, borderRadius: 12, padding: 13, alignItems: 'center', marginTop: 8 }}
+                onPress={() => setCargoModal(false)}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text2 }}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ── IBGE Estado ───────────────────────────────────────────── */}
+        <VIBGEModal
+          visible={estadoModal}
+          title="Selecionar Estado"
+          data={estados}
+          onSelect={onSelectEstado}
+          onClose={() => setEstadoModal(false)}
+        />
+
+        {/* ── IBGE Cidade ───────────────────────────────────────────── */}
+        <VIBGEModal
+          visible={cidadeModal}
+          title="Selecionar Cidade"
+          data={cidades}
+          loading={loadingCidades}
+          onSelect={c => { setCidade(c.nome); setCidadeModal(false) }}
+          onClose={() => setCidadeModal(false)}
+        />
       </KeyboardAvoidingView>
     </Modal>
   )
