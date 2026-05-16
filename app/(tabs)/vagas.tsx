@@ -30,6 +30,32 @@ const TIPOS_ABREV: Record<string, string> = {
   Marketing: 'Mkt',
 }
 
+const CARGOS_VAGA = [
+  'Cirurgião-Dentista', 'Técnico em Prótese Dentária', 'ASB', 'TSB',
+  'Recepcionista', 'Auxiliar Administrativo', 'Marketing', 'Gestor Comercial', 'TI',
+]
+
+const CARGO_PARA_OPCAO: Record<string, string> = {
+  'Cirurgião-Dentista': 'Cirurgião-Dentista',
+  'Técnico em Prótese Dentária': 'Técnico em Prótese Dentária',
+  'ASB': 'Auxiliar de Saúde Bucal (ASB)',
+  'TSB': 'Técnico em Saúde Bucal (TSB)',
+  'Recepcionista': 'Recepcionista',
+  'Marketing': 'Marketing',
+}
+
+const maskDate = (val: string) => {
+  const n = val.replace(/\D/g, '').slice(0, 8)
+  if (n.length <= 2) return n
+  if (n.length <= 4) return `${n.slice(0, 2)}/${n.slice(2)}`
+  return `${n.slice(0, 2)}/${n.slice(2, 4)}/${n.slice(4)}`
+}
+const dateDisplayToIso = (display: string) => {
+  const p = display.split('/')
+  if (p.length !== 3 || p[2].length < 4) return ''
+  return `${p[2]}-${p[1]}-${p[0]}`
+}
+
 // ─── Barra de compatibilidade ─────────────────────────────────────────────────
 function CompatBar({ pct }: { pct: number }) {
   const cor = pct >= 80 ? '#00A880' : pct >= 50 ? '#C49800' : '#EF4444'
@@ -43,6 +69,55 @@ function CompatBar({ pct }: { pct: number }) {
         <View style={{ height: '100%', width: `${Math.min(100, pct)}%`, backgroundColor: cor, borderRadius: 4 }} />
       </View>
     </View>
+  )
+}
+
+// ─── IBGE Modal (reutilizável) ────────────────────────────────────────────────
+function VIBGEModal({ visible, title, data, onSelect, onClose, loading = false }: {
+  visible: boolean; title: string; data: any[]; onSelect: (item: any) => void; onClose: () => void; loading?: boolean
+}) {
+  const [busca, setBusca] = useState('')
+  const filtered = data.filter((d: any) =>
+    (d.nome || d.sigla || '').toLowerCase().includes(busca.toLowerCase())
+  )
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={cm.overlay}>
+        <View style={[cm.sheet, { maxHeight: '80%' }]}>
+          <View style={cm.handle} />
+          <Text style={cm.title}>{title}</Text>
+          <TextInput
+            style={[cm.input, { marginBottom: 8 }]}
+            value={busca} onChangeText={setBusca}
+            placeholder="Buscar..." placeholderTextColor="#A0B8AC" autoFocus
+          />
+          {loading ? (
+            <ActivityIndicator color="#00A880" style={{ marginTop: 24 }} />
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={item => String(item.id)}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#EEF7F2' }}
+                  onPress={() => { setBusca(''); onSelect(item) }}
+                >
+                  <Text style={{ fontSize: 15, color: '#0A1C14', fontWeight: '600' }}>{item.nome}</Text>
+                  {item.sigla && <Text style={{ fontSize: 12, color: '#7A9E8E' }}>{item.sigla}</Text>}
+                </TouchableOpacity>
+              )}
+            />
+          )}
+          <TouchableOpacity
+            style={{ backgroundColor: '#EEF7F2', borderRadius: 12, padding: 13, alignItems: 'center', marginTop: 8 }}
+            onPress={onClose}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '700', color: '#3A6550' }}>Fechar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
   )
 }
 
@@ -70,9 +145,20 @@ function CriarVagaModal({ visible, onClose, onCreated, myPages }: {
   const [perguntas, setPerguntas] = useState<string[]>([])
   const [novaPergunta, setNovaPergunta] = useState('')
   const [saving, setSaving] = useState(false)
+  const [cargoModal, setCargoModal] = useState(false)
+  const [estadoModal, setEstadoModal] = useState(false)
+  const [cidadeModal, setCidadeModal] = useState(false)
+  const [estados, setEstados] = useState<any[]>([])
+  const [cidades, setCidades] = useState<any[]>([])
+  const [loadingCidades, setLoadingCidades] = useState(false)
 
   useEffect(() => {
-    if (visible) api.get('/vagas/opcoes').then(r => setOpcoes(r.data.opcoes || {})).catch(() => {})
+    if (!visible) return
+    api.get('/vagas/opcoes').then(r => setOpcoes(r.data.opcoes || {})).catch(() => {})
+    if (estados.length === 0) {
+      fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
+        .then(r => r.json()).then(setEstados).catch(() => {})
+    }
   }, [visible])
 
   const reset = () => {
@@ -82,9 +168,22 @@ function CriarVagaModal({ visible, onClose, onCreated, myPages }: {
     setTipoFiltro(''); setReqObrig([]); setReqDesej([])
     setNovoObrig(''); setNovoDesej('')
     setPerguntas([]); setNovaPergunta('')
+    setCidades([])
   }
 
   const close = () => { reset(); onClose() }
+
+  const onSelectEstado = (e: any) => {
+    setEstado(e.sigla)
+    setCidade('')
+    setCidades([])
+    setEstadoModal(false)
+    setLoadingCidades(true)
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${e.sigla}/municipios?orderBy=nome`)
+      .then(r => r.json())
+      .then(data => { setCidades(data); setLoadingCidades(false) })
+      .catch(() => setLoadingCidades(false))
+  }
 
   const getChipState = (c: string) => reqObrig.includes(c) ? 'obrig' : reqDesej.includes(c) ? 'desej' : 'none'
 
@@ -121,8 +220,8 @@ function CriarVagaModal({ visible, onClose, onCreated, myPages }: {
         salario_min: salarioMin ? parseInt(salarioMin) : null,
         salario_max: salarioMax ? parseInt(salarioMax) : null,
         cidade: cidade.trim() || null,
-        estado: estado.trim().toUpperCase().slice(0, 2) || null,
-        prazo_candidatura: prazo.trim() || null,
+        estado: estado || null,
+        prazo_candidatura: dateDisplayToIso(prazo) || null,
         descricao: descricao.trim() || null,
         beneficios: beneficios.trim() || null,
         requisitos_obrigatorios: reqObrig,
@@ -169,7 +268,9 @@ function CriarVagaModal({ visible, onClose, onCreated, myPages }: {
                 </TouchableOpacity>
               ))}
               <Text style={cm.label}>Cargo *</Text>
-              <TextInput style={cm.input} value={cargo} onChangeText={setCargo} placeholder="Ex: Cirurgião-Dentista" placeholderTextColor="#A0B8AC" />
+              <TouchableOpacity style={[cm.input, { justifyContent: 'center' }]} onPress={() => setCargoModal(true)}>
+                <Text style={{ fontSize: 14, color: cargo ? '#0A1C14' : '#A0B8AC' }}>{cargo || 'Selecionar cargo...'}</Text>
+              </TouchableOpacity>
               <Text style={cm.label}>Tipo de Contrato *</Text>
               <View style={cm.chipRow}>
                 {CONTRATOS.map(c => (
@@ -183,13 +284,23 @@ function CriarVagaModal({ visible, onClose, onCreated, myPages }: {
                 <TextInput style={[cm.input, { flex: 1 }]} value={salarioMin} onChangeText={setSalarioMin} placeholder="Mínimo" placeholderTextColor="#A0B8AC" keyboardType="numeric" />
                 <TextInput style={[cm.input, { flex: 1 }]} value={salarioMax} onChangeText={setSalarioMax} placeholder="Máximo" placeholderTextColor="#A0B8AC" keyboardType="numeric" />
               </View>
-              <Text style={cm.label}>Localização (opcional)</Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TextInput style={[cm.input, { flex: 2 }]} value={cidade} onChangeText={setCidade} placeholder="Cidade" placeholderTextColor="#A0B8AC" />
-                <TextInput style={[cm.input, { flex: 1 }]} value={estado} onChangeText={setEstado} placeholder="UF" placeholderTextColor="#A0B8AC" maxLength={2} autoCapitalize="characters" />
-              </View>
+              <Text style={cm.label}>Estado (opcional)</Text>
+              <TouchableOpacity style={[cm.input, { justifyContent: 'center' }]} onPress={() => setEstadoModal(true)}>
+                <Text style={{ fontSize: 14, color: estado ? '#0A1C14' : '#A0B8AC' }}>
+                  {estado ? (estados.find(e => e.sigla === estado)?.nome || estado) : 'Selecionar estado...'}
+                </Text>
+              </TouchableOpacity>
+              <Text style={cm.label}>Cidade (opcional)</Text>
+              <TouchableOpacity
+                style={[cm.input, { justifyContent: 'center', opacity: estado ? 1 : 0.4 }]}
+                onPress={() => { if (estado) setCidadeModal(true) }}
+              >
+                <Text style={{ fontSize: 14, color: cidade ? '#0A1C14' : '#A0B8AC' }}>
+                  {cidade || (estado ? 'Selecionar cidade...' : 'Selecione o estado primeiro')}
+                </Text>
+              </TouchableOpacity>
               <Text style={cm.label}>Prazo para candidatura (opcional)</Text>
-              <TextInput style={cm.input} value={prazo} onChangeText={setPrazo} placeholder="AAAA-MM-DD" placeholderTextColor="#A0B8AC" />
+              <TextInput style={cm.input} value={prazo} onChangeText={v => setPrazo(maskDate(v))} placeholder="DD/MM/AAAA" placeholderTextColor="#A0B8AC" keyboardType="numeric" maxLength={10} />
               <Text style={cm.label}>Descrição (opcional)</Text>
               <TextInput style={[cm.input, { height: 80, textAlignVertical: 'top' }]} value={descricao} onChangeText={setDescricao} placeholder="Descreva a vaga..." placeholderTextColor="#A0B8AC" multiline />
               <Text style={cm.label}>Benefícios (opcional)</Text>
@@ -403,8 +514,9 @@ function CriarVagaModal({ visible, onClose, onCreated, myPages }: {
                 onPress={() => {
                   if (step === 1) {
                     if (!pageId) return Alert.alert('Atenção', 'Selecione uma página')
-                    if (!cargo.trim()) return Alert.alert('Atenção', 'Informe o cargo')
+                    if (!cargo) return Alert.alert('Atenção', 'Selecione o cargo')
                     if (!contrato) return Alert.alert('Atenção', 'Selecione o tipo de contrato')
+                    setTipoFiltro(CARGO_PARA_OPCAO[cargo] || '')
                   }
                   setStep(step + 1)
                 }}
@@ -422,6 +534,54 @@ function CriarVagaModal({ visible, onClose, onCreated, myPages }: {
             )}
           </View>
         </KeyboardAvoidingView>
+
+        {/* ── Cargo picker ──────────────────────────────────────────── */}
+        <Modal visible={cargoModal} transparent animationType="slide" onRequestClose={() => setCargoModal(false)}>
+          <View style={cm.overlay}>
+            <View style={[cm.sheet, { maxHeight: '70%' }]}>
+              <View style={cm.handle} />
+              <Text style={cm.title}>Cargo</Text>
+              <FlatList
+                data={CARGOS_VAGA}
+                keyExtractor={item => item}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#EEF7F2' }}
+                    onPress={() => { setCargo(item); setCargoModal(false) }}
+                  >
+                    <Text style={{ fontSize: 15, color: '#0A1C14', fontWeight: '600' }}>{item}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+              <TouchableOpacity
+                style={{ backgroundColor: '#EEF7F2', borderRadius: 12, padding: 13, alignItems: 'center', marginTop: 8 }}
+                onPress={() => setCargoModal(false)}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#3A6550' }}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ── IBGE Estado ───────────────────────────────────────────── */}
+        <VIBGEModal
+          visible={estadoModal}
+          title="Selecionar Estado"
+          data={estados}
+          onSelect={onSelectEstado}
+          onClose={() => setEstadoModal(false)}
+        />
+
+        {/* ── IBGE Cidade ───────────────────────────────────────────── */}
+        <VIBGEModal
+          visible={cidadeModal}
+          title="Selecionar Cidade"
+          data={cidades}
+          loading={loadingCidades}
+          onSelect={c => { setCidade(c.nome); setCidadeModal(false) }}
+          onClose={() => setCidadeModal(false)}
+        />
       </View>
     </Modal>
   )
