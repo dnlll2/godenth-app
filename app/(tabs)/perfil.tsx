@@ -437,10 +437,11 @@ export default function Perfil() {
             <View style={styles.menuHandle} />
             <Text style={styles.menuTitle}>Menu</Text>
             {[
-              { emoji: '⚙️', label: 'Configurações', onPress: () => { setShowMenu(false); router.push('/configuracoes' as any) } },
-              { emoji: '🔔', label: 'Notificações',  onPress: () => { setShowMenu(false); router.push('/notificacoes' as any) } },
-              { emoji: '📊', label: 'Minha conta',   onPress: () => { setShowMenu(false); router.push('/minha-conta' as any) } },
-              { emoji: '🚪', label: 'Sair',          onPress: () => { setShowMenu(false); handleLogout() }, danger: true },
+              { emoji: '✏️', label: 'Editar perfil',  onPress: () => { setShowMenu(false); router.push('/(tabs)/editar-perfil' as any) } },
+              { emoji: '⚙️', label: 'Configurações',  onPress: () => { setShowMenu(false); router.push('/configuracoes' as any) } },
+              { emoji: '🔔', label: 'Notificações',   onPress: () => { setShowMenu(false); router.push('/notificacoes' as any) } },
+              { emoji: '📊', label: 'Minha conta',    onPress: () => { setShowMenu(false); router.push('/minha-conta' as any) } },
+              { emoji: '🚪', label: 'Sair',           onPress: () => { setShowMenu(false); handleLogout() }, danger: true },
             ].map((item, i, arr) => (
               <TouchableOpacity
                 key={item.label}
@@ -467,9 +468,6 @@ export default function Perfil() {
           ? <Image source={{ uri: profile.avatar_url.startsWith('http') ? profile.avatar_url : API_BASE + profile.avatar_url }} style={styles.avatarImg} />
           : <View style={[styles.avatar, { backgroundColor: tipoCor }]}><Text style={styles.avatarText}>{profile?.nome?.charAt(0) || 'U'}</Text></View>
         }
-        <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/(tabs)/editar-perfil')}>
-          <Text style={styles.editBtnText}>Editar</Text>
-        </TouchableOpacity>
       </View>
 
       <View style={styles.info}>
