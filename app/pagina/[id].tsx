@@ -2,14 +2,17 @@ import { useState, useEffect } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, Image, Linking, Platform, Alert,
-  Modal, TextInput, KeyboardAvoidingView,
+  Modal, TextInput, KeyboardAvoidingView, Dimensions,
 } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
 import { router, useLocalSearchParams } from 'expo-router'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 import { Colors } from '../../constants/colors'
 
 const API_BASE = 'https://godenth-api-production.up.railway.app'
+const SCREEN_W = Dimensions.get('window').width
+const PORTFOLIO_SIZE = Math.floor((SCREEN_W - 32 - 8) / 3)
 
 const CAT_COR: Record<string, string> = {
   clinica: Colors.clinica,
@@ -31,7 +34,7 @@ const CAT_LABEL: Record<string, string> = {
   servicos: 'Serviços Profissionais',
 }
 
-const ABAS = ['Sobre', 'Publicações', 'Vagas']
+const ABAS = ['Sobre', 'Serviços', 'Portfólio', 'Vagas', 'Cursos/Eventos']
 const TIPOS_CONTRATO = ['CLT', 'PJ', 'Estágio', 'Freelancer']
 const MODALIDADES_CURSO = ['Presencial', 'Online', 'Híbrido']
 const TIPOS_EVENTO = ['Congresso', 'Feira', 'Simpósio', 'Outro']
@@ -58,7 +61,6 @@ function PublicarMenu({ visible, onSelect, onClose }: {
   visible: boolean; onSelect: (tipo: ModalTipo) => void; onClose: () => void
 }) {
   const opcoes: { key: ModalTipo; emoji: string; label: string }[] = [
-    { key: 'vaga', emoji: '📋', label: 'Vaga' },
     { key: 'curso', emoji: '🎓', label: 'Curso' },
     { key: 'treinamento', emoji: '🏋️', label: 'Treinamento' },
     { key: 'palestra', emoji: '🎤', label: 'Palestra' },
@@ -83,6 +85,69 @@ function PublicarMenu({ visible, onSelect, onClose }: {
           ))}
         </View>
       </TouchableOpacity>
+    </Modal>
+  )
+}
+
+// ─── Modal: Adicionar Serviço ─────────────────────────────────────────────────
+function AddServicoModal({ visible, pageId, onClose, onCreated }: {
+  visible: boolean; pageId: string; onClose: () => void; onCreated: () => void
+}) {
+  const [titulo, setTitulo] = useState('')
+  const [descricao, setDescricao] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const reset = () => { setTitulo(''); setDescricao('') }
+  const close = () => { reset(); onClose() }
+
+  const salvar = async () => {
+    if (!titulo.trim()) return Alert.alert('Atenção', 'Informe o nome do serviço.')
+    setSaving(true)
+    try {
+      await api.post(`/pages/${pageId}/services`, {
+        titulo: titulo.trim(),
+        descricao: descricao.trim() || null,
+      })
+      reset(); onCreated(); onClose()
+    } catch (err: any) {
+      Alert.alert('Erro', err.response?.data?.error || 'Não foi possível salvar.')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={m.overlay}>
+        <View style={m.sheet}>
+          <View style={m.handle} />
+          <Text style={m.title}>🛠️ Adicionar Serviço</Text>
+          <Text style={m.label}>Nome do serviço *</Text>
+          <TextInput
+            style={m.input}
+            placeholder="Ex: Implante Dentário"
+            placeholderTextColor={Colors.text3}
+            value={titulo}
+            onChangeText={setTitulo}
+            autoFocus
+          />
+          <Text style={m.label}>Descrição</Text>
+          <TextInput
+            style={[m.input, m.textarea]}
+            placeholder="Descreva brevemente o serviço…"
+            placeholderTextColor={Colors.text3}
+            value={descricao}
+            onChangeText={setDescricao}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+          />
+          <TouchableOpacity style={[m.btn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Salvar Serviço</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={m.cancel} onPress={close}>
+            <Text style={m.cancelT}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }
@@ -181,15 +246,8 @@ function CursoModal({ visible, pageId, onClose, onCreated }: {
     setSaving(true)
     try {
       await api.post(`/pages/${pageId}/publicacoes`, {
-        tipo: 'curso',
-        titulo: titulo.trim(),
-        dados: {
-          modalidade: modalidade || null,
-          carga_horaria: cargaHoraria.trim() || null,
-          data_inicio: dataInicio.trim() || null,
-          link_inscricao: linkInscricao.trim() || null,
-          descricao: descricao.trim() || null,
-        },
+        tipo: 'curso', titulo: titulo.trim(),
+        dados: { modalidade: modalidade || null, carga_horaria: cargaHoraria.trim() || null, data_inicio: dataInicio.trim() || null, link_inscricao: linkInscricao.trim() || null, descricao: descricao.trim() || null },
       })
       reset(); onCreated(); onClose()
     } catch (err: any) {
@@ -231,9 +289,7 @@ function CursoModal({ visible, pageId, onClose, onCreated }: {
           <TouchableOpacity style={[m.btn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
             {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Publicar Curso →</Text>}
           </TouchableOpacity>
-          <TouchableOpacity style={m.cancel} onPress={close}>
-            <Text style={m.cancelT}>Cancelar</Text>
-          </TouchableOpacity>
+          <TouchableOpacity style={m.cancel} onPress={close}><Text style={m.cancelT}>Cancelar</Text></TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
@@ -259,14 +315,8 @@ function TreinamentoModal({ visible, pageId, onClose, onCreated }: {
     setSaving(true)
     try {
       await api.post(`/pages/${pageId}/publicacoes`, {
-        tipo: 'treinamento',
-        titulo: titulo.trim(),
-        dados: {
-          publico_alvo: publicoAlvo.trim() || null,
-          data: data.trim() || null,
-          local: local.trim() || null,
-          descricao: descricao.trim() || null,
-        },
+        tipo: 'treinamento', titulo: titulo.trim(),
+        dados: { publico_alvo: publicoAlvo.trim() || null, data: data.trim() || null, local: local.trim() || null, descricao: descricao.trim() || null },
       })
       reset(); onCreated(); onClose()
     } catch (err: any) {
@@ -280,28 +330,20 @@ function TreinamentoModal({ visible, pageId, onClose, onCreated }: {
         <ScrollView contentContainerStyle={m.sheetScroll} keyboardShouldPersistTaps="handled">
           <View style={m.handle} />
           <Text style={m.title}>🏋️ Treinamento</Text>
-
           <Text style={m.label}>Título *</Text>
           <TextInput style={m.input} placeholder="Ex: Treinamento em Biossegurança" placeholderTextColor={Colors.text3} value={titulo} onChangeText={setTitulo} />
-
           <Text style={m.label}>Público-alvo</Text>
           <TextInput style={m.input} placeholder="Ex: Dentistas e auxiliares" placeholderTextColor={Colors.text3} value={publicoAlvo} onChangeText={setPublicoAlvo} />
-
           <Text style={m.label}>Data</Text>
           <TextInput style={m.input} placeholder="Ex: 20/06/2025" placeholderTextColor={Colors.text3} value={data} onChangeText={setData} />
-
           <Text style={m.label}>Local</Text>
           <TextInput style={m.input} placeholder="Ex: Online ou endereço" placeholderTextColor={Colors.text3} value={local} onChangeText={setLocal} />
-
           <Text style={m.label}>Descrição</Text>
           <TextInput style={[m.input, m.textarea]} placeholder="Detalhes do treinamento…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={4} textAlignVertical="top" />
-
           <TouchableOpacity style={[m.btn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
             {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Publicar Treinamento →</Text>}
           </TouchableOpacity>
-          <TouchableOpacity style={m.cancel} onPress={close}>
-            <Text style={m.cancelT}>Cancelar</Text>
-          </TouchableOpacity>
+          <TouchableOpacity style={m.cancel} onPress={close}><Text style={m.cancelT}>Cancelar</Text></TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
@@ -327,14 +369,8 @@ function PalestraModal({ visible, pageId, onClose, onCreated }: {
     setSaving(true)
     try {
       await api.post(`/pages/${pageId}/publicacoes`, {
-        tipo: 'palestra',
-        titulo: titulo.trim(),
-        dados: {
-          palestrante: palestrante.trim() || null,
-          data: data.trim() || null,
-          local: local.trim() || null,
-          descricao: descricao.trim() || null,
-        },
+        tipo: 'palestra', titulo: titulo.trim(),
+        dados: { palestrante: palestrante.trim() || null, data: data.trim() || null, local: local.trim() || null, descricao: descricao.trim() || null },
       })
       reset(); onCreated(); onClose()
     } catch (err: any) {
@@ -348,28 +384,20 @@ function PalestraModal({ visible, pageId, onClose, onCreated }: {
         <ScrollView contentContainerStyle={m.sheetScroll} keyboardShouldPersistTaps="handled">
           <View style={m.handle} />
           <Text style={m.title}>🎤 Palestra</Text>
-
           <Text style={m.label}>Título *</Text>
           <TextInput style={m.input} placeholder="Ex: Tendências em Odontologia Digital" placeholderTextColor={Colors.text3} value={titulo} onChangeText={setTitulo} />
-
           <Text style={m.label}>Palestrante</Text>
           <TextInput style={m.input} placeholder="Ex: Dr. João Silva" placeholderTextColor={Colors.text3} value={palestrante} onChangeText={setPalestrante} />
-
           <Text style={m.label}>Data</Text>
           <TextInput style={m.input} placeholder="Ex: 25/06/2025" placeholderTextColor={Colors.text3} value={data} onChangeText={setData} />
-
           <Text style={m.label}>Local</Text>
           <TextInput style={m.input} placeholder="Ex: Online ou endereço" placeholderTextColor={Colors.text3} value={local} onChangeText={setLocal} />
-
           <Text style={m.label}>Descrição</Text>
           <TextInput style={[m.input, m.textarea]} placeholder="Detalhes da palestra…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={4} textAlignVertical="top" />
-
           <TouchableOpacity style={[m.btn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
             {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Publicar Palestra →</Text>}
           </TouchableOpacity>
-          <TouchableOpacity style={m.cancel} onPress={close}>
-            <Text style={m.cancelT}>Cancelar</Text>
-          </TouchableOpacity>
+          <TouchableOpacity style={m.cancel} onPress={close}><Text style={m.cancelT}>Cancelar</Text></TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
@@ -395,14 +423,8 @@ function EventoModal({ visible, pageId, onClose, onCreated }: {
     setSaving(true)
     try {
       await api.post(`/pages/${pageId}/publicacoes`, {
-        tipo: 'evento',
-        titulo: titulo.trim(),
-        dados: {
-          tipo_evento: tipoEvento || null,
-          data: data.trim() || null,
-          local: local.trim() || null,
-          descricao: descricao.trim() || null,
-        },
+        tipo: 'evento', titulo: titulo.trim(),
+        dados: { tipo_evento: tipoEvento || null, data: data.trim() || null, local: local.trim() || null, descricao: descricao.trim() || null },
       })
       reset(); onCreated(); onClose()
     } catch (err: any) {
@@ -416,10 +438,8 @@ function EventoModal({ visible, pageId, onClose, onCreated }: {
         <ScrollView contentContainerStyle={m.sheetScroll} keyboardShouldPersistTaps="handled">
           <View style={m.handle} />
           <Text style={m.title}>🗓️ Evento</Text>
-
           <Text style={m.label}>Título *</Text>
           <TextInput style={m.input} placeholder="Ex: Congresso Nacional de Odontologia" placeholderTextColor={Colors.text3} value={titulo} onChangeText={setTitulo} />
-
           <Text style={m.label}>Tipo de evento</Text>
           <View style={m.chips}>
             {TIPOS_EVENTO.map(t => (
@@ -428,22 +448,16 @@ function EventoModal({ visible, pageId, onClose, onCreated }: {
               </TouchableOpacity>
             ))}
           </View>
-
           <Text style={m.label}>Data</Text>
           <TextInput style={m.input} placeholder="Ex: 10/07/2025" placeholderTextColor={Colors.text3} value={data} onChangeText={setData} />
-
           <Text style={m.label}>Local</Text>
           <TextInput style={m.input} placeholder="Ex: Centro de Convenções de São Paulo" placeholderTextColor={Colors.text3} value={local} onChangeText={setLocal} />
-
           <Text style={m.label}>Descrição</Text>
           <TextInput style={[m.input, m.textarea]} placeholder="Detalhes do evento…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={4} textAlignVertical="top" />
-
           <TouchableOpacity style={[m.btn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
             {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Publicar Evento →</Text>}
           </TouchableOpacity>
-          <TouchableOpacity style={m.cancel} onPress={close}>
-            <Text style={m.cancelT}>Cancelar</Text>
-          </TouchableOpacity>
+          <TouchableOpacity style={m.cancel} onPress={close}><Text style={m.cancelT}>Cancelar</Text></TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
@@ -454,21 +468,36 @@ function EventoModal({ visible, pageId, onClose, onCreated }: {
 export default function PaginaDetalhe() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { user } = useAuthStore()
+
   const [page, setPage] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [aba, setAba] = useState('Sobre')
-  const [publicacoes, setPublicacoes] = useState<any[]>([])
-  const [publicacoesLoading, setPublicacoesLoading] = useState(false)
+  const [loadedTabs, setLoadedTabs] = useState<Set<string>>(new Set(['Sobre', 'Vagas']))
+
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
   const [likeLoading, setLikeLoading] = useState(false)
+
+  const [servicos, setServicos] = useState<any[]>([])
+  const [servicosLoading, setServicosLoading] = useState(false)
+
+  const [portfolio, setPortfolio] = useState<any[]>([])
+  const [portfolioLoading, setPortfolioLoading] = useState(false)
+  const [portfolioUploading, setPortfolioUploading] = useState(false)
+
+  const [publicacoes, setPublicacoes] = useState<any[]>([])
+  const [publicacoesLoading, setPublicacoesLoading] = useState(false)
+
   const [candidaturas, setCandidaturas] = useState<Set<number>>(new Set())
   const [candidatandoId, setCandidatandoId] = useState<number | null>(null)
+
   const [showPublicarMenu, setShowPublicarMenu] = useState(false)
+  const [showAddServico, setShowAddServico] = useState(false)
   const [modalTipo, setModalTipo] = useState<ModalTipo>(null)
 
   const isOwner = user?.id === page?.user_id
 
+  // ── Data loaders ──────────────────────────────────────────────────────────
   const loadPage = () => {
     setLoading(true)
     api.get(`/pages/${id}`)
@@ -479,6 +508,22 @@ export default function PaginaDetalhe() {
       })
       .catch(() => Alert.alert('Erro', 'Não foi possível carregar a página'))
       .finally(() => setLoading(false))
+  }
+
+  const loadServicos = () => {
+    setServicosLoading(true)
+    api.get(`/pages/${id}/services`)
+      .then(r => setServicos(r.data.services || []))
+      .catch(() => null)
+      .finally(() => setServicosLoading(false))
+  }
+
+  const loadPortfolio = () => {
+    setPortfolioLoading(true)
+    api.get(`/pages/${id}/portfolio`)
+      .then(r => setPortfolio(r.data.portfolio || []))
+      .catch(() => null)
+      .finally(() => setPortfolioLoading(false))
   }
 
   const loadPublicacoes = () => {
@@ -492,9 +537,14 @@ export default function PaginaDetalhe() {
   useEffect(() => { loadPage() }, [id])
 
   useEffect(() => {
-    if (aba === 'Publicações' && publicacoes.length === 0) loadPublicacoes()
+    if (loadedTabs.has(aba)) return
+    setLoadedTabs(prev => new Set([...prev, aba]))
+    if (aba === 'Serviços') loadServicos()
+    if (aba === 'Portfólio') loadPortfolio()
+    if (aba === 'Cursos/Eventos') loadPublicacoes()
   }, [aba])
 
+  // ── Actions ───────────────────────────────────────────────────────────────
   const toggleLike = async () => {
     setLikeLoading(true)
     try {
@@ -516,9 +566,109 @@ export default function PaginaDetalhe() {
     } finally { setCandidatandoId(null) }
   }
 
+  const handlePickPortfolio = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!perm.granted) {
+      Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria para adicionar fotos.')
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      allowsEditing: true,
+      aspect: [1, 1],
+    })
+    if (result.canceled) return
+    const asset = result.assets[0]
+    setPortfolioUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('imagem', {
+        uri: asset.uri,
+        type: asset.mimeType || 'image/jpeg',
+        name: asset.fileName || `portfolio_${Date.now()}.jpg`,
+      } as any)
+      await api.post(`/pages/${id}/portfolio/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      loadPortfolio()
+    } catch (err: any) {
+      Alert.alert('Erro', err.response?.data?.error || 'Não foi possível enviar a foto.')
+    } finally { setPortfolioUploading(false) }
+  }
+
+  const handleDeleteServico = (serviceId: number) => {
+    Alert.alert('Remover serviço', 'Tem certeza que deseja remover este serviço?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Remover', style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.delete(`/pages/${id}/services/${serviceId}`)
+            setServicos(prev => prev.filter(sv => sv.id !== serviceId))
+          } catch { Alert.alert('Erro', 'Não foi possível remover.') }
+        },
+      },
+    ])
+  }
+
+  const handleDeletePortfolioItem = (itemId: number) => {
+    Alert.alert('Remover foto', 'Tem certeza que deseja remover esta foto?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Remover', style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.delete(`/pages/${id}/portfolio/${itemId}`)
+            setPortfolio(prev => prev.filter(p => p.id !== itemId))
+          } catch { Alert.alert('Erro', 'Não foi possível remover.') }
+        },
+      },
+    ])
+  }
+
   const openModal = (tipo: ModalTipo) => setModalTipo(tipo)
   const closeModal = () => setModalTipo(null)
 
+  // ── Owner panel CTA per tab ───────────────────────────────────────────────
+  const renderOwnerAction = () => {
+    switch (aba) {
+      case 'Sobre':
+        return (
+          <TouchableOpacity style={[s.ownerBtn, { backgroundColor: cor }]} onPress={() => router.push(`/editar-pagina/${id}` as any)}>
+            <Text style={s.ownerBtnT}>✏️ Editar Informações</Text>
+          </TouchableOpacity>
+        )
+      case 'Serviços':
+        return (
+          <TouchableOpacity style={[s.ownerBtn, { backgroundColor: cor }]} onPress={() => setShowAddServico(true)}>
+            <Text style={s.ownerBtnT}>+ Adicionar Serviço</Text>
+          </TouchableOpacity>
+        )
+      case 'Portfólio':
+        return (
+          <TouchableOpacity style={[s.ownerBtn, { backgroundColor: cor }]} onPress={handlePickPortfolio} disabled={portfolioUploading}>
+            {portfolioUploading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={s.ownerBtnT}>📷 Adicionar Foto</Text>}
+          </TouchableOpacity>
+        )
+      case 'Vagas':
+        return (
+          <TouchableOpacity style={[s.ownerBtn, { backgroundColor: cor }]} onPress={() => openModal('vaga')}>
+            <Text style={s.ownerBtnT}>+ Nova Vaga</Text>
+          </TouchableOpacity>
+        )
+      case 'Cursos/Eventos':
+        return (
+          <TouchableOpacity style={[s.ownerBtn, { backgroundColor: cor }]} onPress={() => setShowPublicarMenu(true)}>
+            <Text style={s.ownerBtnT}>✏️ Publicar</Text>
+          </TouchableOpacity>
+        )
+    }
+  }
+
+  // ── Loading / not found ───────────────────────────────────────────────────
   if (loading) return <View style={s.center}><ActivityIndicator color={Colors.primary} size="large" /></View>
 
   if (!page) return (
@@ -538,7 +688,7 @@ export default function PaginaDetalhe() {
 
   return (
     <View style={s.root}>
-      {/* ── Header fixo de navegação ── */}
+      {/* ── Navbar ── */}
       <View style={[s.navBar, { backgroundColor: cor }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.navSide}>
           <Text style={s.navBack}>←</Text>
@@ -579,7 +729,6 @@ export default function PaginaDetalhe() {
             )}
           </View>
 
-          {/* Botão Curtir / Editar */}
           {isOwner ? (
             <TouchableOpacity style={s.editBtn} onPress={() => router.push(`/editar-pagina/${id}` as any)}>
               <Text style={[s.editBtnT, { color: cor }]}>✏️ Editar página</Text>
@@ -619,8 +768,8 @@ export default function PaginaDetalhe() {
             <Text style={s.statL}>Vagas abertas</Text>
           </View>
           <View style={s.stat}>
-            <Text style={[s.statN, { color: cor }]}>{publicacoes.length > 0 ? publicacoes.length : '—'}</Text>
-            <Text style={s.statL}>Publicações</Text>
+            <Text style={[s.statN, { color: cor }]}>{portfolio.length > 0 ? portfolio.length : servicos.length > 0 ? servicos.length : '—'}</Text>
+            <Text style={s.statL}>{portfolio.length > 0 ? 'Portfólio' : 'Serviços'}</Text>
           </View>
         </View>
 
@@ -644,22 +793,29 @@ export default function PaginaDetalhe() {
         {isOwner && (
           <View style={s.ownerPanel}>
             <Text style={s.ownerTitle}>Gerenciar página</Text>
-            <TouchableOpacity style={[s.ownerBtn, { backgroundColor: cor }]} onPress={() => setShowPublicarMenu(true)}>
-              <Text style={s.ownerBtnT}>✏️ Publicar</Text>
-            </TouchableOpacity>
+            {renderOwnerAction()}
           </View>
         )}
 
-        {/* ── Abas ── */}
-        <View style={s.abas}>
+        {/* ── Abas (scroll horizontal) ── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={s.abasScroll}
+          contentContainerStyle={s.abas}
+        >
           {ABAS.map(a => (
-            <TouchableOpacity key={a} style={[s.aba, aba === a && { borderBottomColor: cor }]} onPress={() => setAba(a)}>
+            <TouchableOpacity
+              key={a}
+              style={[s.aba, aba === a && { borderBottomColor: cor }]}
+              onPress={() => setAba(a)}
+            >
               <Text style={[s.abaT, aba === a && { color: cor }]}>
                 {a}{a === 'Vagas' && vagas.length > 0 ? ` (${vagas.length})` : ''}
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
         {/* ── Tab: Sobre ── */}
         {aba === 'Sobre' && (
@@ -683,39 +839,75 @@ export default function PaginaDetalhe() {
           </View>
         )}
 
-        {/* ── Tab: Publicações ── */}
-        {aba === 'Publicações' && (
+        {/* ── Tab: Serviços ── */}
+        {aba === 'Serviços' && (
           <View style={s.tab}>
-            {publicacoesLoading ? (
+            {servicosLoading ? (
               <ActivityIndicator color={cor} style={{ marginTop: 32 }} />
-            ) : publicacoes.length === 0 ? (
+            ) : servicos.length === 0 ? (
               <View style={s.emptyCard}>
-                <Text style={{ fontSize: 32, marginBottom: 8 }}>📢</Text>
-                <Text style={s.emptyT}>Nenhuma publicação ainda</Text>
+                <Text style={{ fontSize: 32, marginBottom: 8 }}>🛠️</Text>
+                <Text style={s.emptyT}>Nenhum serviço cadastrado</Text>
                 {isOwner && (
-                  <TouchableOpacity style={[s.emptyBtn, { borderColor: cor }]} onPress={() => setShowPublicarMenu(true)}>
-                    <Text style={[s.emptyBtnT, { color: cor }]}>+ Criar primeira publicação</Text>
+                  <TouchableOpacity style={[s.emptyBtn, { borderColor: cor }]} onPress={() => setShowAddServico(true)}>
+                    <Text style={[s.emptyBtnT, { color: cor }]}>+ Adicionar primeiro serviço</Text>
                   </TouchableOpacity>
                 )}
               </View>
-            ) : publicacoes.map(pub => (
-              <PublicacaoCard key={pub.id} pub={pub} pageLogo={logoSrc} pageName={page.nome} cor={cor} />
+            ) : servicos.map(sv => (
+              <ServicoCard
+                key={sv.id}
+                servico={sv}
+                isOwner={isOwner}
+                cor={cor}
+                onDelete={() => handleDeleteServico(sv.id)}
+              />
             ))}
+          </View>
+        )}
+
+        {/* ── Tab: Portfólio ── */}
+        {aba === 'Portfólio' && (
+          <View style={s.tab}>
+            {portfolioLoading ? (
+              <ActivityIndicator color={cor} style={{ marginTop: 32 }} />
+            ) : portfolio.length === 0 ? (
+              <View style={s.emptyCard}>
+                <Text style={{ fontSize: 32, marginBottom: 8 }}>🖼️</Text>
+                <Text style={s.emptyT}>Nenhum trabalho no portfólio</Text>
+                {isOwner && (
+                  <TouchableOpacity style={[s.emptyBtn, { borderColor: cor }]} onPress={handlePickPortfolio}>
+                    <Text style={[s.emptyBtnT, { color: cor }]}>+ Adicionar primeira foto</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : (
+              <View style={s.portfolioGrid}>
+                {portfolio.map(item => (
+                  <PortfolioItem
+                    key={item.id}
+                    item={item}
+                    isOwner={isOwner}
+                    onDelete={() => handleDeletePortfolioItem(item.id)}
+                  />
+                ))}
+              </View>
+            )}
           </View>
         )}
 
         {/* ── Tab: Vagas ── */}
         {aba === 'Vagas' && (
           <View style={s.tab}>
-            {isOwner && (
-              <TouchableOpacity style={[s.newVagaBtn, { backgroundColor: cor }]} onPress={() => openModal('vaga')}>
-                <Text style={s.newVagaBtnT}>+ Nova Vaga</Text>
-              </TouchableOpacity>
-            )}
             {vagas.length === 0 ? (
               <View style={s.emptyCard}>
                 <Text style={{ fontSize: 32, marginBottom: 8 }}>📭</Text>
                 <Text style={s.emptyT}>Nenhuma vaga aberta no momento</Text>
+                {isOwner && (
+                  <TouchableOpacity style={[s.emptyBtn, { borderColor: cor }]} onPress={() => openModal('vaga')}>
+                    <Text style={[s.emptyBtnT, { color: cor }]}>+ Publicar primeira vaga</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : vagas.map(vaga => (
               <VagaCard
@@ -731,6 +923,27 @@ export default function PaginaDetalhe() {
           </View>
         )}
 
+        {/* ── Tab: Cursos/Eventos ── */}
+        {aba === 'Cursos/Eventos' && (
+          <View style={s.tab}>
+            {publicacoesLoading ? (
+              <ActivityIndicator color={cor} style={{ marginTop: 32 }} />
+            ) : publicacoes.length === 0 ? (
+              <View style={s.emptyCard}>
+                <Text style={{ fontSize: 32, marginBottom: 8 }}>🎓</Text>
+                <Text style={s.emptyT}>Nenhum curso ou evento publicado</Text>
+                {isOwner && (
+                  <TouchableOpacity style={[s.emptyBtn, { borderColor: cor }]} onPress={() => setShowPublicarMenu(true)}>
+                    <Text style={[s.emptyBtnT, { color: cor }]}>+ Publicar primeiro</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : publicacoes.map(pub => (
+              <PublicacaoCard key={pub.id} pub={pub} pageLogo={logoSrc} pageName={page.nome} cor={cor} />
+            ))}
+          </View>
+        )}
+
         <View style={{ height: 60 }} />
       </ScrollView>
 
@@ -741,7 +954,15 @@ export default function PaginaDetalhe() {
         onClose={() => setShowPublicarMenu(false)}
       />
 
-      {/* ── Modais ── */}
+      {/* ── Modal: Adicionar Serviço ── */}
+      <AddServicoModal
+        visible={showAddServico}
+        pageId={id}
+        onClose={() => setShowAddServico(false)}
+        onCreated={() => { setServicos([]); loadServicos() }}
+      />
+
+      {/* ── Modais de publicação ── */}
       <VagaModal
         visible={modalTipo === 'vaga'}
         pageId={id}
@@ -787,18 +1008,44 @@ function InfoRow({ label, value, color }: { label: string; value: string; color?
   )
 }
 
-const TIPO_EMOJI: Record<string, string> = {
-  curso: '🎓',
-  treinamento: '🏋️',
-  palestra: '🎤',
-  evento: '🗓️',
+function ServicoCard({ servico, isOwner, cor, onDelete }: any) {
+  return (
+    <View style={s.servicoCard}>
+      <View style={[s.servicoIcon, { backgroundColor: cor + '18' }]}>
+        <Text style={{ fontSize: 18 }}>🛠️</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={s.servicoTitulo}>{servico.titulo}</Text>
+        {servico.descricao ? <Text style={s.servicoDesc}>{servico.descricao}</Text> : null}
+      </View>
+      {isOwner && (
+        <TouchableOpacity style={s.deleteBtn} onPress={onDelete}>
+          <Text style={s.deleteBtnT}>✕</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  )
 }
 
+function PortfolioItem({ item, isOwner, onDelete }: any) {
+  const src = resolveUrl(item.imagem_url)
+  return (
+    <View style={s.portfolioItem}>
+      {src ? <Image source={{ uri: src }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
+      {isOwner && (
+        <TouchableOpacity style={s.portfolioDeleteBtn} onPress={onDelete}>
+          <Text style={s.portfolioDeleteBtnT}>✕</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  )
+}
+
+const TIPO_EMOJI: Record<string, string> = {
+  curso: '🎓', treinamento: '🏋️', palestra: '🎤', evento: '🗓️',
+}
 const TIPO_LABEL_PUB: Record<string, string> = {
-  curso: 'Curso',
-  treinamento: 'Treinamento',
-  palestra: 'Palestra',
-  evento: 'Evento',
+  curso: 'Curso', treinamento: 'Treinamento', palestra: 'Palestra', evento: 'Evento',
 }
 
 function PublicacaoCard({ pub, pageLogo, pageName, cor }: any) {
@@ -861,12 +1108,12 @@ function VagaCard({ vaga, cor, jaCandidata, loading, onCandidatar, isOwner }: an
       </View>
       <View style={s.vagaMeta}>
         {vaga.contrato && <View style={s.vagaTag}><Text style={s.vagaTagT}>{vaga.contrato}</Text></View>}
-        {vaga.modelo && <View style={s.vagaTag}><Text style={s.vagaTagT}>{vaga.modelo}</Text></View>}
         {(vaga.cidade || vaga.estado) && (
           <Text style={s.vagaLoc}>📍 {vaga.cidade}{vaga.estado ? ` · ${vaga.estado}` : ''}</Text>
         )}
       </View>
       {vaga.salario ? <Text style={s.vagaSalario}>{vaga.salario}</Text> : null}
+      {vaga.descricao ? <Text style={s.vagaDesc}>{vaga.descricao}</Text> : null}
       {!isOwner && (
         <TouchableOpacity
           style={[s.candidatarBtn, jaCandidata ? s.candidatarBtnDone : { backgroundColor: cor }]}
@@ -934,9 +1181,10 @@ const s = StyleSheet.create({
   ownerBtn: { borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
   ownerBtnT: { color: '#fff', fontSize: 13, fontWeight: '800' },
 
-  abas: { flexDirection: 'row', backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  aba: { flex: 1, alignItems: 'center', paddingVertical: 13, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  abaT: { fontSize: 13, fontWeight: '700', color: Colors.text3 },
+  abasScroll: { backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  abas: { flexDirection: 'row' },
+  aba: { paddingVertical: 13, paddingHorizontal: 14, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  abaT: { fontSize: 13, fontWeight: '700', color: Colors.text3, whiteSpace: 'nowrap' } as any,
 
   tab: { padding: 16, gap: 12, paddingBottom: 20 },
   card: { backgroundColor: Colors.white, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: Colors.border },
@@ -949,9 +1197,21 @@ const s = StyleSheet.create({
   emptyBtn: { marginTop: 10, borderWidth: 1.5, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 8 },
   emptyBtnT: { fontSize: 13, fontWeight: '700' },
 
-  newVagaBtn: { borderRadius: 12, padding: 13, alignItems: 'center' },
-  newVagaBtnT: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  // Serviços
+  servicoCard: { backgroundColor: Colors.white, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: Colors.border, flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  servicoIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  servicoTitulo: { fontSize: 15, fontWeight: '800', color: Colors.text, marginBottom: 3 },
+  servicoDesc: { fontSize: 13, color: Colors.text3, lineHeight: 19 },
+  deleteBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.bg, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
+  deleteBtnT: { fontSize: 11, color: Colors.text3, fontWeight: '800' },
 
+  // Portfólio
+  portfolioGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  portfolioItem: { width: PORTFOLIO_SIZE, height: PORTFOLIO_SIZE, borderRadius: 10, overflow: 'hidden', backgroundColor: Colors.border, position: 'relative' },
+  portfolioDeleteBtn: { position: 'absolute', top: 6, right: 6, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12, width: 26, height: 26, justifyContent: 'center', alignItems: 'center' },
+  portfolioDeleteBtnT: { color: '#fff', fontSize: 11, fontWeight: '900' },
+
+  // Posts/publicações
   postCard: { backgroundColor: Colors.white, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: Colors.border },
   postHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   postAvatar: { width: 42, height: 42, borderRadius: 12 },
@@ -964,6 +1224,7 @@ const s = StyleSheet.create({
   pubInfos: { fontSize: 12, color: Colors.text3, marginBottom: 4 },
   linkInscricao: { fontSize: 13, fontWeight: '700', marginTop: 8 },
 
+  // Vagas
   vagaCard: { backgroundColor: Colors.white, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: Colors.border },
   vagaTop: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   vagaTitulo: { fontSize: 16, fontWeight: '800', color: Colors.text, flex: 1 },
@@ -973,7 +1234,8 @@ const s = StyleSheet.create({
   vagaTag: { backgroundColor: Colors.bg, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: Colors.border },
   vagaTagT: { fontSize: 11, fontWeight: '700', color: Colors.text2 },
   vagaLoc: { fontSize: 12, color: Colors.text3, alignSelf: 'center' },
-  vagaSalario: { fontSize: 13, fontWeight: '800', color: '#059669', marginBottom: 10 },
+  vagaSalario: { fontSize: 13, fontWeight: '800', color: '#059669', marginBottom: 6 },
+  vagaDesc: { fontSize: 13, color: Colors.text3, lineHeight: 20, marginBottom: 10 },
   candidatarBtn: { borderRadius: 12, paddingVertical: 13, alignItems: 'center', marginTop: 4 },
   candidatarBtnDone: { backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#059669' },
   candidatarBtnT: { color: '#fff', fontSize: 14, fontWeight: '800' },
