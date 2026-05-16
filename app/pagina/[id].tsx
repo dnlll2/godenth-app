@@ -256,6 +256,7 @@ function PublicarMenu({ visible, onSelect, onClose }: {
   visible: boolean; onSelect: (tipo: ModalTipo) => void; onClose: () => void
 }) {
   const opcoes: { key: ModalTipo; emoji: string; label: string }[] = [
+    { key: 'vaga', emoji: '💼', label: 'Vaga' },
     { key: 'curso', emoji: '🎓', label: 'Curso' },
     { key: 'treinamento', emoji: '🏋️', label: 'Treinamento' },
     { key: 'palestra', emoji: '🎤', label: 'Palestra' },
@@ -879,7 +880,14 @@ export default function PaginaDetalhe() {
             )}
           </View>
 
-          {!isOwner && (
+          {isOwner ? (
+            <TouchableOpacity
+              style={[s.likeBtn, { backgroundColor: cor }]}
+              onPress={() => setShowPublicarMenu(true)}
+            >
+              <Text style={s.likeBtnT}>📢 Publicar</Text>
+            </TouchableOpacity>
+          ) : (
             <TouchableOpacity
               style={[s.likeBtn, liked ? s.likedBtn : { backgroundColor: cor }]}
               onPress={toggleLike}
@@ -1055,7 +1063,7 @@ export default function PaginaDetalhe() {
           <View style={s.tab}>
             {isOwner && publicacoes.length > 0 && (
               <TouchableOpacity style={[s.tabAddBtn, { borderColor: cor }]} onPress={() => setShowPublicarMenu(true)}>
-                <Text style={[s.tabAddBtnT, { color: cor }]}>✏️ Publicar</Text>
+                <Text style={[s.tabAddBtnT, { color: cor }]}>+ Publicar</Text>
               </TouchableOpacity>
             )}
             {publicacoesLoading ? (
