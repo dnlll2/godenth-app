@@ -1288,7 +1288,7 @@ const s = StyleSheet.create({
   cover: { height: 130, overflow: 'hidden' },
   coverWatermark: { position: 'absolute', bottom: -8, left: 10, right: 10, fontSize: 52, fontWeight: '900', color: 'rgba(255,255,255,0.13)', letterSpacing: 3 },
 
-  profileRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: -36, marginBottom: 10 },
+  profileRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: -36, marginBottom: 10 },
   logoWrap: { position: 'relative' },
   logo: { width: 72, height: 72, borderRadius: 18, borderWidth: 3, borderColor: '#fff' },
   logoPlaceholder: { justifyContent: 'center', alignItems: 'center' },
@@ -1296,7 +1296,7 @@ const s = StyleSheet.create({
   verifiedBadge: { position: 'absolute', bottom: -4, right: -4, width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
   verifiedT: { color: '#fff', fontSize: 10, fontWeight: '900' },
 
-  likeBtn: { borderRadius: 100, paddingHorizontal: 22, paddingVertical: 10, marginBottom: 4, minWidth: 110, alignItems: 'center' },
+  likeBtn: { borderRadius: 100, paddingHorizontal: 22, paddingVertical: 10, minWidth: 110, alignItems: 'center' },
   likedBtn: { backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border },
   likeBtnT: { color: '#fff', fontSize: 14, fontWeight: '800' },
 
