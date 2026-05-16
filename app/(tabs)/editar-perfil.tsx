@@ -321,27 +321,56 @@ export default function EditarPerfil() {
   const pickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (status !== 'granted') { Alert.alert('Permissão necessária', 'Precisamos acessar sua galeria.'); return }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'] as any,
-      allowsEditing: true, aspect: [1, 1], quality: 0.7,
+      allowsEditing: true, aspect: [1, 1], quality: 0.8,
     })
     if (result.canceled) return
-    const uri = result.assets[0].uri
+
+    const asset = result.assets[0]
+    const uri = asset.uri
+    const mimeType = asset.mimeType || 'image/jpeg'
+    // Usa o nome original do arquivo se disponível; fallback seguro
+    const fileName = uri.split('/').pop() || 'avatar.jpg'
+
+    console.log('[avatar] URI:', uri)
+    console.log('[avatar] mimeType:', mimeType, '| fileName:', fileName)
+
     setAvatarUri(uri)
     setUploadingAvatar(true)
+
     try {
       const fd = new FormData()
-      fd.append('avatar', { uri, type: 'image/jpeg', name: 'avatar.jpg' } as any)
-      const res = await api.post('/users/me/avatar', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      const fullUrl = res.data.avatar_url.startsWith('http') ? res.data.avatar_url : API_BASE + res.data.avatar_url
+      // Não setar Content-Type manualmente — o React Native XHR inclui o boundary automaticamente
+      fd.append('avatar', { uri, type: mimeType, name: fileName } as any)
+
+      console.log('[avatar] enviando POST /users/me/avatar...')
+      const res = await api.post('/users/me/avatar', fd)
+
+      console.log('[avatar] status:', res.status, '| data:', JSON.stringify(res.data))
+
+      if (!res.data?.avatar_url) {
+        throw new Error('Resposta sem avatar_url')
+      }
+
+      const fullUrl = res.data.avatar_url.startsWith('http')
+        ? res.data.avatar_url
+        : API_BASE + res.data.avatar_url
+
+      console.log('[avatar] URL final:', fullUrl)
       setAvatarRemote(fullUrl)
       useAuthStore.getState().updateUser({ avatar_url: res.data.avatar_url })
-    } catch {
-      Alert.alert('Erro', 'Não foi possível enviar a foto.')
+      Alert.alert('Foto atualizada', 'Sua foto de perfil foi salva com sucesso.')
+    } catch (err: any) {
+      console.log('[avatar] ERRO:', err?.message)
+      console.log('[avatar] response status:', err?.response?.status)
+      console.log('[avatar] response data:', JSON.stringify(err?.response?.data))
+      Alert.alert('Erro', err?.response?.data?.error || err?.message || 'Não foi possível enviar a foto.')
       setAvatarUri(null)
-    } finally { setUploadingAvatar(false) }
+    } finally {
+      setUploadingAvatar(false)
+    }
   }
 
   const profissoes = [tipoProf, ...cargosExtras.map((e: any) => e.label || e)].filter(Boolean)
