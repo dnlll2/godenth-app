@@ -531,38 +531,6 @@ export default function EditarPerfil() {
             placeholder="(11) 99999-9999" placeholderTextColor="#A0B8AC" keyboardType="phone-pad" />
         </View>
 
-        {/* 3. Privacidade */}
-        <Text style={s.sectionLabel}>Privacidade</Text>
-        <View style={s.card}>
-          {([
-            { key: 'ocultar_foto',          label: 'Ocultar foto de perfil',    sub: 'Exibe apenas a inicial do nome' },
-            { key: 'ocultar_cargo',         label: 'Ocultar cargo principal',   sub: 'Cargo não aparece no perfil público' },
-            { key: 'ocultar_email',         label: 'Ocultar e-mail',            sub: 'Apenas conexões podem ver' },
-            { key: 'ocultar_celular',       label: 'Ocultar celular',           sub: 'Apenas conexões podem ver' },
-            { key: 'ocultar_idade',         label: 'Ocultar idade',             sub: 'Data de nascimento não aparece' },
-            { key: 'ocultar_bio',           label: 'Ocultar bio/resumo',        sub: 'Resumo profissional fica oculto' },
-            { key: 'ocultar_localizacao',   label: 'Ocultar localização',       sub: 'Cidade e estado não aparecem' },
-            { key: 'ocultar_especialidades',label: 'Ocultar especialidades',    sub: 'Lista de especialidades fica oculta' },
-            { key: 'ocultar_habilidades',   label: 'Ocultar habilidades',       sub: 'Lista de habilidades fica oculta' },
-            { key: 'ocultar_formacao',      label: 'Ocultar formação',          sub: 'Formação acadêmica fica oculta' },
-            { key: 'ocultar_experiencia',   label: 'Ocultar experiência',       sub: 'Experiência profissional fica oculta' },
-            { key: 'ocultar_instagram',     label: 'Ocultar Instagram',         sub: 'Link do Instagram não aparece' },
-          ] as { key: string; label: string; sub: string }[]).map((item, i, arr) => (
-            <View key={item.key}>
-              <View style={s.toggleRow}>
-                <View style={s.toggleInfo}>
-                  <Text style={s.toggleLabel}>{item.label}</Text>
-                  <Text style={s.toggleSub}>{item.sub}</Text>
-                </View>
-                <Switch value={!!privacidade[item.key]}
-                  onValueChange={v => setPrivacidade((p: any) => ({ ...p, [item.key]: v }))}
-                  trackColor={{ false: '#D0E8DA', true: '#00A880' }} thumbColor="#fff" />
-              </View>
-              {i < arr.length - 1 && <View style={s.cardDivider} />}
-            </View>
-          ))}
-        </View>
-
         {/* 4. Localização */}
         <Text style={s.sectionLabel}>Localização</Text>
         <View style={s.card}>
