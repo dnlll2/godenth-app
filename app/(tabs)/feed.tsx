@@ -5,7 +5,6 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, Image, Alert,
 } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
-import * as ImagePicker from 'expo-image-picker'
 import Svg, { Circle, Line, Path } from 'react-native-svg'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
@@ -35,23 +34,36 @@ function HeaderBell() {
 const API_BASE = 'https://godenth-api-production.up.railway.app'
 
 const FILTROS = [
-  { key: 'todos', label: 'Todos' },
-  { key: 'vaga', label: 'Vagas' },
-  { key: 'disponibilidade', label: 'Disponível' },
+  { key: 'todos',    label: 'Todos'     },
   { key: 'parceria', label: 'Parcerias' },
-  { key: 'dica_clinica', label: 'Dicas' },
-  { key: 'caso_clinico', label: 'Casos' },
-  { key: 'pergunta', label: 'Perguntas' },
+  { key: 'vaga',     label: 'Vagas'     },
+  { key: 'ajuda',    label: 'Ajuda'     },
 ]
 
-const TOPICOS = [
-  { key: 'dica_clinica',  label: 'Dica Clínica',   icon: '💡', cor: '#00A880' },
-  { key: 'caso_clinico',  label: 'Caso Clínico',    icon: '🦷', cor: '#1A6FD4' },
-  { key: 'oportunidade',  label: 'Oportunidade',    icon: '🚀', cor: '#C49800' },
-  { key: 'pergunta',      label: 'Pergunta',         icon: '❓', cor: '#7B3FC4' },
-  { key: 'noticia',       label: 'Notícia',          icon: '📰', cor: '#D4600A' },
-  { key: 'humor',         label: 'Humor',            icon: '😄', cor: '#D4186A' },
+const TIPOS = [
+  { key: 'parceria', label: 'Busco Parceria',   emoji: '🤝', cor: '#7B3FC4', sub: 'Procuro profissional para colaborar'      },
+  { key: 'vaga',     label: 'Tenho uma Vaga',    emoji: '💼', cor: '#C49800', sub: 'Ofereço oportunidade de trabalho'          },
+  { key: 'ajuda',    label: 'Preciso de Ajuda',  emoji: '🆘', cor: '#E53935', sub: 'Preciso de alguém urgente ou pontual'     },
 ]
+
+const SUBS: Record<string, string[]> = {
+  parceria: ['Implantodontia','Ortodontia','Prótese','Cirurgia','Endodontia','Periodontia','Pediatria','Estética','Radiologia','Saúde Bucal'],
+  vaga:     ['Dentista','Auxiliar','Recepcionista','Técnico em Prótese','Protético','Administrativo','Marketing','TI'],
+  ajuda:    ['Auxiliar urgente','Substituto','Técnico de cadeira','Protético','Recepcionista','Administrativo'],
+}
+
+// Metadados para tipos legados (posts antigos no feed) e novos
+const TIPOS_META: Record<string, { emoji: string; label: string; cor: string }> = {
+  parceria:     { emoji: '🤝', label: 'Busco Parceria',   cor: '#7B3FC4' },
+  vaga:         { emoji: '💼', label: 'Tenho uma Vaga',    cor: '#C49800' },
+  ajuda:        { emoji: '🆘', label: 'Preciso de Ajuda',  cor: '#E53935' },
+  dica_clinica: { emoji: '💡', label: 'Dica Clínica',      cor: '#00A880' },
+  caso_clinico: { emoji: '🦷', label: 'Caso Clínico',      cor: '#1A6FD4' },
+  oportunidade: { emoji: '🚀', label: 'Oportunidade',      cor: '#C49800' },
+  pergunta:     { emoji: '❓', label: 'Pergunta',          cor: '#7B3FC4' },
+  noticia:      { emoji: '📰', label: 'Notícia',           cor: '#D4600A' },
+  humor:        { emoji: '😄', label: 'Humor',             cor: '#D4186A' },
+}
 
 const PALAVRAS_PROIBIDAS = [
   'merda', 'porra', 'caralho', 'fdp', 'viado', 'buceta', 'puta', 'prostituta',
@@ -63,54 +75,40 @@ function checkPalavrasProibidas(text: string) {
   return PALAVRAS_PROIBIDAS.find(p => lower.includes(p)) || null
 }
 
-// ── PostModal ─────────────────────────────────────────────────────────────────
+// ── PostModal (3 etapas) ──────────────────────────────────────────────────────
 
 function PostModal({ visible, onClose, onPublished }: {
   visible: boolean; onClose: () => void; onPublished: () => void
 }) {
-  const [topico, setTopico] = useState('')
-  const [texto, setTexto] = useState('')
-  const [imageUri, setImageUri] = useState<string | null>(null)
+  const [etapa, setEtapa]       = useState(1)
+  const [tipo, setTipo]         = useState('')
+  const [sub, setSub]           = useState('')
+  const [texto, setTexto]       = useState('')
+  const [cidade, setCidade]     = useState('')
+  const [estado, setEstado]     = useState('')
   const [publishing, setPublishing] = useState(false)
 
-  const reset = () => { setTopico(''); setTexto(''); setImageUri(null) }
-
+  const reset = () => { setEtapa(1); setTipo(''); setSub(''); setTexto(''); setCidade(''); setEstado('') }
   const close = () => { reset(); onClose() }
+  const back  = () => { if (etapa === 2) { setSub(''); setEtapa(1) } else { setEtapa(2) } }
 
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (status !== 'granted') {
-      Alert.alert('Permissão necessária', 'Precisamos acessar sua galeria.')
-      return
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'] as any,
-      allowsEditing: true, quality: 0.7,
-    })
-    if (!result.canceled) setImageUri(result.assets[0].uri)
-  }
+  const tipoMeta = TIPOS.find(t => t.key === tipo)
+  const cor = tipoMeta?.cor || '#00A880'
 
   const publish = async () => {
-    if (!topico) return Alert.alert('Atenção', 'Selecione um tópico')
-    if (!texto.trim()) return Alert.alert('Atenção', 'Escreva algo antes de publicar')
-
+    if (!texto.trim()) return Alert.alert('Atenção', 'Descreva sua publicação.')
     const palavrao = checkPalavrasProibidas(texto)
-    if (palavrao) return Alert.alert('Conteúdo inadequado', `O texto contém uma palavra não permitida.`)
-
+    if (palavrao) return Alert.alert('Conteúdo inadequado', 'O texto contém uma palavra não permitida.')
     setPublishing(true)
     try {
-      let imagem_url: string | null = null
-      if (imageUri) {
-        const fd = new FormData()
-        fd.append('image', { uri: imageUri, type: 'image/jpeg', name: 'post.jpg' } as any)
-        const upRes = await api.post('/posts/upload', fd, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        })
-        imagem_url = upRes.data.url
-      }
       await api.post('/posts', {
-        tipo_post: topico,
-        data_json: { texto: texto.trim(), imagem_url },
+        tipo_post: tipo,
+        data_json: {
+          texto: texto.trim(),
+          subcategoria: sub || undefined,
+          cidade: cidade.trim() || undefined,
+          estado: estado.trim() || undefined,
+        },
       })
       reset()
       onPublished()
@@ -119,77 +117,140 @@ function PostModal({ visible, onClose, onPublished }: {
     } finally { setPublishing(false) }
   }
 
-  const t = TOPICOS.find(t => t.key === topico)
-  const cor = t?.cor || '#00A880'
-
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={close}>
       <View style={pm.overlay}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={pm.sheet}>
           <View style={pm.handle} />
+
+          {/* ── Header ── */}
           <View style={pm.header}>
-            <TouchableOpacity onPress={close} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={pm.close}>✕</Text>
-            </TouchableOpacity>
-            <Text style={pm.title}>Nova publicação</Text>
-            <TouchableOpacity
-              style={[pm.publishBtn, (!topico || !texto.trim()) && pm.publishBtnOff]}
-              onPress={publish}
-              disabled={!topico || !texto.trim() || publishing}
-            >
-              {publishing
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={pm.publishBtnT}>Publicar</Text>}
-            </TouchableOpacity>
+            {etapa === 1
+              ? <TouchableOpacity onPress={close} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={pm.close}>✕</Text>
+                </TouchableOpacity>
+              : <TouchableOpacity onPress={back} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={pm.backBtn}>← Voltar</Text>
+                </TouchableOpacity>
+            }
+            <View style={pm.dots}>
+              {[1, 2, 3].map(s => (
+                <View key={s} style={[pm.dot, etapa >= s && { backgroundColor: cor }]} />
+              ))}
+            </View>
+            {etapa === 3
+              ? <TouchableOpacity
+                  style={[pm.publishBtn, (!texto.trim() || publishing) && pm.publishBtnOff]}
+                  onPress={publish}
+                  disabled={!texto.trim() || publishing}
+                >
+                  {publishing
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={pm.publishBtnT}>Publicar</Text>}
+                </TouchableOpacity>
+              : <View style={{ width: 72 }} />
+            }
           </View>
 
+          {/* ── Conteúdo ── */}
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            {/* Tópico */}
-            <Text style={pm.secLabel}>Tópico *</Text>
-            <View style={pm.topicosRow}>
-              {TOPICOS.map(t => {
-                const on = topico === t.key
-                return (
+
+            {/* ETAPA 1 — Tipo */}
+            {etapa === 1 && (
+              <View style={{ gap: 12, paddingTop: 4, paddingBottom: 8 }}>
+                <Text style={pm.stepTitle}>Qual o tipo de publicação?</Text>
+                {TIPOS.map(t => (
                   <TouchableOpacity
                     key={t.key}
-                    style={[pm.topico, on && { borderColor: t.cor, backgroundColor: t.cor + '18' }]}
-                    onPress={() => setTopico(t.key)}
+                    style={[pm.tipoCard, { borderColor: t.cor + '80' }]}
+                    onPress={() => { setTipo(t.key); setSub(''); setEtapa(2) }}
+                    activeOpacity={0.78}
                   >
-                    <Text style={pm.topicoIcon}>{t.icon}</Text>
-                    <Text style={[pm.topicoLabel, on && { color: t.cor, fontWeight: '800' }]}>{t.label}</Text>
+                    <Text style={pm.tipoEmoji}>{t.emoji}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[pm.tipoLabel, { color: t.cor }]}>{t.label}</Text>
+                      <Text style={pm.tipoSubT}>{t.sub}</Text>
+                    </View>
+                    <Text style={[pm.tipoArrow, { color: t.cor }]}>›</Text>
                   </TouchableOpacity>
-                )
-              })}
-            </View>
+                ))}
+              </View>
+            )}
 
-            {/* Texto */}
-            <Text style={pm.secLabel}>Conteúdo *</Text>
-            <TextInput
-              style={[pm.textarea, topico && { borderColor: cor + '60' }]}
-              placeholder={topico ? `Compartilhe sua ${t?.label.toLowerCase()}...` : 'Selecione um tópico acima...'}
-              placeholderTextColor="#A0B8AC"
-              value={texto}
-              onChangeText={setTexto}
-              multiline
-              numberOfLines={5}
-              textAlignVertical="top"
-              maxLength={1000}
-              editable={!!topico}
-            />
-            <Text style={pm.charCount}>{texto.length}/1000</Text>
-
-            {/* Foto */}
-            <TouchableOpacity style={pm.photoBtn} onPress={pickImage}>
-              <Text style={pm.photoBtnT}>📷 {imageUri ? 'Trocar foto' : 'Adicionar foto (opcional)'}</Text>
-            </TouchableOpacity>
-            {imageUri ? (
-              <View style={pm.previewWrap}>
-                <Image source={{ uri: imageUri }} style={pm.preview} resizeMode="cover" />
-                <TouchableOpacity style={pm.removeImg} onPress={() => setImageUri(null)}>
-                  <Text style={pm.removeImgT}>✕</Text>
+            {/* ETAPA 2 — Subcategoria */}
+            {etapa === 2 && (
+              <View style={{ paddingTop: 4 }}>
+                <Text style={pm.stepTitle}>Qual a categoria?</Text>
+                <View style={[pm.typePill, { backgroundColor: cor + '18', borderColor: cor + '50' }]}>
+                  <Text style={[pm.typePillT, { color: cor }]}>{tipoMeta?.emoji} {tipoMeta?.label}</Text>
+                </View>
+                <View style={pm.chipsRow}>
+                  {(SUBS[tipo] || []).map(s => {
+                    const on = sub === s
+                    return (
+                      <TouchableOpacity
+                        key={s}
+                        style={[pm.chip, on && { backgroundColor: cor, borderColor: cor }]}
+                        onPress={() => setSub(s)}
+                        activeOpacity={0.78}
+                      >
+                        <Text style={[pm.chipT, on && { color: '#fff' }]}>{s}</Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+                <TouchableOpacity
+                  style={[pm.nextBtn, { backgroundColor: cor }, !sub && pm.nextBtnOff]}
+                  onPress={() => { if (sub) setEtapa(3) }}
+                  disabled={!sub}
+                >
+                  <Text style={pm.nextBtnT}>Próximo →</Text>
                 </TouchableOpacity>
               </View>
-            ) : null}
+            )}
+
+            {/* ETAPA 3 — Texto + Localização */}
+            {etapa === 3 && (
+              <View style={{ paddingTop: 4 }}>
+                <Text style={pm.stepTitle}>Descreva sua publicação</Text>
+                <View style={[pm.typePill, { backgroundColor: cor + '18', borderColor: cor + '50' }]}>
+                  <Text style={[pm.typePillT, { color: cor }]}>{tipoMeta?.emoji} {tipoMeta?.label} · {sub}</Text>
+                </View>
+                <TextInput
+                  style={[pm.textarea, { borderColor: cor + '50' }]}
+                  placeholder="Descreva o que você precisa, o perfil que busca, condições..."
+                  placeholderTextColor="#A0B8AC"
+                  value={texto}
+                  onChangeText={setTexto}
+                  multiline
+                  numberOfLines={5}
+                  textAlignVertical="top"
+                  maxLength={800}
+                  autoFocus
+                />
+                <Text style={pm.charCount}>{texto.length}/800</Text>
+
+                <Text style={pm.secLabel}>Localização (opcional)</Text>
+                <View style={pm.locRow}>
+                  <TextInput
+                    style={[pm.locInput, { flex: 2 }]}
+                    placeholder="Cidade"
+                    placeholderTextColor="#A0B8AC"
+                    value={cidade}
+                    onChangeText={setCidade}
+                  />
+                  <TextInput
+                    style={[pm.locInput, { flex: 1 }]}
+                    placeholder="UF"
+                    placeholderTextColor="#A0B8AC"
+                    value={estado}
+                    onChangeText={setEstado}
+                    maxLength={2}
+                    autoCapitalize="characters"
+                  />
+                </View>
+              </View>
+            )}
 
             <View style={{ height: 32 }} />
           </ScrollView>
@@ -228,31 +289,21 @@ export default function Feed() {
 
   useFocusEffect(useCallback(() => { setLoading(true); loadFeed() }, [filtro]))
 
-  const getCor = (tipo: string) => {
-    if (tipo === 'vaga') return '#C49800'
-    if (tipo === 'parceria') return '#7B3FC4'
-    if (tipo === 'dica_clinica') return '#00A880'
-    if (tipo === 'caso_clinico') return '#1A6FD4'
-    if (tipo === 'oportunidade') return '#C49800'
-    if (tipo === 'pergunta') return '#7B3FC4'
-    if (tipo === 'noticia') return '#D4600A'
-    if (tipo === 'humor') return '#D4186A'
-    return '#00A880'
-  }
-
-  const getTopicoMeta = (tipo: string) => {
-    return TOPICOS.find(t => t.key === tipo) || null
-  }
+  const getMeta = (tipo: string) => TIPOS_META[tipo] || { emoji: '📋', label: tipo, cor: '#00A880' }
 
   const renderPost = ({ item }: any) => {
-    const cor = getCor(item.tipo_post)
-    const nome = item.page_nome || item.author_nome || 'Usuário'
-    const topicoMeta = getTopicoMeta(item.tipo_post)
-    const isSocialPost = topicoMeta !== null
+    const meta  = getMeta(item.tipo_post)
+    const cor   = meta.cor
+    const nome  = item.page_nome || item.author_nome || 'Usuário'
     const texto = item.data_json?.texto || item.data_json?.descricao
+    const sub   = item.data_json?.subcategoria
+    const locCidade = item.data_json?.cidade || item.cidade
+    const locEstado = item.data_json?.estado || item.estado
     const imagemUrl = item.data_json?.imagem_url
       ? (item.data_json.imagem_url.startsWith('http') ? item.data_json.imagem_url : API_BASE + item.data_json.imagem_url)
       : null
+    const isActionable = ['parceria', 'vaga', 'ajuda'].includes(item.tipo_post)
+    const actionLabel  = item.tipo_post === 'vaga' ? 'Candidatar' : item.tipo_post === 'ajuda' ? 'Oferecer ajuda' : 'Conectar'
 
     return (
       <View style={styles.card}>
@@ -269,27 +320,23 @@ export default function Feed() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.nome}>{nome}</Text>
-                <Text style={styles.loc}>{item.cidade} · {item.estado}</Text>
+                {(locCidade || locEstado) && (
+                  <Text style={styles.loc}>{[locCidade, locEstado].filter(Boolean).join(' · ')}</Text>
+                )}
               </View>
             </TouchableOpacity>
             <View style={[styles.badge, { backgroundColor: cor + '20', borderColor: cor + '60' }]}>
-              <Text style={[styles.badgeT, { color: cor }]}>
-                {topicoMeta ? `${topicoMeta.icon} ${topicoMeta.label.toUpperCase()}` : item.tipo_post?.toUpperCase()}
-              </Text>
+              <Text style={[styles.badgeT, { color: cor }]}>{meta.emoji} {meta.label.toUpperCase()}</Text>
             </View>
           </View>
-          {!isSocialPost && item.data_json?.especialidade
-            ? <Text style={styles.esp}>{item.data_json.especialidade}</Text>
-            : null}
+          {sub ? <Text style={styles.esp}>{sub}</Text> : null}
           {texto ? <Text style={styles.desc}>{texto}</Text> : null}
-          {imagemUrl ? (
-            <Image source={{ uri: imagemUrl }} style={styles.postImg} resizeMode="cover" />
-          ) : null}
+          {imagemUrl ? <Image source={{ uri: imagemUrl }} style={styles.postImg} resizeMode="cover" /> : null}
           <View style={styles.footer}>
             <Text style={styles.data}>{new Date(item.created_at).toLocaleDateString('pt-BR')}</Text>
-            {!isSocialPost && (
+            {isActionable && (
               <TouchableOpacity style={[styles.btn, { backgroundColor: cor }]}>
-                <Text style={styles.btnT}>{item.tipo_post === 'vaga' ? 'Candidatar' : 'Contato'} →</Text>
+                <Text style={styles.btnT}>{actionLabel} →</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -412,46 +459,62 @@ const styles = StyleSheet.create({
 })
 
 const pm = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.52)', justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: '#EEF7F2', borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    paddingHorizontal: 16, paddingTop: 12,
-    maxHeight: '92%',
+    backgroundColor: '#F4F9F6', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: 16, paddingTop: 12, maxHeight: '92%',
     paddingBottom: Platform.OS === 'ios' ? 32 : 16,
   },
   handle: { width: 40, height: 4, backgroundColor: '#D0E8DA', borderRadius: 2, alignSelf: 'center', marginBottom: 14 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  close: { fontSize: 20, color: '#7A9E8E', fontWeight: '700', width: 36 },
-  title: { fontSize: 17, fontWeight: '800', color: '#0A1C14' },
-  publishBtn: { backgroundColor: '#00A880', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
+
+  // header row
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
+  close:   { fontSize: 20, color: '#7A9E8E', fontWeight: '700', width: 72 },
+  backBtn: { fontSize: 13, color: '#3A6550', fontWeight: '700', width: 72 },
+  dots:    { flexDirection: 'row', gap: 6 },
+  dot:     { width: 8, height: 8, borderRadius: 4, backgroundColor: '#D0E8DA' },
+  publishBtn:    { backgroundColor: '#00A880', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
   publishBtnOff: { backgroundColor: '#AECEBE' },
-  publishBtnT: { color: '#fff', fontSize: 13, fontWeight: '800' },
-  secLabel: { fontSize: 11, fontWeight: '800', color: '#3A6550', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
-  topicosRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  topico: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA',
-    borderRadius: 100, paddingHorizontal: 12, paddingVertical: 8,
+  publishBtnT:   { color: '#fff', fontSize: 13, fontWeight: '800' },
+
+  // step shared
+  stepTitle: { fontSize: 17, fontWeight: '800', color: '#0A1C14', marginBottom: 16 },
+
+  // etapa 1 — tipo cards
+  tipoCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: '#fff', borderWidth: 1.5, borderRadius: 16,
+    padding: 16,
   },
-  topicoIcon: { fontSize: 14 },
-  topicoLabel: { fontSize: 12, fontWeight: '600', color: '#3A6550' },
+  tipoEmoji: { fontSize: 28 },
+  tipoLabel: { fontSize: 15, fontWeight: '800' },
+  tipoSubT:  { fontSize: 12, color: '#7A9E8E', marginTop: 2 },
+  tipoArrow: { fontSize: 22, fontWeight: '300' },
+
+  // etapa 2 — subcategoria chips
+  typePill: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 100, paddingHorizontal: 12, paddingVertical: 5, marginBottom: 16 },
+  typePillT: { fontSize: 12, fontWeight: '800' },
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
+  chip: {
+    backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA',
+    borderRadius: 100, paddingHorizontal: 14, paddingVertical: 9,
+  },
+  chipT: { fontSize: 13, fontWeight: '600', color: '#3A6550' },
+  nextBtn: { borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
+  nextBtnOff: { opacity: 0.4 },
+  nextBtnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
+
+  // etapa 3 — texto + localização
+  secLabel: { fontSize: 11, fontWeight: '800', color: '#3A6550', textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 16, marginBottom: 8 },
   textarea: {
     backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA',
     borderRadius: 14, padding: 14, fontSize: 14, color: '#0A1C14',
-    minHeight: 120, textAlignVertical: 'top',
+    minHeight: 130, textAlignVertical: 'top',
   },
-  charCount: { fontSize: 11, color: '#7A9E8E', textAlign: 'right', marginTop: 4, marginBottom: 14 },
-  photoBtn: {
+  charCount: { fontSize: 11, color: '#7A9E8E', textAlign: 'right', marginTop: 4 },
+  locRow: { flexDirection: 'row', gap: 10 },
+  locInput: {
     backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA',
-    borderRadius: 12, padding: 13, alignItems: 'center', borderStyle: 'dashed',
+    borderRadius: 12, padding: 12, fontSize: 14, color: '#0A1C14',
   },
-  photoBtnT: { fontSize: 13, fontWeight: '700', color: '#00A880' },
-  previewWrap: { marginTop: 10, borderRadius: 12, overflow: 'hidden', position: 'relative' },
-  preview: { width: '100%', height: 200, borderRadius: 12 },
-  removeImg: {
-    position: 'absolute', top: 8, right: 8,
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center',
-  },
-  removeImgT: { color: '#fff', fontWeight: '800', fontSize: 12 },
 })
