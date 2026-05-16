@@ -7,19 +7,81 @@ import {
 import { router } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import { LinearGradient } from 'expo-linear-gradient'
+import Svg, { Path, Circle, Rect, Line } from 'react-native-svg'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 
 const API_BASE = 'https://godenth-api-production.up.railway.app'
 
 const ABAS = [
-  { key: 'pessoal',      label: 'Pessoal',      emoji: '👤' },
-  { key: 'localizacao',  label: 'Localização',  emoji: '📍' },
-  { key: 'profissional', label: 'Profissional',  emoji: '⭐' },
-  { key: 'formacao',     label: 'Formação',      emoji: '🎓' },
-  { key: 'experiencia',  label: 'Experiência',   emoji: '💼' },
-  { key: 'redes',        label: 'Redes',         emoji: '🔗' },
+  { key: 'pessoal',      label: 'Pessoal'      },
+  { key: 'localizacao',  label: 'Localização'  },
+  { key: 'profissional', label: 'Profissional' },
+  { key: 'formacao',     label: 'Formação'     },
+  { key: 'experiencia',  label: 'Experiência'  },
+  { key: 'redes',        label: 'Redes'        },
 ]
+
+const IC_ON  = '#00C9B1'
+const IC_OFF = '#B8D0C8'
+
+function TabIcon({ k, on }: { k: string; on: boolean }) {
+  const c  = on ? IC_ON : IC_OFF
+  const sw = 1.6
+  const base = { stroke: c, strokeWidth: sw, fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+
+  if (k === 'pessoal') return (
+    <Svg width={22} height={22} viewBox="0 0 22 22">
+      <Circle cx="11" cy="7.5" r="4" {...base} />
+      <Path d="M3,22 C3,15.5 7,13 11,13 C15,13 19,15.5 19,22" {...base} />
+    </Svg>
+  )
+
+  if (k === 'localizacao') return (
+    <Svg width={22} height={22} viewBox="0 0 22 22">
+      <Path d="M11,2 A5,5,0,0,1,16,7 C16,12 11,20 11,20 C11,20 6,12 6,7 A5,5,0,0,1,11,2 Z" {...base} />
+      <Circle cx="11" cy="7" r="2" {...base} />
+    </Svg>
+  )
+
+  if (k === 'profissional') return (
+    <Svg width={22} height={22} viewBox="0 0 22 22">
+      <Path d="M6,11 C6,4.5 8,2 11,2 C14,2 16,4.5 16,11 C16,13 14.5,14.5 11,14.5 C7.5,14.5 6,13 6,11 Z" {...base} />
+      <Path d="M8.5,14.5 L7.5,21" {...base} />
+      <Path d="M13.5,14.5 L14.5,21" {...base} />
+    </Svg>
+  )
+
+  if (k === 'formacao') return (
+    <Svg width={22} height={22} viewBox="0 0 22 22">
+      <Path d="M1,10 L11,4.5 L21,10 L11,15.5 Z" {...base} />
+      <Path d="M6,13 L6,17.5 C6,19.5 16,19.5 16,17.5 L16,13" {...base} />
+      <Line x1="21" y1="10" x2="21" y2="16" {...base} />
+      <Circle cx="21" cy="17" r="1" {...base} />
+    </Svg>
+  )
+
+  if (k === 'experiencia') return (
+    <Svg width={22} height={22} viewBox="0 0 22 22">
+      <Rect x="2" y="8.5" width="18" height="11" rx="2" {...base} />
+      <Path d="M7.5,8.5 L7.5,6.5 C7.5,5.4 8.4,4.5 9.5,4.5 L12.5,4.5 C13.6,4.5 14.5,5.4 14.5,6.5 L14.5,8.5" {...base} />
+      <Line x1="2" y1="13.5" x2="20" y2="13.5" {...base} />
+    </Svg>
+  )
+
+  if (k === 'redes') return (
+    <Svg width={22} height={22} viewBox="0 0 22 22">
+      <Circle cx="11" cy="3.5" r="2" {...base} />
+      <Circle cx="3"  cy="18.5" r="2" {...base} />
+      <Circle cx="19" cy="18.5" r="2" {...base} />
+      <Line x1="9.5"  y1="5.2"  x2="4.5"  y2="16.6" {...base} />
+      <Line x1="12.5" y1="5.2"  x2="17.5" y2="16.6" {...base} />
+      <Line x1="5"    y1="18.5" x2="17"   y2="18.5" {...base} />
+    </Svg>
+  )
+
+  return null
+}
 
 const DISPONIBILIDADE = [
   { key: 'disponivel', label: 'Disponível', cor: '#00A880' },
@@ -821,7 +883,7 @@ export default function EditarPerfil() {
                 style={[s.tab, on && s.tabOn]}
                 onPress={() => setAbaAtiva(aba.key)}
               >
-                <Text style={s.tabEmoji}>{aba.emoji}</Text>
+                <TabIcon k={aba.key} on={on} />
                 <Text style={[s.tabT, on && s.tabTOn]}>{aba.label}</Text>
               </TouchableOpacity>
             )
@@ -1055,10 +1117,9 @@ const s = StyleSheet.create({
     borderBottomColor: 'transparent',
     gap: 2,
   },
-  tabOn: { borderBottomColor: '#007A6E' },
-  tabEmoji: { fontSize: 14 },
+  tabOn: { borderBottomColor: '#00C9B1' },
   tabT: { fontSize: 11, fontWeight: '700', color: '#A0B8AC' },
-  tabTOn: { color: '#007A6E' },
+  tabTOn: { color: '#00C9B1' },
 
   // Scroll
   scroll: { flex: 1 },
