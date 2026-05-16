@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
   logout: { fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
   cover: { height: 100, overflow: 'hidden' },
   coverWatermark: { position: 'absolute', bottom: -8, left: 10, right: 10, fontSize: 58, fontWeight: '900', color: 'rgba(255,255,255,0.13)', letterSpacing: 3 },
-  avatarRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: -44, marginBottom: 8, minHeight: 60 },
+  avatarRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: -50, marginBottom: 8, minHeight: 60 },
   avatar: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#fff' },
   avatarImg: { width: 60, height: 60, borderRadius: 30, borderWidth: 3, borderColor: '#fff' },
   avatarText: { color: '#fff', fontWeight: '800', fontSize: 22 },
