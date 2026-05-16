@@ -56,6 +56,201 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(h / 24)}d`
 }
 
+// ─── Menu: Engrenagem ─────────────────────────────────────────────────────────
+function GearMenu({ visible, onClose, pageId, onEditar, onMetricas, onCandidatos, onInscritos, onExcluir }: {
+  visible: boolean; onClose: () => void; pageId: string
+  onEditar: () => void; onMetricas: () => void; onCandidatos: () => void
+  onInscritos: () => void; onExcluir: () => void
+}) {
+  const opcoes = [
+    { emoji: '✏️', label: 'Editar informações', action: onEditar, danger: false },
+    { emoji: '📊', label: 'Métricas', action: onMetricas, danger: false },
+    { emoji: '👥', label: 'Candidatos', action: onCandidatos, danger: false },
+    { emoji: '🎓', label: 'Inscritos', action: onInscritos, danger: false },
+    { emoji: '🗑️', label: 'Excluir página', action: onExcluir, danger: true },
+  ]
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={m.overlay} activeOpacity={1} onPress={onClose}>
+        <View style={m.sheet}>
+          <View style={m.handle} />
+          <Text style={m.title}>Gerenciar página</Text>
+          {opcoes.map((o, i) => (
+            <TouchableOpacity
+              key={i}
+              style={[m.menuItem, i === opcoes.length - 1 && { borderBottomWidth: 0 }]}
+              onPress={() => { onClose(); o.action() }}
+            >
+              <Text style={m.menuEmoji}>{o.emoji}</Text>
+              <Text style={[m.menuLabel, o.danger && { color: '#EF4444' }]}>{o.label}</Text>
+              {!o.danger && <Text style={m.menuArrow}>›</Text>}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  )
+}
+
+// ─── Modal: Métricas ──────────────────────────────────────────────────────────
+function MetricasModal({ visible, onClose, metricas, loading }: {
+  visible: boolean; onClose: () => void; metricas: any; loading: boolean
+}) {
+  const stats = metricas ? [
+    { emoji: '❤️', label: 'Curtidas', value: metricas.curtidas },
+    { emoji: '💼', label: 'Vagas abertas', value: metricas.vagas_abertas },
+    { emoji: '👥', label: 'Candidatos', value: metricas.total_candidatos },
+    { emoji: '📢', label: 'Publicações', value: metricas.publicacoes },
+    { emoji: '🛠️', label: 'Serviços', value: metricas.servicos },
+    { emoji: '🖼️', label: 'Portfólio', value: metricas.fotos_portfolio },
+  ] : []
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={m.overlay} activeOpacity={1} onPress={onClose}>
+        <View style={m.sheet}>
+          <View style={m.handle} />
+          <Text style={m.title}>📊 Métricas</Text>
+          {loading ? (
+            <ActivityIndicator color={Colors.primary} style={{ marginVertical: 32 }} />
+          ) : (
+            <View style={m.metricsGrid}>
+              {stats.map((st, i) => (
+                <View key={i} style={m.metricCard}>
+                  <Text style={m.metricEmoji}>{st.emoji}</Text>
+                  <Text style={m.metricValue}>{st.value ?? '—'}</Text>
+                  <Text style={m.metricLabel}>{st.label}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          <TouchableOpacity style={m.cancel} onPress={onClose}>
+            <Text style={m.cancelT}>Fechar</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  )
+}
+
+// ─── Modal: Candidatos ────────────────────────────────────────────────────────
+function CandidatosModal({ visible, onClose, candidatos, loading }: {
+  visible: boolean; onClose: () => void; candidatos: any[]; loading: boolean
+}) {
+  const groupedByVaga: Record<string, any[]> = {}
+  candidatos.forEach(c => {
+    const key = `${c.vaga_id}|${c.cargo}`
+    if (!groupedByVaga[key]) groupedByVaga[key] = []
+    groupedByVaga[key].push(c)
+  })
+
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={fs.root}>
+        <View style={fs.header}>
+          <TouchableOpacity onPress={onClose} style={fs.closeBtn}>
+            <Text style={fs.closeT}>←</Text>
+          </TouchableOpacity>
+          <Text style={fs.title}>👥 Candidatos</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        {loading ? (
+          <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} />
+        ) : candidatos.length === 0 ? (
+          <View style={fs.emptyWrap}>
+            <Text style={{ fontSize: 40, marginBottom: 12 }}>📭</Text>
+            <Text style={fs.emptyT}>Nenhum candidato ainda</Text>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+            {Object.entries(groupedByVaga).map(([key, cands]) => {
+              const cargo = cands[0].cargo
+              const contrato = cands[0].contrato
+              return (
+                <View key={key}>
+                  <View style={fs.groupHeader}>
+                    <Text style={fs.groupTitle}>{cargo}</Text>
+                    {contrato && <View style={fs.tag}><Text style={fs.tagT}>{contrato}</Text></View>}
+                    <Text style={fs.groupCount}>{cands.length} candidato{cands.length !== 1 ? 's' : ''}</Text>
+                  </View>
+                  {cands.map(c => (
+                    <View key={c.id} style={fs.itemCard}>
+                      <Text style={fs.itemNome}>{c.candidato_nome}</Text>
+                      {c.tipo_profissional && <Text style={fs.itemSub}>{c.tipo_profissional}</Text>}
+                      {(c.candidato_cidade || c.candidato_estado) && (
+                        <Text style={fs.itemSub}>📍 {c.candidato_cidade}{c.candidato_estado ? ` · ${c.candidato_estado}` : ''}</Text>
+                      )}
+                      <Text style={fs.itemDate}>{timeAgo(c.created_at)}</Text>
+                    </View>
+                  ))}
+                </View>
+              )
+            })}
+          </ScrollView>
+        )}
+      </View>
+    </Modal>
+  )
+}
+
+// ─── Modal: Inscritos ─────────────────────────────────────────────────────────
+function InscritosModal({ visible, onClose, publicacoes, loading }: {
+  visible: boolean; onClose: () => void; publicacoes: any[]; loading: boolean
+}) {
+  const TIPO_EMOJI: Record<string, string> = { curso: '🎓', treinamento: '🏋️', palestra: '🎤', evento: '🗓️' }
+  const TIPO_LABEL: Record<string, string> = { curso: 'Curso', treinamento: 'Treinamento', palestra: 'Palestra', evento: 'Evento' }
+
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={fs.root}>
+        <View style={fs.header}>
+          <TouchableOpacity onPress={onClose} style={fs.closeBtn}>
+            <Text style={fs.closeT}>←</Text>
+          </TouchableOpacity>
+          <Text style={fs.title}>🎓 Inscritos</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        {loading ? (
+          <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} />
+        ) : publicacoes.length === 0 ? (
+          <View style={fs.emptyWrap}>
+            <Text style={{ fontSize: 40, marginBottom: 12 }}>📭</Text>
+            <Text style={fs.emptyT}>Nenhum curso ou evento publicado</Text>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
+            <View style={fs.infoBox}>
+              <Text style={fs.infoBoxT}>As inscrições são feitas externamente pelo link de cada publicação. Acompanhe pelo seu sistema de inscrições.</Text>
+            </View>
+            {publicacoes.map(pub => {
+              const dados = pub.dados || {}
+              return (
+                <View key={pub.id} style={fs.itemCard}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <Text style={{ fontSize: 16 }}>{TIPO_EMOJI[pub.tipo] || '📢'}</Text>
+                    <Text style={fs.itemNome}>{pub.titulo}</Text>
+                  </View>
+                  <Text style={fs.itemSub}>{TIPO_LABEL[pub.tipo] || pub.tipo}</Text>
+                  {dados.data && <Text style={fs.itemSub}>📅 {dados.data_inicio || dados.data}</Text>}
+                  {dados.local && <Text style={fs.itemSub}>📍 {dados.local}</Text>}
+                  {dados.link_inscricao && (
+                    <TouchableOpacity onPress={() => Linking.openURL(
+                      dados.link_inscricao.startsWith('http') ? dados.link_inscricao : `https://${dados.link_inscricao}`
+                    )}>
+                      <Text style={fs.link}>🔗 Ver inscrições</Text>
+                    </TouchableOpacity>
+                  )}
+                  <Text style={fs.itemDate}>{timeAgo(pub.created_at)}</Text>
+                </View>
+              )
+            })}
+          </ScrollView>
+        )}
+      </View>
+    </Modal>
+  )
+}
+
 // ─── Menu: Publicar ────────────────────────────────────────────────────────────
 function PublicarMenu({ visible, onSelect, onClose }: {
   visible: boolean; onSelect: (tipo: ModalTipo) => void; onClose: () => void
@@ -104,10 +299,7 @@ function AddServicoModal({ visible, pageId, onClose, onCreated }: {
     if (!titulo.trim()) return Alert.alert('Atenção', 'Informe o nome do serviço.')
     setSaving(true)
     try {
-      await api.post(`/pages/${pageId}/services`, {
-        titulo: titulo.trim(),
-        descricao: descricao.trim() || null,
-      })
+      await api.post(`/pages/${pageId}/services`, { titulo: titulo.trim(), descricao: descricao.trim() || null })
       reset(); onCreated(); onClose()
     } catch (err: any) {
       Alert.alert('Erro', err.response?.data?.error || 'Não foi possível salvar.')
@@ -121,31 +313,13 @@ function AddServicoModal({ visible, pageId, onClose, onCreated }: {
           <View style={m.handle} />
           <Text style={m.title}>🛠️ Adicionar Serviço</Text>
           <Text style={m.label}>Nome do serviço *</Text>
-          <TextInput
-            style={m.input}
-            placeholder="Ex: Implante Dentário"
-            placeholderTextColor={Colors.text3}
-            value={titulo}
-            onChangeText={setTitulo}
-            autoFocus
-          />
+          <TextInput style={m.input} placeholder="Ex: Implante Dentário" placeholderTextColor={Colors.text3} value={titulo} onChangeText={setTitulo} autoFocus />
           <Text style={m.label}>Descrição</Text>
-          <TextInput
-            style={[m.input, m.textarea]}
-            placeholder="Descreva brevemente o serviço…"
-            placeholderTextColor={Colors.text3}
-            value={descricao}
-            onChangeText={setDescricao}
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-          />
+          <TextInput style={[m.input, m.textarea]} placeholder="Descreva brevemente o serviço…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={3} textAlignVertical="top" />
           <TouchableOpacity style={[m.btn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
             {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Salvar Serviço</Text>}
           </TouchableOpacity>
-          <TouchableOpacity style={m.cancel} onPress={close}>
-            <Text style={m.cancelT}>Cancelar</Text>
-          </TouchableOpacity>
+          <TouchableOpacity style={m.cancel} onPress={close}><Text style={m.cancelT}>Cancelar</Text></TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -172,11 +346,8 @@ function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
     setSaving(true)
     try {
       await api.post('/vagas', {
-        page_id: parseInt(pageId),
-        cargo: cargo.trim(),
-        contrato,
-        cidade: cidade.trim() || null,
-        estado: estado.trim().toUpperCase().slice(0, 2) || null,
+        page_id: parseInt(pageId), cargo: cargo.trim(), contrato,
+        cidade: cidade.trim() || null, estado: estado.trim().toUpperCase().slice(0, 2) || null,
         descricao: descricao.trim() || null,
       })
       reset(); onCreated(); onClose()
@@ -192,10 +363,8 @@ function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
           <View style={m.handle} />
           <Text style={m.title}>📋 Vaga</Text>
           <Text style={m.subtitle}>Publicando por: {pageName}</Text>
-
           <Text style={m.label}>Cargo *</Text>
           <TextInput style={m.input} placeholder="Ex: Cirurgião-Dentista" placeholderTextColor={Colors.text3} value={cargo} onChangeText={setCargo} />
-
           <Text style={m.label}>Tipo de contrato *</Text>
           <View style={m.chips}>
             {TIPOS_CONTRATO.map(c => (
@@ -204,22 +373,16 @@ function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
               </TouchableOpacity>
             ))}
           </View>
-
           <Text style={m.label}>Cidade</Text>
           <TextInput style={m.input} placeholder="Ex: São Paulo" placeholderTextColor={Colors.text3} value={cidade} onChangeText={setCidade} />
-
           <Text style={m.label}>Estado (UF)</Text>
           <TextInput style={m.input} placeholder="Ex: SP" placeholderTextColor={Colors.text3} value={estado} onChangeText={setEstado} maxLength={2} autoCapitalize="characters" />
-
           <Text style={m.label}>Descrição</Text>
-          <TextInput style={[m.input, m.textarea]} placeholder="Descreva os requisitos e responsabilidades…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={4} textAlignVertical="top" />
-
+          <TextInput style={[m.input, m.textarea]} placeholder="Descreva os requisitos…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={4} textAlignVertical="top" />
           <TouchableOpacity style={[m.btn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
             {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Publicar Vaga →</Text>}
           </TouchableOpacity>
-          <TouchableOpacity style={m.cancel} onPress={close}>
-            <Text style={m.cancelT}>Cancelar</Text>
-          </TouchableOpacity>
+          <TouchableOpacity style={m.cancel} onPress={close}><Text style={m.cancelT}>Cancelar</Text></TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
@@ -261,10 +424,8 @@ function CursoModal({ visible, pageId, onClose, onCreated }: {
         <ScrollView contentContainerStyle={m.sheetScroll} keyboardShouldPersistTaps="handled">
           <View style={m.handle} />
           <Text style={m.title}>🎓 Curso</Text>
-
           <Text style={m.label}>Título *</Text>
           <TextInput style={m.input} placeholder="Ex: Implantodontia Avançada" placeholderTextColor={Colors.text3} value={titulo} onChangeText={setTitulo} />
-
           <Text style={m.label}>Modalidade</Text>
           <View style={m.chips}>
             {MODALIDADES_CURSO.map(c => (
@@ -273,19 +434,14 @@ function CursoModal({ visible, pageId, onClose, onCreated }: {
               </TouchableOpacity>
             ))}
           </View>
-
           <Text style={m.label}>Carga horária</Text>
           <TextInput style={m.input} placeholder="Ex: 40h" placeholderTextColor={Colors.text3} value={cargaHoraria} onChangeText={setCargaHoraria} />
-
           <Text style={m.label}>Data de início</Text>
           <TextInput style={m.input} placeholder="Ex: 15/06/2025" placeholderTextColor={Colors.text3} value={dataInicio} onChangeText={setDataInicio} />
-
           <Text style={m.label}>Link de inscrição</Text>
           <TextInput style={m.input} placeholder="https://…" placeholderTextColor={Colors.text3} value={linkInscricao} onChangeText={setLinkInscricao} autoCapitalize="none" keyboardType="url" />
-
           <Text style={m.label}>Descrição</Text>
           <TextInput style={[m.input, m.textarea]} placeholder="Detalhes do curso…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={4} textAlignVertical="top" />
-
           <TouchableOpacity style={[m.btn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
             {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Publicar Curso →</Text>}
           </TouchableOpacity>
@@ -491,13 +647,24 @@ export default function PaginaDetalhe() {
   const [candidaturas, setCandidaturas] = useState<Set<number>>(new Set())
   const [candidatandoId, setCandidatandoId] = useState<number | null>(null)
 
+  // Gear menu + sub-modals
+  const [showGearMenu, setShowGearMenu] = useState(false)
+  const [showMetricas, setShowMetricas] = useState(false)
+  const [metricas, setMetricas] = useState<any>(null)
+  const [metricasLoading, setMetricasLoading] = useState(false)
+  const [showCandidatos, setShowCandidatos] = useState(false)
+  const [candidatosData, setCandidatosData] = useState<any[]>([])
+  const [candidatosLoading, setCandidatosLoading] = useState(false)
+  const [showInscritos, setShowInscritos] = useState(false)
+
+  // Content modals
   const [showPublicarMenu, setShowPublicarMenu] = useState(false)
   const [showAddServico, setShowAddServico] = useState(false)
   const [modalTipo, setModalTipo] = useState<ModalTipo>(null)
 
   const isOwner = user?.id === page?.user_id
 
-  // ── Data loaders ──────────────────────────────────────────────────────────
+  // ── Loaders ───────────────────────────────────────────────────────────────
   const loadPage = () => {
     setLoading(true)
     api.get(`/pages/${id}`)
@@ -534,6 +701,22 @@ export default function PaginaDetalhe() {
       .finally(() => setPublicacoesLoading(false))
   }
 
+  const loadMetricas = () => {
+    setMetricasLoading(true)
+    api.get(`/pages/${id}/metrics`)
+      .then(r => setMetricas(r.data))
+      .catch(() => null)
+      .finally(() => setMetricasLoading(false))
+  }
+
+  const loadCandidatos = () => {
+    setCandidatosLoading(true)
+    api.get(`/pages/${id}/candidatos`)
+      .then(r => setCandidatosData(r.data.candidatos || []))
+      .catch(() => null)
+      .finally(() => setCandidatosLoading(false))
+  }
+
   useEffect(() => { loadPage() }, [id])
 
   useEffect(() => {
@@ -568,29 +751,17 @@ export default function PaginaDetalhe() {
 
   const handlePickPortfolio = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!perm.granted) {
-      Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria para adicionar fotos.')
-      return
-    }
+    if (!perm.granted) { Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria.'); return }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-      allowsEditing: true,
-      aspect: [1, 1],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, allowsEditing: true, aspect: [1, 1],
     })
     if (result.canceled) return
     const asset = result.assets[0]
     setPortfolioUploading(true)
     try {
       const formData = new FormData()
-      formData.append('imagem', {
-        uri: asset.uri,
-        type: asset.mimeType || 'image/jpeg',
-        name: asset.fileName || `portfolio_${Date.now()}.jpg`,
-      } as any)
-      await api.post(`/pages/${id}/portfolio/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      formData.append('imagem', { uri: asset.uri, type: asset.mimeType || 'image/jpeg', name: asset.fileName || `portfolio_${Date.now()}.jpg` } as any)
+      await api.post(`/pages/${id}/portfolio/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
       loadPortfolio()
     } catch (err: any) {
       Alert.alert('Erro', err.response?.data?.error || 'Não foi possível enviar a foto.')
@@ -598,74 +769,55 @@ export default function PaginaDetalhe() {
   }
 
   const handleDeleteServico = (serviceId: number) => {
-    Alert.alert('Remover serviço', 'Tem certeza que deseja remover este serviço?', [
+    Alert.alert('Remover serviço', 'Tem certeza?', [
       { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Remover', style: 'destructive',
-        onPress: async () => {
-          try {
-            await api.delete(`/pages/${id}/services/${serviceId}`)
-            setServicos(prev => prev.filter(sv => sv.id !== serviceId))
-          } catch { Alert.alert('Erro', 'Não foi possível remover.') }
-        },
-      },
+      { text: 'Remover', style: 'destructive', onPress: async () => {
+        try {
+          await api.delete(`/pages/${id}/services/${serviceId}`)
+          setServicos(prev => prev.filter(sv => sv.id !== serviceId))
+        } catch { Alert.alert('Erro', 'Não foi possível remover.') }
+      }},
     ])
   }
 
   const handleDeletePortfolioItem = (itemId: number) => {
-    Alert.alert('Remover foto', 'Tem certeza que deseja remover esta foto?', [
+    Alert.alert('Remover foto', 'Tem certeza?', [
       { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Remover', style: 'destructive',
-        onPress: async () => {
-          try {
-            await api.delete(`/pages/${id}/portfolio/${itemId}`)
-            setPortfolio(prev => prev.filter(p => p.id !== itemId))
-          } catch { Alert.alert('Erro', 'Não foi possível remover.') }
-        },
-      },
+      { text: 'Remover', style: 'destructive', onPress: async () => {
+        try {
+          await api.delete(`/pages/${id}/portfolio/${itemId}`)
+          setPortfolio(prev => prev.filter(p => p.id !== itemId))
+        } catch { Alert.alert('Erro', 'Não foi possível remover.') }
+      }},
     ])
+  }
+
+  const handleDeletePage = () => {
+    Alert.alert(
+      'Excluir página',
+      'Esta ação é permanente e irreversível. Todos os dados da página serão removidos.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Excluir', style: 'destructive', onPress: async () => {
+          try {
+            await api.delete(`/pages/${id}`)
+            router.back()
+          } catch (err: any) {
+            Alert.alert('Erro', err.response?.data?.error || 'Não foi possível excluir.')
+          }
+        }},
+      ]
+    )
   }
 
   const openModal = (tipo: ModalTipo) => setModalTipo(tipo)
   const closeModal = () => setModalTipo(null)
 
-  // ── Owner panel CTA per tab ───────────────────────────────────────────────
-  const renderOwnerAction = () => {
-    switch (aba) {
-      case 'Sobre':
-        return (
-          <TouchableOpacity style={[s.ownerBtn, { backgroundColor: cor }]} onPress={() => router.push(`/editar-pagina/${id}` as any)}>
-            <Text style={s.ownerBtnT}>✏️ Editar Informações</Text>
-          </TouchableOpacity>
-        )
-      case 'Serviços':
-        return (
-          <TouchableOpacity style={[s.ownerBtn, { backgroundColor: cor }]} onPress={() => setShowAddServico(true)}>
-            <Text style={s.ownerBtnT}>+ Adicionar Serviço</Text>
-          </TouchableOpacity>
-        )
-      case 'Portfólio':
-        return (
-          <TouchableOpacity style={[s.ownerBtn, { backgroundColor: cor }]} onPress={handlePickPortfolio} disabled={portfolioUploading}>
-            {portfolioUploading
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={s.ownerBtnT}>📷 Adicionar Foto</Text>}
-          </TouchableOpacity>
-        )
-      case 'Vagas':
-        return (
-          <TouchableOpacity style={[s.ownerBtn, { backgroundColor: cor }]} onPress={() => openModal('vaga')}>
-            <Text style={s.ownerBtnT}>+ Nova Vaga</Text>
-          </TouchableOpacity>
-        )
-      case 'Cursos/Eventos':
-        return (
-          <TouchableOpacity style={[s.ownerBtn, { backgroundColor: cor }]} onPress={() => setShowPublicarMenu(true)}>
-            <Text style={s.ownerBtnT}>✏️ Publicar</Text>
-          </TouchableOpacity>
-        )
-    }
+  const openMetricas = () => { setShowMetricas(true); loadMetricas() }
+  const openCandidatos = () => { setShowCandidatos(true); loadCandidatos() }
+  const openInscritos = () => {
+    setShowInscritos(true)
+    if (!loadedTabs.has('Cursos/Eventos')) loadPublicacoes()
   }
 
   // ── Loading / not found ───────────────────────────────────────────────────
@@ -675,9 +827,7 @@ export default function PaginaDetalhe() {
     <View style={s.center}>
       <Text style={{ fontSize: 48, marginBottom: 12 }}>😕</Text>
       <Text style={{ fontSize: 17, fontWeight: '800', color: Colors.text, marginBottom: 20 }}>Página não encontrada</Text>
-      <TouchableOpacity style={s.btnBack} onPress={() => router.back()}>
-        <Text style={s.btnBackT}>← Voltar</Text>
-      </TouchableOpacity>
+      <TouchableOpacity style={s.btnBack} onPress={() => router.back()}><Text style={s.btnBackT}>← Voltar</Text></TouchableOpacity>
     </View>
   )
 
@@ -695,8 +845,8 @@ export default function PaginaDetalhe() {
         </TouchableOpacity>
         <Text style={s.navTitle} numberOfLines={1}>{page.nome}</Text>
         {isOwner ? (
-          <TouchableOpacity style={s.navSide} onPress={() => router.push(`/editar-pagina/${id}` as any)}>
-            <Text style={s.navAction}>Editar</Text>
+          <TouchableOpacity style={s.navSide} onPress={() => setShowGearMenu(true)}>
+            <Text style={s.gearBtn}>⚙️</Text>
           </TouchableOpacity>
         ) : <View style={s.navSide} />}
       </View>
@@ -729,11 +879,7 @@ export default function PaginaDetalhe() {
             )}
           </View>
 
-          {isOwner ? (
-            <TouchableOpacity style={s.editBtn} onPress={() => router.push(`/editar-pagina/${id}` as any)}>
-              <Text style={[s.editBtnT, { color: cor }]}>✏️ Editar página</Text>
-            </TouchableOpacity>
-          ) : (
+          {!isOwner && (
             <TouchableOpacity
               style={[s.likeBtn, liked ? s.likedBtn : { backgroundColor: cor }]}
               onPress={toggleLike}
@@ -768,8 +914,8 @@ export default function PaginaDetalhe() {
             <Text style={s.statL}>Vagas abertas</Text>
           </View>
           <View style={s.stat}>
-            <Text style={[s.statN, { color: cor }]}>{portfolio.length > 0 ? portfolio.length : servicos.length > 0 ? servicos.length : '—'}</Text>
-            <Text style={s.statL}>{portfolio.length > 0 ? 'Portfólio' : 'Serviços'}</Text>
+            <Text style={[s.statN, { color: cor }]}>{servicos.length || publicacoes.length || '—'}</Text>
+            <Text style={s.statL}>{servicos.length > 0 ? 'Serviços' : 'Publicações'}</Text>
           </View>
         </View>
 
@@ -789,27 +935,10 @@ export default function PaginaDetalhe() {
           </View>
         )}
 
-        {/* ── Painel do dono ── */}
-        {isOwner && (
-          <View style={s.ownerPanel}>
-            <Text style={s.ownerTitle}>Gerenciar página</Text>
-            {renderOwnerAction()}
-          </View>
-        )}
-
         {/* ── Abas (scroll horizontal) ── */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={s.abasScroll}
-          contentContainerStyle={s.abas}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.abasScroll} contentContainerStyle={s.abas}>
           {ABAS.map(a => (
-            <TouchableOpacity
-              key={a}
-              style={[s.aba, aba === a && { borderBottomColor: cor }]}
-              onPress={() => setAba(a)}
-            >
+            <TouchableOpacity key={a} style={[s.aba, aba === a && { borderBottomColor: cor }]} onPress={() => setAba(a)}>
               <Text style={[s.abaT, aba === a && { color: cor }]}>
                 {a}{a === 'Vagas' && vagas.length > 0 ? ` (${vagas.length})` : ''}
               </Text>
@@ -842,6 +971,11 @@ export default function PaginaDetalhe() {
         {/* ── Tab: Serviços ── */}
         {aba === 'Serviços' && (
           <View style={s.tab}>
+            {isOwner && servicos.length > 0 && (
+              <TouchableOpacity style={[s.tabAddBtn, { borderColor: cor }]} onPress={() => setShowAddServico(true)}>
+                <Text style={[s.tabAddBtnT, { color: cor }]}>+ Adicionar Serviço</Text>
+              </TouchableOpacity>
+            )}
             {servicosLoading ? (
               <ActivityIndicator color={cor} style={{ marginTop: 32 }} />
             ) : servicos.length === 0 ? (
@@ -855,13 +989,7 @@ export default function PaginaDetalhe() {
                 )}
               </View>
             ) : servicos.map(sv => (
-              <ServicoCard
-                key={sv.id}
-                servico={sv}
-                isOwner={isOwner}
-                cor={cor}
-                onDelete={() => handleDeleteServico(sv.id)}
-              />
+              <ServicoCard key={sv.id} servico={sv} isOwner={isOwner} cor={cor} onDelete={() => handleDeleteServico(sv.id)} />
             ))}
           </View>
         )}
@@ -869,6 +997,13 @@ export default function PaginaDetalhe() {
         {/* ── Tab: Portfólio ── */}
         {aba === 'Portfólio' && (
           <View style={s.tab}>
+            {isOwner && portfolio.length > 0 && (
+              <TouchableOpacity style={[s.tabAddBtn, { borderColor: cor }]} onPress={handlePickPortfolio} disabled={portfolioUploading}>
+                {portfolioUploading
+                  ? <ActivityIndicator color={cor} size="small" />
+                  : <Text style={[s.tabAddBtnT, { color: cor }]}>📷 Adicionar Foto</Text>}
+              </TouchableOpacity>
+            )}
             {portfolioLoading ? (
               <ActivityIndicator color={cor} style={{ marginTop: 32 }} />
             ) : portfolio.length === 0 ? (
@@ -884,12 +1019,7 @@ export default function PaginaDetalhe() {
             ) : (
               <View style={s.portfolioGrid}>
                 {portfolio.map(item => (
-                  <PortfolioItem
-                    key={item.id}
-                    item={item}
-                    isOwner={isOwner}
-                    onDelete={() => handleDeletePortfolioItem(item.id)}
-                  />
+                  <PortfolioItem key={item.id} item={item} isOwner={isOwner} onDelete={() => handleDeletePortfolioItem(item.id)} />
                 ))}
               </View>
             )}
@@ -899,6 +1029,11 @@ export default function PaginaDetalhe() {
         {/* ── Tab: Vagas ── */}
         {aba === 'Vagas' && (
           <View style={s.tab}>
+            {isOwner && vagas.length > 0 && (
+              <TouchableOpacity style={[s.tabAddBtn, { borderColor: cor }]} onPress={() => openModal('vaga')}>
+                <Text style={[s.tabAddBtnT, { color: cor }]}>+ Nova Vaga</Text>
+              </TouchableOpacity>
+            )}
             {vagas.length === 0 ? (
               <View style={s.emptyCard}>
                 <Text style={{ fontSize: 32, marginBottom: 8 }}>📭</Text>
@@ -910,15 +1045,7 @@ export default function PaginaDetalhe() {
                 )}
               </View>
             ) : vagas.map(vaga => (
-              <VagaCard
-                key={vaga.id}
-                vaga={vaga}
-                cor={cor}
-                jaCandidata={candidaturas.has(vaga.id)}
-                loading={candidatandoId === vaga.id}
-                onCandidatar={() => candidatar(vaga.id)}
-                isOwner={isOwner}
-              />
+              <VagaCard key={vaga.id} vaga={vaga} cor={cor} jaCandidata={candidaturas.has(vaga.id)} loading={candidatandoId === vaga.id} onCandidatar={() => candidatar(vaga.id)} isOwner={isOwner} />
             ))}
           </View>
         )}
@@ -926,6 +1053,11 @@ export default function PaginaDetalhe() {
         {/* ── Tab: Cursos/Eventos ── */}
         {aba === 'Cursos/Eventos' && (
           <View style={s.tab}>
+            {isOwner && publicacoes.length > 0 && (
+              <TouchableOpacity style={[s.tabAddBtn, { borderColor: cor }]} onPress={() => setShowPublicarMenu(true)}>
+                <Text style={[s.tabAddBtnT, { color: cor }]}>✏️ Publicar</Text>
+              </TouchableOpacity>
+            )}
             {publicacoesLoading ? (
               <ActivityIndicator color={cor} style={{ marginTop: 32 }} />
             ) : publicacoes.length === 0 ? (
@@ -947,12 +1079,44 @@ export default function PaginaDetalhe() {
         <View style={{ height: 60 }} />
       </ScrollView>
 
-      {/* ── Menu Publicar ── */}
-      <PublicarMenu
-        visible={showPublicarMenu}
-        onSelect={openModal}
-        onClose={() => setShowPublicarMenu(false)}
+      {/* ── Gear menu ── */}
+      <GearMenu
+        visible={showGearMenu}
+        onClose={() => setShowGearMenu(false)}
+        pageId={id}
+        onEditar={() => router.push(`/editar-pagina/${id}` as any)}
+        onMetricas={openMetricas}
+        onCandidatos={openCandidatos}
+        onInscritos={openInscritos}
+        onExcluir={handleDeletePage}
       />
+
+      {/* ── Métricas ── */}
+      <MetricasModal
+        visible={showMetricas}
+        onClose={() => setShowMetricas(false)}
+        metricas={metricas}
+        loading={metricasLoading}
+      />
+
+      {/* ── Candidatos ── */}
+      <CandidatosModal
+        visible={showCandidatos}
+        onClose={() => setShowCandidatos(false)}
+        candidatos={candidatosData}
+        loading={candidatosLoading}
+      />
+
+      {/* ── Inscritos ── */}
+      <InscritosModal
+        visible={showInscritos}
+        onClose={() => setShowInscritos(false)}
+        publicacoes={publicacoes}
+        loading={publicacoesLoading}
+      />
+
+      {/* ── Menu Publicar ── */}
+      <PublicarMenu visible={showPublicarMenu} onSelect={openModal} onClose={() => setShowPublicarMenu(false)} />
 
       {/* ── Modal: Adicionar Serviço ── */}
       <AddServicoModal
@@ -963,37 +1127,11 @@ export default function PaginaDetalhe() {
       />
 
       {/* ── Modais de publicação ── */}
-      <VagaModal
-        visible={modalTipo === 'vaga'}
-        pageId={id}
-        pageName={page.nome}
-        onClose={closeModal}
-        onCreated={loadPage}
-      />
-      <CursoModal
-        visible={modalTipo === 'curso'}
-        pageId={id}
-        onClose={closeModal}
-        onCreated={() => { setPublicacoes([]); loadPublicacoes() }}
-      />
-      <TreinamentoModal
-        visible={modalTipo === 'treinamento'}
-        pageId={id}
-        onClose={closeModal}
-        onCreated={() => { setPublicacoes([]); loadPublicacoes() }}
-      />
-      <PalestraModal
-        visible={modalTipo === 'palestra'}
-        pageId={id}
-        onClose={closeModal}
-        onCreated={() => { setPublicacoes([]); loadPublicacoes() }}
-      />
-      <EventoModal
-        visible={modalTipo === 'evento'}
-        pageId={id}
-        onClose={closeModal}
-        onCreated={() => { setPublicacoes([]); loadPublicacoes() }}
-      />
+      <VagaModal visible={modalTipo === 'vaga'} pageId={id} pageName={page.nome} onClose={closeModal} onCreated={loadPage} />
+      <CursoModal visible={modalTipo === 'curso'} pageId={id} onClose={closeModal} onCreated={() => { setPublicacoes([]); loadPublicacoes() }} />
+      <TreinamentoModal visible={modalTipo === 'treinamento'} pageId={id} onClose={closeModal} onCreated={() => { setPublicacoes([]); loadPublicacoes() }} />
+      <PalestraModal visible={modalTipo === 'palestra'} pageId={id} onClose={closeModal} onCreated={() => { setPublicacoes([]); loadPublicacoes() }} />
+      <EventoModal visible={modalTipo === 'evento'} pageId={id} onClose={closeModal} onCreated={() => { setPublicacoes([]); loadPublicacoes() }} />
     </View>
   )
 }
@@ -1041,18 +1179,13 @@ function PortfolioItem({ item, isOwner, onDelete }: any) {
   )
 }
 
-const TIPO_EMOJI: Record<string, string> = {
-  curso: '🎓', treinamento: '🏋️', palestra: '🎤', evento: '🗓️',
-}
-const TIPO_LABEL_PUB: Record<string, string> = {
-  curso: 'Curso', treinamento: 'Treinamento', palestra: 'Palestra', evento: 'Evento',
-}
+const TIPO_EMOJI: Record<string, string> = { curso: '🎓', treinamento: '🏋️', palestra: '🎤', evento: '🗓️' }
+const TIPO_LABEL_PUB: Record<string, string> = { curso: 'Curso', treinamento: 'Treinamento', palestra: 'Palestra', evento: 'Evento' }
 
 function PublicacaoCard({ pub, pageLogo, pageName, cor }: any) {
   const emoji = TIPO_EMOJI[pub.tipo] || '📢'
   const label = TIPO_LABEL_PUB[pub.tipo] || pub.tipo
   const dados = pub.dados || {}
-
   const infos: string[] = []
   if (dados.modalidade) infos.push(dados.modalidade)
   if (dados.carga_horaria) infos.push(dados.carga_horaria)
@@ -1085,9 +1218,7 @@ function PublicacaoCard({ pub, pageLogo, pageName, cor }: any) {
       {infos.length > 0 && <Text style={s.pubInfos}>{infos.join('  ·  ')}</Text>}
       {dados.descricao ? <Text style={s.postText}>{dados.descricao}</Text> : null}
       {dados.link_inscricao ? (
-        <TouchableOpacity onPress={() => Linking.openURL(
-          dados.link_inscricao.startsWith('http') ? dados.link_inscricao : `https://${dados.link_inscricao}`
-        )}>
+        <TouchableOpacity onPress={() => Linking.openURL(dados.link_inscricao.startsWith('http') ? dados.link_inscricao : `https://${dados.link_inscricao}`)}>
           <Text style={[s.linkInscricao, { color: cor }]}>🔗 Inscrever-se</Text>
         </TouchableOpacity>
       ) : null}
@@ -1108,9 +1239,7 @@ function VagaCard({ vaga, cor, jaCandidata, loading, onCandidatar, isOwner }: an
       </View>
       <View style={s.vagaMeta}>
         {vaga.contrato && <View style={s.vagaTag}><Text style={s.vagaTagT}>{vaga.contrato}</Text></View>}
-        {(vaga.cidade || vaga.estado) && (
-          <Text style={s.vagaLoc}>📍 {vaga.cidade}{vaga.estado ? ` · ${vaga.estado}` : ''}</Text>
-        )}
+        {(vaga.cidade || vaga.estado) && <Text style={s.vagaLoc}>📍 {vaga.cidade}{vaga.estado ? ` · ${vaga.estado}` : ''}</Text>}
       </View>
       {vaga.salario ? <Text style={s.vagaSalario}>{vaga.salario}</Text> : null}
       {vaga.descricao ? <Text style={s.vagaDesc}>{vaga.descricao}</Text> : null}
@@ -1139,10 +1268,10 @@ const s = StyleSheet.create({
   btnBackT: { color: '#fff', fontWeight: '800', fontSize: 14 },
 
   navBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, paddingTop: Platform.OS === 'ios' ? 52 : 14 },
-  navSide: { width: 56 },
+  navSide: { width: 56, alignItems: 'flex-end' },
   navBack: { fontSize: 24, color: '#fff', fontWeight: '700' },
   navTitle: { flex: 1, fontSize: 17, fontWeight: '800', color: '#fff', textAlign: 'center' },
-  navAction: { color: '#fff', fontSize: 13, fontWeight: '700', textAlign: 'right' },
+  gearBtn: { fontSize: 22 },
 
   cover: { height: 130, overflow: 'hidden' },
   coverWatermark: { position: 'absolute', bottom: -8, left: 10, right: 10, fontSize: 52, fontWeight: '900', color: 'rgba(255,255,255,0.13)', letterSpacing: 3 },
@@ -1155,8 +1284,6 @@ const s = StyleSheet.create({
   verifiedBadge: { position: 'absolute', bottom: -4, right: -4, width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
   verifiedT: { color: '#fff', fontSize: 10, fontWeight: '900' },
 
-  editBtn: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 9, backgroundColor: Colors.white, marginBottom: 4 },
-  editBtnT: { fontSize: 13, fontWeight: '800' },
   likeBtn: { borderRadius: 100, paddingHorizontal: 22, paddingVertical: 10, marginBottom: 4, minWidth: 110, alignItems: 'center' },
   likedBtn: { backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border },
   likeBtnT: { color: '#fff', fontSize: 14, fontWeight: '800' },
@@ -1176,17 +1303,15 @@ const s = StyleSheet.create({
   contactBtn: { flex: 1, borderRadius: 12, paddingVertical: 11, alignItems: 'center', borderWidth: 1.5 },
   contactBtnT: { fontSize: 14, fontWeight: '800' },
 
-  ownerPanel: { backgroundColor: '#FFFBEA', borderBottomWidth: 1, borderTopWidth: 1, borderColor: '#F5C800', paddingHorizontal: 16, paddingVertical: 14 },
-  ownerTitle: { fontSize: 11, fontWeight: '800', color: '#A07800', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
-  ownerBtn: { borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  ownerBtnT: { color: '#fff', fontSize: 13, fontWeight: '800' },
-
   abasScroll: { backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border },
   abas: { flexDirection: 'row' },
   aba: { paddingVertical: 13, paddingHorizontal: 14, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  abaT: { fontSize: 13, fontWeight: '700', color: Colors.text3, whiteSpace: 'nowrap' } as any,
+  abaT: { fontSize: 13, fontWeight: '700', color: Colors.text3 } as any,
 
   tab: { padding: 16, gap: 12, paddingBottom: 20 },
+  tabAddBtn: { alignSelf: 'flex-end', borderWidth: 1.5, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 8 },
+  tabAddBtnT: { fontSize: 13, fontWeight: '700' },
+
   card: { backgroundColor: Colors.white, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: Colors.border },
   cardTitle: { fontSize: 11, fontWeight: '800', color: Colors.text2, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
   cardText: { fontSize: 14, color: Colors.text, lineHeight: 22 },
@@ -1197,7 +1322,6 @@ const s = StyleSheet.create({
   emptyBtn: { marginTop: 10, borderWidth: 1.5, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 8 },
   emptyBtnT: { fontSize: 13, fontWeight: '700' },
 
-  // Serviços
   servicoCard: { backgroundColor: Colors.white, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: Colors.border, flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   servicoIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   servicoTitulo: { fontSize: 15, fontWeight: '800', color: Colors.text, marginBottom: 3 },
@@ -1205,13 +1329,11 @@ const s = StyleSheet.create({
   deleteBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.bg, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
   deleteBtnT: { fontSize: 11, color: Colors.text3, fontWeight: '800' },
 
-  // Portfólio
   portfolioGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
   portfolioItem: { width: PORTFOLIO_SIZE, height: PORTFOLIO_SIZE, borderRadius: 10, overflow: 'hidden', backgroundColor: Colors.border, position: 'relative' },
   portfolioDeleteBtn: { position: 'absolute', top: 6, right: 6, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12, width: 26, height: 26, justifyContent: 'center', alignItems: 'center' },
   portfolioDeleteBtnT: { color: '#fff', fontSize: 11, fontWeight: '900' },
 
-  // Posts/publicações
   postCard: { backgroundColor: Colors.white, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: Colors.border },
   postHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   postAvatar: { width: 42, height: 42, borderRadius: 12 },
@@ -1224,7 +1346,6 @@ const s = StyleSheet.create({
   pubInfos: { fontSize: 12, color: Colors.text3, marginBottom: 4 },
   linkInscricao: { fontSize: 13, fontWeight: '700', marginTop: 8 },
 
-  // Vagas
   vagaCard: { backgroundColor: Colors.white, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: Colors.border },
   vagaTop: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   vagaTitulo: { fontSize: 16, fontWeight: '800', color: Colors.text, flex: 1 },
@@ -1265,4 +1386,32 @@ const m = StyleSheet.create({
   menuEmoji: { fontSize: 22, marginRight: 14 },
   menuLabel: { flex: 1, fontSize: 16, fontWeight: '700', color: Colors.text },
   menuArrow: { fontSize: 22, color: Colors.text3 },
+  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginVertical: 16 },
+  metricCard: { width: '30%', flexGrow: 1, backgroundColor: Colors.bg, borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
+  metricEmoji: { fontSize: 22, marginBottom: 4 },
+  metricValue: { fontSize: 22, fontWeight: '900', color: Colors.text },
+  metricLabel: { fontSize: 10, color: Colors.text3, fontWeight: '600', marginTop: 2, textAlign: 'center' },
+})
+
+// ─── Styles full-screen modals ────────────────────────────────────────────────
+const fs = StyleSheet.create({
+  root: { flex: 1, backgroundColor: Colors.bg },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, paddingTop: Platform.OS === 'ios' ? 56 : 16, backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  closeBtn: { width: 40 },
+  closeT: { fontSize: 22, color: Colors.text, fontWeight: '700' },
+  title: { fontSize: 16, fontWeight: '800', color: Colors.text },
+  emptyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 60 },
+  emptyT: { fontSize: 15, color: Colors.text3, fontWeight: '600' },
+  groupHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, marginTop: 4 },
+  groupTitle: { fontSize: 15, fontWeight: '800', color: Colors.text, flex: 1 },
+  groupCount: { fontSize: 12, color: Colors.text3, fontWeight: '600' },
+  tag: { backgroundColor: Colors.bg, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: Colors.border },
+  tagT: { fontSize: 11, fontWeight: '700', color: Colors.text2 },
+  itemCard: { backgroundColor: Colors.white, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: Colors.border },
+  itemNome: { fontSize: 14, fontWeight: '800', color: Colors.text, marginBottom: 2 },
+  itemSub: { fontSize: 12, color: Colors.text3, marginBottom: 2 },
+  itemDate: { fontSize: 11, color: Colors.text3, marginTop: 4 },
+  infoBox: { backgroundColor: '#EFF6FF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#BFDBFE' },
+  infoBoxT: { fontSize: 12, color: '#1E40AF', lineHeight: 18 },
+  link: { fontSize: 13, fontWeight: '700', color: Colors.primary, marginTop: 6 },
 })
