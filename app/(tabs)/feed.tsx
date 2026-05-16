@@ -40,6 +40,28 @@ const FILTROS = [
   { key: 'ajuda',    label: 'Ajuda'     },
 ]
 
+const CONTRATO_COR: Record<string, string> = {
+  CLT: '#00A880', PJ: '#1A6FD4', Freelancer: '#C49800', Estágio: '#7B3FC4',
+}
+
+function calcularCompatClient(user: any, vaga: any): number {
+  const reqObrig: string[] = vaga.requisitos_obrigatorios || []
+  const reqDesej: string[] = vaga.requisitos_desejaveis || []
+  if (reqObrig.length === 0 && reqDesej.length === 0) return 100
+  const userCaps = [
+    ...(user?.especialidades || []),
+    ...(user?.habilidades || []),
+    ...((user?.cargos_extras || []).map((c: any) => typeof c === 'string' ? c : c.cargo || '')),
+    user?.tipo_profissional || '',
+  ].map((c: string) => c.toLowerCase().trim()).filter(Boolean)
+  const norm = (s: string) => s.toLowerCase().trim()
+  let score = reqObrig.length > 0
+    ? (reqObrig.filter(r => userCaps.includes(norm(r))).length / reqObrig.length) * 70 : 70
+  score += reqDesej.length > 0
+    ? (reqDesej.filter(r => userCaps.includes(norm(r))).length / reqDesej.length) * 30 : 30
+  return Math.round(score)
+}
+
 const TIPOS = [
   { key: 'parceria', label: 'Busco Parceria',   emoji: '🤝', cor: '#7B3FC4', sub: 'Procuro profissional para colaborar'      },
   { key: 'vaga',     label: 'Tenho uma Vaga',    emoji: '💼', cor: '#C49800', sub: 'Ofereço oportunidade de trabalho'          },
@@ -419,10 +441,85 @@ function getMeta(tipo: string) {
   return TIPOS_META[tipo] || { emoji: '📋', label: tipo, cor: '#00A880' }
 }
 
+// ── Seção de vagas de páginas ─────────────────────────────────────────────────
+
+function VagasDestaqueSection({ vagas, user }: { vagas: any[]; user: any }) {
+  if (vagas.length === 0) return null
+  return (
+    <View style={{ marginBottom: 4 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 }}>
+        <Text style={{ fontSize: 14, fontWeight: '800', color: '#0A1C14' }}>💼 Vagas em destaque</Text>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/vagas' as any)}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: '#00A880' }}>Ver todas →</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, gap: 10 }}>
+        {vagas.map(v => {
+          const pct = calcularCompatClient(user, v)
+          const barCor = pct >= 80 ? '#00A880' : pct >= 50 ? '#C49800' : '#EF4444'
+          const contratoCor = CONTRATO_COR[v.contrato] || '#7A9E8E'
+          const loc = [v.cidade || v.empresa_cidade, v.estado || v.empresa_estado].filter(Boolean).join(' · ')
+          const logoUrl = v.logo_url
+            ? (v.logo_url.startsWith('http') ? v.logo_url : API_BASE + v.logo_url)
+            : null
+          return (
+            <TouchableOpacity
+              key={v.id}
+              style={vgStyles.card}
+              activeOpacity={0.82}
+              onPress={() => router.push('/(tabs)/vagas' as any)}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                {logoUrl
+                  ? <Image source={{ uri: logoUrl }} style={vgStyles.logo} />
+                  : <View style={[vgStyles.logo, { backgroundColor: '#D0E8DA', justifyContent: 'center', alignItems: 'center' }]}>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#3A6550' }}>{(v.empresa_nome || '?').charAt(0)}</Text>
+                    </View>
+                }
+                <Text style={vgStyles.empresa} numberOfLines={1}>{v.empresa_nome}</Text>
+              </View>
+              <Text style={vgStyles.cargo} numberOfLines={2}>{v.cargo}</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
+                {v.contrato && (
+                  <View style={[vgStyles.chip, { borderColor: contratoCor + '80', backgroundColor: contratoCor + '12' }]}>
+                    <Text style={[vgStyles.chipT, { color: contratoCor }]}>{v.contrato}</Text>
+                  </View>
+                )}
+                {loc ? (
+                  <View style={vgStyles.chip}>
+                    <Text style={vgStyles.chipT}>📍 {loc}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <View style={{ gap: 3, marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 9, fontWeight: '800', color: '#7A9E8E', textTransform: 'uppercase' }}>Compat.</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '900', color: barCor }}>{pct}%</Text>
+                </View>
+                <View style={{ height: 5, backgroundColor: '#EEF7F2', borderRadius: 3, overflow: 'hidden' }}>
+                  <View style={{ height: '100%', width: `${Math.min(100, pct)}%`, backgroundColor: barCor, borderRadius: 3 }} />
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[vgStyles.btn, { backgroundColor: '#00A880' }]}
+                onPress={() => router.push('/(tabs)/vagas' as any)}
+              >
+                <Text style={vgStyles.btnT}>Ver vaga →</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          )
+        })}
+      </ScrollView>
+      <View style={{ height: 1, backgroundColor: '#D0E8DA', marginTop: 12, marginHorizontal: 14 }} />
+    </View>
+  )
+}
+
 // ── main ───────────────────────────────────���──────────────────────────────────
 
 export default function Feed() {
   const [posts, setPosts] = useState([])
+  const [vagas, setVagas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [filtro, setFiltro] = useState('todos')
@@ -435,11 +532,15 @@ export default function Feed() {
   const loadFeed = async () => {
     try {
       const params = filtro !== 'todos' ? '?tipo_post=' + filtro : ''
-      const [postsRes] = await Promise.all([
+      const [postsRes, vagasRes] = await Promise.all([
         api.get('/posts' + params),
+        filtro === 'todos'
+          ? api.get('/vagas').catch(() => ({ data: { vagas: [] } }))
+          : Promise.resolve({ data: { vagas: [] } }),
         api.get('/notifications?limit=1').then(r => setUnreadCount(r.data.unread || 0)).catch(() => null),
       ])
       setPosts(postsRes.data.posts || [])
+      setVagas(((vagasRes as any).data.vagas || []).slice(0, 6))
     } catch (err) {
       console.log('Erro:', err)
     } finally {
@@ -592,7 +693,10 @@ export default function Feed() {
           data={posts}
           keyExtractor={(item: any) => item.id?.toString()}
           renderItem={renderPost}
-          contentContainerStyle={posts.length === 0 ? { flex: 1 } : { padding: 14, gap: 12, paddingBottom: 40 }}
+          ListHeaderComponent={filtro === 'todos' && vagas.length > 0
+            ? <VagasDestaqueSection vagas={vagas} user={user} />
+            : null}
+          contentContainerStyle={posts.length === 0 ? { flex: 1 } : { paddingHorizontal: 14, paddingTop: 14, gap: 12, paddingBottom: 40 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadFeed() }} tintColor="#00A880" />}
           ListEmptyComponent={
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -791,4 +895,15 @@ const pm = StyleSheet.create({
     backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA',
     borderRadius: 12, padding: 12, fontSize: 14, color: '#0A1C14',
   },
+})
+
+const vgStyles = StyleSheet.create({
+  card: { width: 200, backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA' },
+  logo: { width: 32, height: 32, borderRadius: 8 },
+  empresa: { flex: 1, fontSize: 12, fontWeight: '700', color: '#3A6550' },
+  cargo: { fontSize: 14, fontWeight: '800', color: '#0A1C14', marginBottom: 8, lineHeight: 19 },
+  chip: { borderWidth: 1, borderColor: '#D0E8DA', borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
+  chipT: { fontSize: 10, fontWeight: '700', color: '#3A6550' },
+  btn: { borderRadius: 10, paddingVertical: 9, alignItems: 'center' },
+  btnT: { color: '#fff', fontSize: 12, fontWeight: '800' },
 })
