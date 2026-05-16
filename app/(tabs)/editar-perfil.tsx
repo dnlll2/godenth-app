@@ -342,10 +342,24 @@ export default function EditarPerfil() {
 
     try {
       const fd = new FormData()
-      // Não setar Content-Type manualmente — o React Native XHR inclui o boundary automaticamente
-      fd.append('avatar', { uri, type: mimeType, name: fileName } as any)
 
-      console.log('[avatar] enviando POST /users/me/avatar...')
+      if (Platform.OS === 'web') {
+        // Expo Web: asset.file é o File nativo do browser (se disponível)
+        const file = (asset as any).file
+        if (file) {
+          fd.append('avatar', file)
+        } else {
+          // fallback: converte data URI para Blob
+          const response = await fetch(uri)
+          const blob = await response.blob()
+          fd.append('avatar', blob, fileName)
+        }
+      } else {
+        // React Native nativo (iOS/Android): XHR aceita { uri, type, name }
+        fd.append('avatar', { uri, type: mimeType, name: fileName } as any)
+      }
+
+      console.log('[avatar] enviando POST /users/me/avatar... (platform:', Platform.OS, ')')
       const res = await api.post('/users/me/avatar', fd)
 
       console.log('[avatar] status:', res.status, '| data:', JSON.stringify(res.data))
