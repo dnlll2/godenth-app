@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, Modal, FlatList, ActivityIndicator, Alert,
-  Switch, Image, Platform,
+  Switch, Image, Platform, Linking,
 } from 'react-native'
 import { router } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import { LinearGradient } from 'expo-linear-gradient'
 import api from '../../services/api'
+import { useAuthStore } from '../../stores/authStore'
 
 const API_BASE = 'https://godenth-api-production.up.railway.app'
 
@@ -119,6 +120,14 @@ const HABILIDADES: Record<string, Record<string, string[]>> = {
 
 const ANOS = Array.from({ length: 60 }, (_, i) => String(new Date().getFullYear() - i))
 
+const DEFAULT_PRIVACIDADE = {
+  ocultar_foto: false, ocultar_cargo: false, ocultar_email: false,
+  ocultar_celular: false, ocultar_idade: false, ocultar_bio: false,
+  ocultar_localizacao: false, ocultar_especialidades: false,
+  ocultar_habilidades: false, ocultar_formacao: false,
+  ocultar_experiencia: false, ocultar_instagram: false,
+}
+
 const maskDate = (v: string) => {
   const d = v.replace(/\D/g, '').slice(0, 8)
   if (d.length <= 2) return d
@@ -203,7 +212,7 @@ export default function EditarPerfil() {
   const [dataNascimento, setDataNascimento] = useState('')
   const [email, setEmail] = useState('')
   const [celular, setCelular] = useState('')
-  const [privacidade, setPrivacidade] = useState({ ocultar_email: false, ocultar_celular: false, ocultar_idade: false })
+  const [privacidade, setPrivacidade] = useState<any>(DEFAULT_PRIVACIDADE)
   const [cidade, setCidade] = useState('')
   const [estado, setEstado] = useState('')
   const [bio, setBio] = useState('')
@@ -215,6 +224,8 @@ export default function EditarPerfil() {
   const [instagram, setInstagram] = useState('')
   const [tipoProf, setTipoProf] = useState('')
   const [cargosExtras, setCargosExtras] = useState<any[]>([])
+  const [showCargoModal, setShowCargoModal] = useState(false)
+  const [cargoMotivo, setCargoMotivo] = useState('')
 
   const [estados, setEstados] = useState<any[]>([])
   const [cidades, setCidades] = useState<any[]>([])
@@ -260,7 +271,7 @@ export default function EditarPerfil() {
       setEmail(p.email || '')
       setCelular(p.celular || '')
       setDataNascimento(p.data_nascimento ? isoToDisplay(p.data_nascimento) : '')
-      setPrivacidade(p.privacidade || { ocultar_email: false, ocultar_celular: false, ocultar_idade: false })
+      setPrivacidade({ ...DEFAULT_PRIVACIDADE, ...(p.privacidade || {}) })
       setCidade(p.cidade || '')
       setEstado(p.estado || '')
       setBio(p.bio || '')
@@ -315,8 +326,12 @@ export default function EditarPerfil() {
     try {
       const fd = new FormData()
       fd.append('avatar', { uri, type: 'image/jpeg', name: 'avatar.jpg' } as any)
-      const res = await api.post('/users/me/avatar', fd)
-      setAvatarRemote(API_BASE + res.data.avatar_url)
+      const res = await api.post('/users/me/avatar', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      const fullUrl = res.data.avatar_url.startsWith('http') ? res.data.avatar_url : API_BASE + res.data.avatar_url
+      setAvatarRemote(fullUrl)
+      useAuthStore.getState().updateUser({ avatar_url: res.data.avatar_url })
     } catch {
       Alert.alert('Erro', 'Não foi possível enviar a foto.')
       setAvatarUri(null)
@@ -486,14 +501,25 @@ export default function EditarPerfil() {
         {/* 2. Informações Básicas */}
         <Text style={s.sectionLabel}>Informações Básicas</Text>
         <View style={s.card}>
-          <Text style={s.fieldLbl}>Nome completo *</Text>
-          <TextInput style={s.input} value={nome} onChangeText={setNome}
-            placeholder="Seu nome completo" placeholderTextColor="#A0B8AC" />
+          <Text style={s.fieldLbl}>Nome completo 🔒 <Text style={s.readOnlyTag}>(não editável)</Text></Text>
+          <View style={[s.input, s.inputReadOnly, s.inputLocked]}>
+            <Text style={s.inputLockedT}>{nome || '—'}</Text>
+          </View>
 
-          <Text style={s.fieldLbl}>Data de nascimento</Text>
-          <TextInput style={s.input} value={dataNascimento}
-            onChangeText={v => setDataNascimento(maskDate(v))}
-            placeholder="DD/MM/AAAA" placeholderTextColor="#A0B8AC" keyboardType="number-pad" maxLength={10} />
+          <Text style={s.fieldLbl}>Data de nascimento 🔒 <Text style={s.readOnlyTag}>(não editável)</Text></Text>
+          <View style={[s.input, s.inputReadOnly, s.inputLocked]}>
+            <Text style={s.inputLockedT}>{dataNascimento || '—'}</Text>
+          </View>
+
+          <Text style={s.fieldLbl}>Cargo principal 🔒 <Text style={s.readOnlyTag}>(não editável)</Text></Text>
+          <View style={s.lockedCargoRow}>
+            <View style={[s.input, s.inputReadOnly, s.inputLocked, { flex: 1 }]}>
+              <Text style={s.inputLockedT}>{tipoProf || '—'}</Text>
+            </View>
+            <TouchableOpacity style={s.solicitarBtn} onPress={() => setShowCargoModal(true)}>
+              <Text style={s.solicitarBtnT}>Solicitar{'\n'}alteração</Text>
+            </TouchableOpacity>
+          </View>
 
           <Text style={s.fieldLbl}>E-mail <Text style={s.readOnlyTag}>(não editável)</Text></Text>
           <View style={[s.input, s.inputReadOnly]}>
@@ -508,35 +534,33 @@ export default function EditarPerfil() {
         {/* 3. Privacidade */}
         <Text style={s.sectionLabel}>Privacidade</Text>
         <View style={s.card}>
-          <View style={s.toggleRow}>
-            <View style={s.toggleInfo}>
-              <Text style={s.toggleLabel}>Ocultar e-mail no perfil</Text>
-              <Text style={s.toggleSub}>Apenas conexões podem ver</Text>
+          {([
+            { key: 'ocultar_foto',          label: 'Ocultar foto de perfil',    sub: 'Exibe apenas a inicial do nome' },
+            { key: 'ocultar_cargo',         label: 'Ocultar cargo principal',   sub: 'Cargo não aparece no perfil público' },
+            { key: 'ocultar_email',         label: 'Ocultar e-mail',            sub: 'Apenas conexões podem ver' },
+            { key: 'ocultar_celular',       label: 'Ocultar celular',           sub: 'Apenas conexões podem ver' },
+            { key: 'ocultar_idade',         label: 'Ocultar idade',             sub: 'Data de nascimento não aparece' },
+            { key: 'ocultar_bio',           label: 'Ocultar bio/resumo',        sub: 'Resumo profissional fica oculto' },
+            { key: 'ocultar_localizacao',   label: 'Ocultar localização',       sub: 'Cidade e estado não aparecem' },
+            { key: 'ocultar_especialidades',label: 'Ocultar especialidades',    sub: 'Lista de especialidades fica oculta' },
+            { key: 'ocultar_habilidades',   label: 'Ocultar habilidades',       sub: 'Lista de habilidades fica oculta' },
+            { key: 'ocultar_formacao',      label: 'Ocultar formação',          sub: 'Formação acadêmica fica oculta' },
+            { key: 'ocultar_experiencia',   label: 'Ocultar experiência',       sub: 'Experiência profissional fica oculta' },
+            { key: 'ocultar_instagram',     label: 'Ocultar Instagram',         sub: 'Link do Instagram não aparece' },
+          ] as { key: string; label: string; sub: string }[]).map((item, i, arr) => (
+            <View key={item.key}>
+              <View style={s.toggleRow}>
+                <View style={s.toggleInfo}>
+                  <Text style={s.toggleLabel}>{item.label}</Text>
+                  <Text style={s.toggleSub}>{item.sub}</Text>
+                </View>
+                <Switch value={!!privacidade[item.key]}
+                  onValueChange={v => setPrivacidade((p: any) => ({ ...p, [item.key]: v }))}
+                  trackColor={{ false: '#D0E8DA', true: '#00A880' }} thumbColor="#fff" />
+              </View>
+              {i < arr.length - 1 && <View style={s.cardDivider} />}
             </View>
-            <Switch value={privacidade.ocultar_email}
-              onValueChange={v => setPrivacidade(p => ({ ...p, ocultar_email: v }))}
-              trackColor={{ false: '#D0E8DA', true: '#00A880' }} thumbColor="#fff" />
-          </View>
-          <View style={s.cardDivider} />
-          <View style={s.toggleRow}>
-            <View style={s.toggleInfo}>
-              <Text style={s.toggleLabel}>Ocultar celular no perfil</Text>
-              <Text style={s.toggleSub}>Apenas conexões podem ver</Text>
-            </View>
-            <Switch value={privacidade.ocultar_celular}
-              onValueChange={v => setPrivacidade(p => ({ ...p, ocultar_celular: v }))}
-              trackColor={{ false: '#D0E8DA', true: '#00A880' }} thumbColor="#fff" />
-          </View>
-          <View style={s.cardDivider} />
-          <View style={s.toggleRow}>
-            <View style={s.toggleInfo}>
-              <Text style={s.toggleLabel}>Ocultar idade no perfil</Text>
-              <Text style={s.toggleSub}>Data de nascimento não aparece</Text>
-            </View>
-            <Switch value={privacidade.ocultar_idade}
-              onValueChange={v => setPrivacidade(p => ({ ...p, ocultar_idade: v }))}
-              trackColor={{ false: '#D0E8DA', true: '#00A880' }} thumbColor="#fff" />
-          </View>
+          ))}
         </View>
 
         {/* 4. Localização */}
@@ -906,6 +930,54 @@ export default function EditarPerfil() {
         </View>
       </Modal>
 
+      {/* ── MODAL SOLICITAR ALTERAÇÃO DE CARGO ──────────────────────────── */}
+      <Modal visible={showCargoModal} transparent animationType="slide" onRequestClose={() => setShowCargoModal(false)}>
+        <View style={s.overlay}>
+          <View style={[s.sheet, { maxHeight: '70%' }]}>
+            <View style={s.sheetHandle} />
+            <Text style={s.sheetTitle}>Solicitar alteração de cargo</Text>
+            <Text style={[s.toggleSub, { marginBottom: 16 }]}>
+              O cargo principal é definido no cadastro e só pode ser alterado pela equipe Godenth.
+              Explique o motivo da solicitação abaixo.
+            </Text>
+            <Text style={s.fieldLbl}>Cargo atual</Text>
+            <View style={[s.input, s.inputReadOnly, s.inputLocked, { marginBottom: 12 }]}>
+              <Text style={s.inputLockedT}>{tipoProf || '—'}</Text>
+            </View>
+            <Text style={s.fieldLbl}>Motivo da solicitação *</Text>
+            <TextInput
+              style={[s.input, { height: 100, textAlignVertical: 'top', marginBottom: 16 }]}
+              value={cargoMotivo}
+              onChangeText={setCargoMotivo}
+              placeholder="Descreva o motivo pelo qual deseja alterar o cargo..."
+              placeholderTextColor="#A0B8AC"
+              multiline
+              maxLength={500}
+            />
+            <View style={s.modalBtns}>
+              <TouchableOpacity style={s.cancelBtn} onPress={() => { setShowCargoModal(false); setCargoMotivo('') }}>
+                <Text style={s.cancelBtnT}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.confirmBtn, !cargoMotivo.trim() && { opacity: 0.4 }]}
+                disabled={!cargoMotivo.trim()}
+                onPress={() => {
+                  const subject = encodeURIComponent('Solicitação de alteração de cargo — Godenth')
+                  const body = encodeURIComponent(
+                    `Nome: ${nome}\nE-mail: ${email}\nCargo atual: ${tipoProf}\n\nMotivo:\n${cargoMotivo}`
+                  )
+                  Linking.openURL(`mailto:contato.idealilab@gmail.com?subject=${subject}&body=${body}`)
+                  setShowCargoModal(false)
+                  setCargoMotivo('')
+                }}
+              >
+                <Text style={s.confirmBtnT}>Enviar solicitação</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── PICKER MODALS ────────────────────────────────────────────────── */}
       <PickerModal visible={fTipoModal} title="Tipo de Formação" data={TIPOS_FORMACAO}
         onSelect={(v: string) => { setFTipo(v); setFTipoModal(false) }} onClose={() => setFTipoModal(false)} />
@@ -976,6 +1048,11 @@ const s = StyleSheet.create({
   inputArea: { height: 120, textAlignVertical: 'top' },
   inputReadOnly: { justifyContent: 'center' },
   inputReadOnlyT: { fontSize: 15, color: '#A0B8AC' },
+  inputLocked: { backgroundColor: '#F7F9F8', borderWidth: 1.5, borderColor: '#D0E8DA' },
+  inputLockedT: { fontSize: 15, color: '#3A6550', fontWeight: '600' },
+  lockedCargoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+  solicitarBtn: { backgroundColor: '#EEF7F2', borderWidth: 1.5, borderColor: '#00A880', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, alignItems: 'center' },
+  solicitarBtnT: { fontSize: 11, fontWeight: '800', color: '#007A6E', textAlign: 'center' },
   readOnlyTag: { fontSize: 10, color: '#A0B8AC', fontWeight: '500', textTransform: 'none' },
   charCount: { fontSize: 11, color: '#A0B8AC', textAlign: 'right', marginTop: 4 },
 

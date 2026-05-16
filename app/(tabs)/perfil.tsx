@@ -54,6 +54,7 @@ export default function Perfil() {
   const [myPages, setMyPages] = useState<any[]>([])
   const [pagesLoaded, setPagesLoaded] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const [showPagesModal, setShowPagesModal] = useState(false)
 
   const loadProfile = async () => {
     try {
@@ -146,7 +147,7 @@ export default function Perfil() {
           <Text style={styles.cardText}>{profile.bio}</Text>
         </View>
       ) : (
-        <TouchableOpacity style={styles.emptyCard}>
+        <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil' as any)}>
           <Text style={styles.emptyCardT}>+ Adicionar resumo profissional</Text>
         </TouchableOpacity>
       )}
@@ -161,33 +162,6 @@ export default function Perfil() {
         <Text style={[styles.cardText, { color: PlanColors[profile?.plano as keyof typeof PlanColors] || '#7A9E8E', fontWeight: '700' }]}>
           {profile?.plano === 'gratuito' ? '🆓 Gratuito' : profile?.plano === 'premium' ? '⚡ Premium' : 'Administrador'}
         </Text>
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>🏢 Minhas páginas</Text>
-          <TouchableOpacity onPress={() => router.push('/criar-pagina' as any)}>
-            <Text style={styles.cardAction}>+ Criar</Text>
-          </TouchableOpacity>
-        </View>
-        {!pagesLoaded ? (
-          <ActivityIndicator color="#00A880" size="small" />
-        ) : myPages.length === 0 ? (
-          <TouchableOpacity onPress={() => router.push('/criar-pagina' as any)}>
-            <Text style={styles.emptyCardT}>Crie uma página para sua empresa →</Text>
-          </TouchableOpacity>
-        ) : myPages.map(p => (
-          <TouchableOpacity key={p.id} style={styles.pageRow} onPress={() => router.push(`/pagina/${p.id}` as any)}>
-            <View style={[styles.pageInitial, { backgroundColor: p.cor || '#00A880' }]}>
-              <Text style={styles.pageInitialT}>{p.nome?.charAt(0) || 'P'}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.pageNome} numberOfLines={1}>{p.nome}</Text>
-              <Text style={styles.pageCat}>{p.categoria}</Text>
-            </View>
-            <Text style={styles.pageArrow}>›</Text>
-          </TouchableOpacity>
-        ))}
       </View>
 
       {profile?.plano === 'black' && (
@@ -237,7 +211,7 @@ export default function Perfil() {
         )}
 
         {especialidades.length === 0 && extras.length === 0 && (
-          <TouchableOpacity style={styles.emptyCard}>
+          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil' as any)}>
             <Text style={styles.emptyCardT}>+ Adicionar experiência</Text>
           </TouchableOpacity>
         )}
@@ -329,7 +303,7 @@ export default function Perfil() {
             </View>
           </View>
         ) : (
-          <TouchableOpacity style={styles.emptyCard}>
+          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil' as any)}>
             <Text style={styles.emptyCardT}>+ Adicionar habilidades</Text>
           </TouchableOpacity>
         )}
@@ -437,11 +411,12 @@ export default function Perfil() {
             <View style={styles.menuHandle} />
             <Text style={styles.menuTitle}>Menu</Text>
             {[
-              { emoji: '✏️', label: 'Editar perfil',  onPress: () => { setShowMenu(false); router.push('/(tabs)/editar-perfil' as any) } },
-              { emoji: '⚙️', label: 'Configurações',  onPress: () => { setShowMenu(false); router.push('/configuracoes' as any) } },
-              { emoji: '🔔', label: 'Notificações',   onPress: () => { setShowMenu(false); router.push('/notificacoes' as any) } },
-              { emoji: '📊', label: 'Minha conta',    onPress: () => { setShowMenu(false); router.push('/minha-conta' as any) } },
-              { emoji: '🚪', label: 'Sair',           onPress: () => { setShowMenu(false); handleLogout() }, danger: true },
+              { emoji: '✏️', label: 'Editar perfil',    onPress: () => { setShowMenu(false); router.push('/(tabs)/editar-perfil' as any) } },
+              { emoji: '🏢', label: 'Minhas Páginas',  onPress: () => { setShowMenu(false); setShowPagesModal(true) } },
+              { emoji: '⚙️', label: 'Configurações',   onPress: () => { setShowMenu(false); router.push('/configuracoes' as any) } },
+              { emoji: '🔔', label: 'Notificações',    onPress: () => { setShowMenu(false); router.push('/notificacoes' as any) } },
+              { emoji: '📊', label: 'Minha conta',     onPress: () => { setShowMenu(false); router.push('/minha-conta' as any) } },
+              { emoji: '🚪', label: 'Sair',            onPress: () => { setShowMenu(false); handleLogout() }, danger: true },
             ].map((item, i, arr) => (
               <TouchableOpacity
                 key={item.label}
@@ -451,6 +426,39 @@ export default function Perfil() {
                 <Text style={styles.menuEmoji}>{item.emoji}</Text>
                 <Text style={[styles.menuLabel, (item as any).danger && { color: '#EF4444' }]}>{item.label}</Text>
                 {!(item as any).danger && <Text style={styles.menuArrow}>›</Text>}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── Modal Minhas Páginas ── */}
+      <Modal visible={showPagesModal} transparent animationType="slide" onRequestClose={() => setShowPagesModal(false)}>
+        <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={() => setShowPagesModal(false)}>
+          <View style={styles.menuSheet}>
+            <View style={styles.menuHandle} />
+            <View style={styles.cardHeader}>
+              <Text style={styles.menuTitle}>🏢 Minhas Páginas</Text>
+              <TouchableOpacity onPress={() => { setShowPagesModal(false); router.push('/criar-pagina' as any) }}>
+                <Text style={styles.cardAction}>+ Criar</Text>
+              </TouchableOpacity>
+            </View>
+            {!pagesLoaded ? (
+              <ActivityIndicator color="#00A880" size="small" style={{ marginVertical: 20 }} />
+            ) : myPages.length === 0 ? (
+              <TouchableOpacity onPress={() => { setShowPagesModal(false); router.push('/criar-pagina' as any) }}>
+                <Text style={[styles.emptyCardT, { marginVertical: 20 }]}>Crie uma página para sua empresa →</Text>
+              </TouchableOpacity>
+            ) : myPages.map(p => (
+              <TouchableOpacity key={p.id} style={styles.pageRow} onPress={() => { setShowPagesModal(false); router.push(`/pagina/${p.id}` as any) }}>
+                <View style={[styles.pageInitial, { backgroundColor: p.cor || '#00A880' }]}>
+                  <Text style={styles.pageInitialT}>{p.nome?.charAt(0) || 'P'}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pageNome} numberOfLines={1}>{p.nome}</Text>
+                  <Text style={styles.pageCat}>{p.categoria}</Text>
+                </View>
+                <Text style={styles.pageArrow}>›</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -530,9 +538,9 @@ const styles = StyleSheet.create({
   cargo: { fontSize: 13, color: '#3A6550', marginTop: 2 },
   loc: { fontSize: 12, color: '#7A9E8E', marginTop: 2 },
   stats: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#D0E8DA', marginBottom: 0 },
-  stat: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRightWidth: 1, borderRightColor: '#D0E8DA' },
-  statN: { fontSize: 18, fontWeight: '800', color: '#00A880' },
-  statL: { fontSize: 10, color: '#7A9E8E', marginTop: 2, fontWeight: '600' },
+  stat: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRightWidth: 1, borderRightColor: '#D0E8DA' },
+  statN: { fontSize: 15, fontWeight: '800', color: '#00A880' },
+  statL: { fontSize: 9, color: '#7A9E8E', marginTop: 1, fontWeight: '600' },
   abas: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#D0E8DA' },
   aba: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
   abaOn: { borderBottomColor: '#00A880' },
