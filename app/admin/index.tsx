@@ -29,6 +29,7 @@ interface UserRow {
   tipo_profissional: string
   plano: Plano
   status: Status
+  embaixador: boolean
   created_at: string
 }
 
@@ -91,6 +92,29 @@ export default function AdminPanel() {
       })),
       { text: 'Cancelar', style: 'cancel' },
     ])
+  }
+
+  const toggleEmbaixador = async (userId: number, embaixadorAtual: boolean) => {
+    Alert.alert(
+      'Embaixador',
+      embaixadorAtual ? 'Remover título de Embaixador?' : 'Promover a Embaixador 🌟?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: embaixadorAtual ? 'Remover' : 'Promover',
+          style: embaixadorAtual ? 'destructive' : 'default',
+          onPress: async () => {
+            setActionUser(userId)
+            try {
+              const res = await api.put(`/admin/users/${userId}/embaixador`, {})
+              setUsers(prev => prev.map(u => u.id === userId ? { ...u, embaixador: res.data.embaixador } : u))
+            } catch (err: any) {
+              Alert.alert('Erro', err.response?.data?.error || 'Falha ao atualizar')
+            } finally { setActionUser(null) }
+          },
+        },
+      ]
+    )
   }
 
   const changeStatus = (userId: number, statusAtual: Status) => {
@@ -179,6 +203,14 @@ export default function AdminPanel() {
                   {u.status.charAt(0).toUpperCase() + u.status.slice(1)}
                 </Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.embaixadorBadge, u.embaixador && { backgroundColor: '#7B3FC418', borderColor: '#7B3FC455' }]}
+                onPress={() => toggleEmbaixador(u.id, u.embaixador)}
+              >
+                <Text style={[s.embaixadorBadgeT, u.embaixador && { color: '#7B3FC4' }]}>
+                  {u.embaixador ? '🌟 Embaixador' : '☆ Promover'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         ))}
@@ -230,4 +262,6 @@ const s = StyleSheet.create({
   planoBadgeT: { fontSize: 12, fontWeight: '800' },
   statusBadge: { borderWidth: 1, borderColor: Colors.border, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 6, backgroundColor: Colors.surface },
   statusBadgeT: { fontSize: 12, fontWeight: '700', color: Colors.text2 },
+  embaixadorBadge: { borderWidth: 1, borderColor: Colors.border, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 6, backgroundColor: Colors.surface },
+  embaixadorBadgeT: { fontSize: 12, fontWeight: '700', color: Colors.text3 },
 })

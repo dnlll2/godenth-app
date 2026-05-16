@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   RefreshControl, ActivityIndicator, Modal, TextInput,
@@ -52,7 +52,6 @@ const SUBS: Record<string, string[]> = {
   ajuda:    ['Auxiliar urgente','Substituto','Técnico de cadeira','Protético','Recepcionista','Administrativo'],
 }
 
-// Metadados para tipos legados (posts antigos no feed) e novos
 const TIPOS_META: Record<string, { emoji: string; label: string; cor: string }> = {
   parceria:     { emoji: '🤝', label: 'Busco Parceria',   cor: '#7B3FC4' },
   vaga:         { emoji: '💼', label: 'Tenho uma Vaga',    cor: '#C49800' },
@@ -65,6 +64,13 @@ const TIPOS_META: Record<string, { emoji: string; label: string; cor: string }> 
   humor:        { emoji: '😄', label: 'Humor',             cor: '#D4186A' },
 }
 
+const DISP_META: Record<string, { label: string; cor: string }> = {
+  disponivel: { label: 'Disponível', cor: '#00A880' },
+  contratado: { label: 'Contratado', cor: '#1A6FD4' },
+  freelancer: { label: 'Freelancer', cor: '#C49800' },
+  parceria:   { label: 'Parcerias',  cor: '#7B3FC4' },
+}
+
 const PALAVRAS_PROIBIDAS = [
   'merda', 'porra', 'caralho', 'fdp', 'viado', 'buceta', 'puta', 'prostituta',
   'negro maldito', 'macaco', 'bicha',
@@ -75,20 +81,133 @@ function checkPalavrasProibidas(text: string) {
   return PALAVRAS_PROIBIDAS.find(p => lower.includes(p)) || null
 }
 
+function tempoRelativo(dateStr: string): string {
+  const now = new Date()
+  const date = new Date(dateStr)
+  const diff = Math.floor((now.getTime() - date.getTime()) / 1000)
+  if (diff < 60) return 'agora'
+  if (diff < 3600) return `há ${Math.floor(diff / 60)} min`
+  if (diff < 86400) return `há ${Math.floor(diff / 3600)} h`
+  if (diff < 172800) return 'ontem'
+  if (diff < 604800) return `há ${Math.floor(diff / 86400)} dias`
+  return date.toLocaleDateString('pt-BR')
+}
+
+function getSelo(plano: string, embaixador: boolean, hasPages: boolean) {
+  if (plano === 'black') return { emoji: '👑', label: 'Master', cor: '#C49800' }
+  if (embaixador) return { emoji: '🌟', label: 'Embaixador', cor: '#7B3FC4' }
+  if (hasPages) return { emoji: '🏢', label: 'Negócio', cor: '#1A6FD4' }
+  return null
+}
+
+// ── IBGEListModal ─────────────────────────────────────────────────────────────
+
+function IBGEListModal({ visible, title, data, onSelect, onClose, loading = false }: any) {
+  const [busca, setBusca] = useState('')
+  const filtered = (data as any[]).filter((d: any) =>
+    (d.nome || '').toLowerCase().includes(busca.toLowerCase())
+  )
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={pm.overlay}>
+        <View style={[pm.sheet, { maxHeight: '72%' }]}>
+          <View style={pm.handle} />
+          <Text style={[pm.stepTitle, { marginBottom: 8 }]}>{title}</Text>
+          <TextInput
+            style={pm.ibgeSearch}
+            value={busca}
+            onChangeText={setBusca}
+            placeholder="Buscar..."
+            placeholderTextColor="#A0B8AC"
+            autoFocus
+          />
+          {loading
+            ? <ActivityIndicator color="#00A880" style={{ marginTop: 24 }} />
+            : (
+              <FlatList
+                data={filtered}
+                keyExtractor={(item: any) => String(item.id)}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }: any) => (
+                  <TouchableOpacity
+                    style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#EEF7F2', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                    onPress={() => { setBusca(''); onSelect(item) }}
+                  >
+                    <Text style={{ fontSize: 15, color: '#0A1C14' }}>{item.nome}</Text>
+                    {item.sigla && <Text style={{ fontSize: 12, color: '#7A9E8E', fontWeight: '700' }}>{item.sigla}</Text>}
+                  </TouchableOpacity>
+                )}
+              />
+            )
+          }
+          <TouchableOpacity
+            style={{ backgroundColor: '#EEF7F2', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 8 }}
+            onPress={onClose}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '800', color: '#3A6550' }}>Fechar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
 // ── PostModal (3 etapas) ──────────────────────────────────────────────────────
 
-function PostModal({ visible, onClose, onPublished }: {
-  visible: boolean; onClose: () => void; onPublished: () => void
+function PostModal({ visible, onClose, onPublished, user }: {
+  visible: boolean; onClose: () => void; onPublished: () => void; user: any
 }) {
-  const [etapa, setEtapa]       = useState(1)
-  const [tipo, setTipo]         = useState('')
-  const [sub, setSub]           = useState('')
-  const [texto, setTexto]       = useState('')
-  const [cidade, setCidade]     = useState('')
-  const [estado, setEstado]     = useState('')
+  const [etapa, setEtapa]         = useState(1)
+  const [tipo, setTipo]           = useState('')
+  const [sub, setSub]             = useState('')
+  const [texto, setTexto]         = useState('')
+  const [cidade, setCidade]       = useState('')
+  const [estado, setEstado]       = useState('')
+  const [locLocked, setLocLocked] = useState(false)
   const [publishing, setPublishing] = useState(false)
 
-  const reset = () => { setEtapa(1); setTipo(''); setSub(''); setTexto(''); setCidade(''); setEstado('') }
+  const [estados, setEstados]             = useState<any[]>([])
+  const [cidades, setCidades]             = useState<any[]>([])
+  const [estadoModal, setEstadoModal]     = useState(false)
+  const [cidadeModal, setCidadeModal]     = useState(false)
+  const [loadingCidades, setLoadingCidades] = useState(false)
+
+  useEffect(() => {
+    if (visible) {
+      const uc = user?.cidade || ''
+      const ue = user?.estado || ''
+      setCidade(uc)
+      setEstado(ue)
+      setLocLocked(!!(uc || ue))
+    }
+  }, [visible])
+
+  const loadEstados = async () => {
+    if (estados.length > 0) return
+    try {
+      const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
+      setEstados(await res.json())
+    } catch {}
+  }
+
+  const loadCidades = async (sigla: string) => {
+    setLoadingCidades(true)
+    try {
+      const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${sigla}/municipios?orderBy=nome`)
+      setCidades(await res.json())
+    } catch {} finally { setLoadingCidades(false) }
+  }
+
+  const handleUnlock = () => {
+    setLocLocked(false)
+    loadEstados()
+    if (estado) loadCidades(estado)
+  }
+
+  const reset = () => {
+    setEtapa(1); setTipo(''); setSub(''); setTexto('')
+    setCidade(''); setEstado(''); setLocLocked(false)
+  }
   const close = () => { reset(); onClose() }
   const back  = () => { if (etapa === 2) { setSub(''); setEtapa(1) } else { setEtapa(2) } }
 
@@ -118,145 +237,183 @@ function PostModal({ visible, onClose, onPublished }: {
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={close}>
-      <View style={pm.overlay}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={pm.sheet}>
-          <View style={pm.handle} />
+    <>
+      <Modal visible={visible} animationType="slide" transparent onRequestClose={close}>
+        <View style={pm.overlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={pm.sheet}>
+            <View style={pm.handle} />
 
-          {/* ── Header ── */}
-          <View style={pm.header}>
-            {etapa === 1
-              ? <TouchableOpacity onPress={close} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={pm.close}>✕</Text>
-                </TouchableOpacity>
-              : <TouchableOpacity onPress={back} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={pm.backBtn}>← Voltar</Text>
-                </TouchableOpacity>
-            }
-            <View style={pm.dots}>
-              {[1, 2, 3].map(s => (
-                <View key={s} style={[pm.dot, etapa >= s && { backgroundColor: cor }]} />
-              ))}
-            </View>
-            {etapa === 3
-              ? <TouchableOpacity
-                  style={[pm.publishBtn, (!texto.trim() || publishing) && pm.publishBtnOff]}
-                  onPress={publish}
-                  disabled={!texto.trim() || publishing}
-                >
-                  {publishing
-                    ? <ActivityIndicator color="#fff" size="small" />
-                    : <Text style={pm.publishBtnT}>Publicar</Text>}
-                </TouchableOpacity>
-              : <View style={{ width: 72 }} />
-            }
-          </View>
-
-          {/* ── Conteúdo ── */}
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-
-            {/* ETAPA 1 — Tipo */}
-            {etapa === 1 && (
-              <View style={{ gap: 12, paddingTop: 4, paddingBottom: 8 }}>
-                <Text style={pm.stepTitle}>Qual o tipo de publicação?</Text>
-                {TIPOS.map(t => (
-                  <TouchableOpacity
-                    key={t.key}
-                    style={[pm.tipoCard, { borderColor: t.cor + '80' }]}
-                    onPress={() => { setTipo(t.key); setSub(''); setEtapa(2) }}
-                    activeOpacity={0.78}
-                  >
-                    <Text style={pm.tipoEmoji}>{t.emoji}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[pm.tipoLabel, { color: t.cor }]}>{t.label}</Text>
-                      <Text style={pm.tipoSubT}>{t.sub}</Text>
-                    </View>
-                    <Text style={[pm.tipoArrow, { color: t.cor }]}>›</Text>
+            {/* ── Header ── */}
+            <View style={pm.header}>
+              {etapa === 1
+                ? <TouchableOpacity onPress={close} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={pm.close}>✕</Text>
                   </TouchableOpacity>
+                : <TouchableOpacity onPress={back} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={pm.backBtn}>← Voltar</Text>
+                  </TouchableOpacity>
+              }
+              <View style={pm.dots}>
+                {[1, 2, 3].map(s => (
+                  <View key={s} style={[pm.dot, etapa >= s && { backgroundColor: cor }]} />
                 ))}
               </View>
-            )}
+              {etapa === 3
+                ? <TouchableOpacity
+                    style={[pm.publishBtn, (!texto.trim() || publishing) && pm.publishBtnOff]}
+                    onPress={publish}
+                    disabled={!texto.trim() || publishing}
+                  >
+                    {publishing
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <Text style={pm.publishBtnT}>Publicar</Text>}
+                  </TouchableOpacity>
+                : <View style={{ width: 72 }} />
+              }
+            </View>
 
-            {/* ETAPA 2 — Subcategoria */}
-            {etapa === 2 && (
-              <View style={{ paddingTop: 4 }}>
-                <Text style={pm.stepTitle}>Qual a categoria?</Text>
-                <View style={[pm.typePill, { backgroundColor: cor + '18', borderColor: cor + '50' }]}>
-                  <Text style={[pm.typePillT, { color: cor }]}>{tipoMeta?.emoji} {tipoMeta?.label}</Text>
+            {/* ── Conteúdo ── */}
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+              {/* ETAPA 1 — Tipo */}
+              {etapa === 1 && (
+                <View style={{ gap: 12, paddingTop: 4, paddingBottom: 8 }}>
+                  <Text style={pm.stepTitle}>Qual o tipo de publicação?</Text>
+                  {TIPOS.map(t => (
+                    <TouchableOpacity
+                      key={t.key}
+                      style={[pm.tipoCard, { borderColor: t.cor + '80' }]}
+                      onPress={() => { setTipo(t.key); setSub(''); setEtapa(2) }}
+                      activeOpacity={0.78}
+                    >
+                      <Text style={pm.tipoEmoji}>{t.emoji}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[pm.tipoLabel, { color: t.cor }]}>{t.label}</Text>
+                        <Text style={pm.tipoSubT}>{t.sub}</Text>
+                      </View>
+                      <Text style={[pm.tipoArrow, { color: t.cor }]}>›</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-                <View style={pm.chipsRow}>
-                  {(SUBS[tipo] || []).map(s => {
-                    const on = sub === s
-                    return (
-                      <TouchableOpacity
-                        key={s}
-                        style={[pm.chip, on && { backgroundColor: cor, borderColor: cor }]}
-                        onPress={() => setSub(s)}
-                        activeOpacity={0.78}
-                      >
-                        <Text style={[pm.chipT, on && { color: '#fff' }]}>{s}</Text>
+              )}
+
+              {/* ETAPA 2 — Subcategoria */}
+              {etapa === 2 && (
+                <View style={{ paddingTop: 4 }}>
+                  <Text style={pm.stepTitle}>Qual a categoria?</Text>
+                  <View style={[pm.typePill, { backgroundColor: cor + '18', borderColor: cor + '50' }]}>
+                    <Text style={[pm.typePillT, { color: cor }]}>{tipoMeta?.emoji} {tipoMeta?.label}</Text>
+                  </View>
+                  <View style={pm.chipsRow}>
+                    {(SUBS[tipo] || []).map(s => {
+                      const on = sub === s
+                      return (
+                        <TouchableOpacity
+                          key={s}
+                          style={[pm.chip, on && { backgroundColor: cor, borderColor: cor }]}
+                          onPress={() => setSub(s)}
+                          activeOpacity={0.78}
+                        >
+                          <Text style={[pm.chipT, on && { color: '#fff' }]}>{s}</Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+                  <TouchableOpacity
+                    style={[pm.nextBtn, { backgroundColor: cor }, !sub && pm.nextBtnOff]}
+                    onPress={() => { if (sub) setEtapa(3) }}
+                    disabled={!sub}
+                  >
+                    <Text style={pm.nextBtnT}>Próximo →</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* ETAPA 3 — Texto + Localização */}
+              {etapa === 3 && (
+                <View style={{ paddingTop: 4 }}>
+                  <Text style={pm.stepTitle}>Descreva sua publicação</Text>
+                  <View style={[pm.typePill, { backgroundColor: cor + '18', borderColor: cor + '50' }]}>
+                    <Text style={[pm.typePillT, { color: cor }]}>{tipoMeta?.emoji} {tipoMeta?.label} · {sub}</Text>
+                  </View>
+                  <TextInput
+                    style={[pm.textarea, { borderColor: cor + '50' }]}
+                    placeholder="Descreva o que você precisa, o perfil que busca, condições..."
+                    placeholderTextColor="#A0B8AC"
+                    value={texto}
+                    onChangeText={setTexto}
+                    multiline
+                    numberOfLines={5}
+                    textAlignVertical="top"
+                    maxLength={800}
+                    autoFocus
+                  />
+                  <Text style={pm.charCount}>{texto.length}/800</Text>
+
+                  <Text style={pm.secLabel}>Localização</Text>
+                  {locLocked ? (
+                    <View style={pm.locLockedRow}>
+                      <Text style={pm.locLockedT} numberOfLines={1}>
+                        📍 {[cidade, estado].filter(Boolean).join(' · ') || 'Não informada'}
+                      </Text>
+                      <TouchableOpacity style={pm.locUnlockBtn} onPress={handleUnlock}>
+                        <Text style={pm.locUnlockT}>🔓 Trocar</Text>
                       </TouchableOpacity>
-                    )
-                  })}
+                    </View>
+                  ) : (
+                    <>
+                      <TouchableOpacity
+                        style={[pm.locSelector, { marginBottom: 8 }]}
+                        onPress={() => setEstadoModal(true)}
+                      >
+                        <Text style={[pm.locSelectorT, !estado && pm.locPlaceholder]}>{estado || 'Selecionar estado'}</Text>
+                        <Text style={{ color: '#A0B8AC', fontSize: 18 }}>›</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[pm.locSelector, !estado && { opacity: 0.4 }]}
+                        onPress={() => estado && setCidadeModal(true)}
+                        disabled={!estado}
+                      >
+                        <Text style={[pm.locSelectorT, !cidade && pm.locPlaceholder]}>{cidade || 'Selecionar cidade'}</Text>
+                        {loadingCidades
+                          ? <ActivityIndicator size="small" color="#00A880" />
+                          : <Text style={{ color: '#A0B8AC', fontSize: 18 }}>›</Text>
+                        }
+                      </TouchableOpacity>
+                    </>
+                  )}
                 </View>
-                <TouchableOpacity
-                  style={[pm.nextBtn, { backgroundColor: cor }, !sub && pm.nextBtnOff]}
-                  onPress={() => { if (sub) setEtapa(3) }}
-                  disabled={!sub}
-                >
-                  <Text style={pm.nextBtnT}>Próximo →</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+              )}
 
-            {/* ETAPA 3 — Texto + Localização */}
-            {etapa === 3 && (
-              <View style={{ paddingTop: 4 }}>
-                <Text style={pm.stepTitle}>Descreva sua publicação</Text>
-                <View style={[pm.typePill, { backgroundColor: cor + '18', borderColor: cor + '50' }]}>
-                  <Text style={[pm.typePillT, { color: cor }]}>{tipoMeta?.emoji} {tipoMeta?.label} · {sub}</Text>
-                </View>
-                <TextInput
-                  style={[pm.textarea, { borderColor: cor + '50' }]}
-                  placeholder="Descreva o que você precisa, o perfil que busca, condições..."
-                  placeholderTextColor="#A0B8AC"
-                  value={texto}
-                  onChangeText={setTexto}
-                  multiline
-                  numberOfLines={5}
-                  textAlignVertical="top"
-                  maxLength={800}
-                  autoFocus
-                />
-                <Text style={pm.charCount}>{texto.length}/800</Text>
+              <View style={{ height: 32 }} />
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
 
-                <Text style={pm.secLabel}>Localização (opcional)</Text>
-                <View style={pm.locRow}>
-                  <TextInput
-                    style={[pm.locInput, { flex: 2 }]}
-                    placeholder="Cidade"
-                    placeholderTextColor="#A0B8AC"
-                    value={cidade}
-                    onChangeText={setCidade}
-                  />
-                  <TextInput
-                    style={[pm.locInput, { flex: 1 }]}
-                    placeholder="UF"
-                    placeholderTextColor="#A0B8AC"
-                    value={estado}
-                    onChangeText={setEstado}
-                    maxLength={2}
-                    autoCapitalize="characters"
-                  />
-                </View>
-              </View>
-            )}
-
-            <View style={{ height: 32 }} />
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </View>
-    </Modal>
+        {/* IBGE modals — nested inside PostModal so they render on top */}
+        <IBGEListModal
+          visible={estadoModal}
+          title="Selecionar Estado"
+          data={estados}
+          onSelect={(est: any) => {
+            setEstado(est.sigla)
+            setCidade('')
+            setCidades([])
+            setEstadoModal(false)
+            loadCidades(est.sigla)
+          }}
+          onClose={() => setEstadoModal(false)}
+        />
+        <IBGEListModal
+          visible={cidadeModal}
+          title="Selecionar Cidade"
+          data={cidades}
+          onSelect={(cid: any) => { setCidade(cid.nome); setCidadeModal(false) }}
+          onClose={() => setCidadeModal(false)}
+          loading={loadingCidades}
+        />
+      </Modal>
+    </>
   )
 }
 
@@ -298,12 +455,17 @@ export default function Feed() {
     const texto = item.data_json?.texto || item.data_json?.descricao
     const sub   = item.data_json?.subcategoria
     const locCidade = item.data_json?.cidade || item.cidade
-    const locEstado = item.data_json?.estado || item.estado
+    const locEstado = item.data_json?.estado  || item.estado
     const imagemUrl = item.data_json?.imagem_url
       ? (item.data_json.imagem_url.startsWith('http') ? item.data_json.imagem_url : API_BASE + item.data_json.imagem_url)
       : null
+    const avatarUrl = item.author_avatar
+      ? (item.author_avatar.startsWith('http') ? item.author_avatar : API_BASE + item.author_avatar)
+      : null
     const isActionable = ['parceria', 'vaga', 'ajuda'].includes(item.tipo_post)
     const actionLabel  = item.tipo_post === 'vaga' ? 'Candidatar' : item.tipo_post === 'ajuda' ? 'Oferecer ajuda' : 'Conectar'
+    const dispMeta = item.disponibilidade ? DISP_META[item.disponibilidade] : null
+    const selo = getSelo(item.author_plano || '', !!item.embaixador, !!item.author_has_pages)
 
     return (
       <View style={styles.card}>
@@ -315,25 +477,53 @@ export default function Feed() {
               onPress={() => item.author_id && router.push(`/usuario/${item.author_id}` as any)}
               activeOpacity={0.75}
             >
-              <View style={[styles.av, { backgroundColor: cor }]}>
-                <Text style={styles.avt}>{nome.charAt(0)}</Text>
-              </View>
+              {avatarUrl
+                ? <Image source={{ uri: avatarUrl }} style={[styles.av, styles.avImg]} />
+                : <View style={[styles.av, { backgroundColor: cor }]}>
+                    <Text style={styles.avt}>{nome.charAt(0)}</Text>
+                  </View>
+              }
               <View style={{ flex: 1 }}>
-                <Text style={styles.nome}>{nome}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                  <Text style={styles.nome} numberOfLines={1}>{nome}</Text>
+                  {selo && <Text style={{ fontSize: 13 }}>{selo.emoji}</Text>}
+                </View>
+                {item.tipo_profissional && (
+                  <Text style={styles.cargo} numberOfLines={1}>{item.tipo_profissional}</Text>
+                )}
                 {(locCidade || locEstado) && (
                   <Text style={styles.loc}>{[locCidade, locEstado].filter(Boolean).join(' · ')}</Text>
                 )}
               </View>
             </TouchableOpacity>
-            <View style={[styles.badge, { backgroundColor: cor + '20', borderColor: cor + '60' }]}>
-              <Text style={[styles.badgeT, { color: cor }]}>{meta.emoji} {meta.label.toUpperCase()}</Text>
+
+            <View style={{ alignItems: 'flex-end', gap: 4 }}>
+              <View style={[styles.badge, { backgroundColor: cor + '20', borderColor: cor + '60' }]}>
+                <Text style={[styles.badgeT, { color: cor }]}>{meta.emoji} {meta.label.toUpperCase()}</Text>
+              </View>
+              <TouchableOpacity
+                hitSlop={{ top: 8, bottom: 8, left: 12, right: 8 }}
+                onPress={() => Alert.alert('Publicação', 'O que deseja fazer?', [
+                  { text: 'Reportar conteúdo', style: 'destructive', onPress: () => Alert.alert('Obrigado', 'Publicação reportada. Vamos analisar em breve.') },
+                  { text: 'Cancelar', style: 'cancel' },
+                ])}
+              >
+                <Text style={styles.moreBtn}>···</Text>
+              </TouchableOpacity>
             </View>
           </View>
+
+          {dispMeta && (
+            <View style={[styles.dispBadge, { backgroundColor: dispMeta.cor + '18', borderColor: dispMeta.cor + '50' }]}>
+              <Text style={[styles.dispBadgeT, { color: dispMeta.cor }]}>● {dispMeta.label}</Text>
+            </View>
+          )}
+
           {sub ? <Text style={styles.esp}>{sub}</Text> : null}
           {texto ? <Text style={styles.desc}>{texto}</Text> : null}
           {imagemUrl ? <Image source={{ uri: imagemUrl }} style={styles.postImg} resizeMode="cover" /> : null}
           <View style={styles.footer}>
-            <Text style={styles.data}>{new Date(item.created_at).toLocaleDateString('pt-BR')}</Text>
+            <Text style={styles.data}>{tempoRelativo(item.created_at)}</Text>
             {isActionable && (
               <TouchableOpacity style={[styles.btn, { backgroundColor: cor }]}>
                 <Text style={styles.btnT}>{actionLabel} →</Text>
@@ -344,6 +534,10 @@ export default function Feed() {
       </View>
     )
   }
+
+  const avatarUrl = user?.avatar_url
+    ? (user.avatar_url.startsWith('http') ? user.avatar_url : API_BASE + user.avatar_url)
+    : null
 
   return (
     <View style={{ flex: 1, backgroundColor: '#EEF7F2' }}>
@@ -368,9 +562,12 @@ export default function Feed() {
             )}
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/(tabs)/perfil')}>
-            <View style={styles.uav}>
-              <Text style={styles.uavt}>{user?.nome?.charAt(0) || 'U'}</Text>
-            </View>
+            {avatarUrl
+              ? <Image source={{ uri: avatarUrl }} style={styles.uav} />
+              : <View style={styles.uav}>
+                  <Text style={styles.uavt}>{user?.nome?.charAt(0) || 'U'}</Text>
+                </View>
+            }
           </TouchableOpacity>
         </View>
       </View>
@@ -418,6 +615,7 @@ export default function Feed() {
           setLoading(true)
           loadFeed()
         }}
+        user={user}
       />
     </View>
   )
@@ -442,13 +640,18 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#D0E8DA', flexDirection: 'row' },
   stripe: { width: 4 },
   cardBody: { flex: 1, padding: 14 },
-  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  cardRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
   av: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  avImg: { backgroundColor: 'transparent' },
   avt: { color: '#fff', fontWeight: '800', fontSize: 16 },
   nome: { fontSize: 14, fontWeight: '800', color: '#0A1C14' },
+  cargo: { fontSize: 11, color: '#00A880', fontWeight: '600', marginTop: 1 },
   loc: { fontSize: 11, color: '#7A9E8E', marginTop: 1 },
   badge: { borderWidth: 1, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4, flexShrink: 0 },
   badgeT: { fontSize: 9, fontWeight: '800' },
+  moreBtn: { fontSize: 16, color: '#A0B8AC', fontWeight: '900', letterSpacing: 1 },
+  dispBadge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 8 },
+  dispBadgeT: { fontSize: 10, fontWeight: '700' },
   esp: { fontSize: 13, fontWeight: '700', color: '#0A1C14', marginBottom: 5 },
   desc: { fontSize: 13, color: '#4A7060', lineHeight: 19, marginBottom: 10 },
   postImg: { width: '100%', height: 180, borderRadius: 10, marginBottom: 10 },
@@ -512,6 +715,22 @@ const pm = StyleSheet.create({
     minHeight: 130, textAlignVertical: 'top',
   },
   charCount: { fontSize: 11, color: '#7A9E8E', textAlign: 'right', marginTop: 4 },
+
+  // location locked
+  locLockedRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 12, gap: 10 },
+  locLockedT: { flex: 1, fontSize: 14, color: '#0A1C14', fontWeight: '600' },
+  locUnlockBtn: { backgroundColor: '#EEF7F2', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  locUnlockT: { fontSize: 12, fontWeight: '800', color: '#3A6550' },
+
+  // location selectors (unlocked)
+  locSelector: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center' },
+  locSelectorT: { flex: 1, fontSize: 14, color: '#0A1C14' },
+  locPlaceholder: { color: '#A0B8AC' },
+
+  // IBGE search
+  ibgeSearch: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 12, fontSize: 15, color: '#0A1C14', marginBottom: 8 },
+
+  // legacy (kept for compat)
   locRow: { flexDirection: 'row', gap: 10 },
   locInput: {
     backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA',

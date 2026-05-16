@@ -4,7 +4,7 @@ import {
   ScrollView, Modal, FlatList, ActivityIndicator, Alert,
   Switch, Image, Platform, Linking,
 } from 'react-native'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Path, Circle, Rect, Line } from 'react-native-svg'
@@ -271,7 +271,9 @@ function PickerModal({ visible, title, data, onSelect, onClose }: any) {
 // ── main ───────────────────────────────────────────────────────────────────────
 
 export default function EditarPerfil() {
-  const [abaAtiva, setAbaAtiva] = useState('pessoal')
+  const { aba: abaParam } = useLocalSearchParams<{ aba?: string }>()
+  const validAbas = ['pessoal', 'localizacao', 'profissional', 'formacao', 'experiencia', 'redes']
+  const [abaAtiva, setAbaAtiva] = useState(validAbas.includes(abaParam as string) ? abaParam as string : 'pessoal')
   const tabScrollRef = useRef<ScrollView>(null)
 
   const [avatarUri, setAvatarUri] = useState<string | null>(null)
@@ -308,9 +310,12 @@ export default function EditarPerfil() {
   const [fCurso, setFCurso] = useState('')
   const [fAnoInicio, setFAnoInicio] = useState('')
   const [fAnoConclusao, setFAnoConclusao] = useState('')
+  const [fStatus, setFStatus] = useState<'concluido' | 'cursando'>('concluido')
+  const [fPrevisao, setFPrevisao] = useState('')
   const [fTipoModal, setFTipoModal] = useState(false)
   const [fAnoInicioModal, setFAnoInicioModal] = useState(false)
   const [fAnoConclusaoModal, setFAnoConclusaoModal] = useState(false)
+  const [fPrevisaoModal, setFPrevisaoModal] = useState(false)
 
   const [expModal, setExpModal] = useState(false)
   const [editingExp, setEditingExp] = useState<any>(null)
@@ -460,17 +465,28 @@ export default function EditarPerfil() {
   })
 
   const openAddFormacao = () => {
-    setEditingFormacao(null); setFTipo(''); setFInstituicao(''); setFCurso(''); setFAnoInicio(''); setFAnoConclusao('')
+    setEditingFormacao(null); setFTipo(''); setFInstituicao(''); setFCurso('')
+    setFAnoInicio(''); setFAnoConclusao(''); setFStatus('concluido'); setFPrevisao('')
     setFormacaoModal(true)
   }
   const openEditFormacao = (item: any) => {
     setEditingFormacao(item); setFTipo(item.tipo || ''); setFInstituicao(item.instituicao || '')
     setFCurso(item.curso || ''); setFAnoInicio(item.ano_inicio || ''); setFAnoConclusao(item.ano_conclusao || '')
+    setFStatus(item.status || 'concluido'); setFPrevisao(item.previsao_conclusao || '')
     setFormacaoModal(true)
   }
   const saveFormacao = () => {
     if (!fInstituicao.trim() || !fCurso.trim()) { Alert.alert('Atenção', 'Preencha instituição e curso.'); return }
-    const entry = { id: editingFormacao?.id || Date.now(), tipo: fTipo, instituicao: fInstituicao.trim(), curso: fCurso.trim(), ano_inicio: fAnoInicio, ano_conclusao: fAnoConclusao }
+    const entry = {
+      id: editingFormacao?.id || Date.now(),
+      tipo: fTipo,
+      instituicao: fInstituicao.trim(),
+      curso: fCurso.trim(),
+      ano_inicio: fStatus === 'concluido' ? fAnoInicio : '',
+      ano_conclusao: fStatus === 'concluido' ? fAnoConclusao : '',
+      status: fStatus,
+      previsao_conclusao: fStatus === 'cursando' ? fPrevisao : '',
+    }
     setFormacao(prev => editingFormacao ? prev.map(f => f.id === editingFormacao.id ? entry : f) : [...prev, entry])
     setFormacaoModal(false)
   }
@@ -738,11 +754,23 @@ export default function EditarPerfil() {
                     <Text style={s.entryIconEmoji}>🎓</Text>
                   </View>
                   <View style={s.entryContent}>
-                    <Text style={s.entryTitle}>{f.curso}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <Text style={s.entryTitle}>{f.curso}</Text>
+                      {f.status === 'cursando' && (
+                        <View style={s.cursandoBadge}>
+                          <Text style={s.cursandoBadgeT}>Cursando</Text>
+                        </View>
+                      )}
+                    </View>
                     <Text style={s.entrySub}>{f.instituicao}{f.tipo ? ` · ${f.tipo}` : ''}</Text>
-                    {(f.ano_inicio || f.ano_conclusao) && (
-                      <Text style={s.entryDate}>{f.ano_inicio || '?'} – {f.ano_conclusao || 'Em curso'}</Text>
-                    )}
+                    {f.status === 'cursando'
+                      ? f.previsao_conclusao
+                        ? <Text style={s.entryDate}>Previsão: {f.previsao_conclusao}</Text>
+                        : <Text style={s.entryDate}>Em andamento</Text>
+                      : (f.ano_inicio || f.ano_conclusao) && (
+                        <Text style={s.entryDate}>{f.ano_inicio || '?'} – {f.ano_conclusao || 'Em curso'}</Text>
+                      )
+                    }
                   </View>
                   <View style={s.entryActions}>
                     <TouchableOpacity style={s.entryEditBtn} onPress={() => openEditFormacao(f)}>
@@ -940,23 +968,48 @@ export default function EditarPerfil() {
               <TextInput style={s.input} value={fCurso} onChangeText={setFCurso}
                 placeholder="Ex: Odontologia" placeholderTextColor="#A0B8AC" />
 
-              <View style={s.rowHalf}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.fieldLbl}>Ano início</Text>
-                  <TouchableOpacity style={s.selector} onPress={() => setFAnoInicioModal(true)}>
-                    <Text style={[s.selectorText, !fAnoInicio && s.ph]}>{fAnoInicio || 'Ano'}</Text>
-                    <Text style={s.chevron}>›</Text>
+              <Text style={s.fieldLbl}>Status</Text>
+              <View style={[s.chipsWrap, { marginBottom: 4 }]}>
+                {(['concluido', 'cursando'] as const).map(st => (
+                  <TouchableOpacity
+                    key={st}
+                    style={[s.dispChip, fStatus === st && { backgroundColor: st === 'concluido' ? '#00A880' : '#1A6FD4', borderColor: st === 'concluido' ? '#00A880' : '#1A6FD4' }]}
+                    onPress={() => setFStatus(st)}
+                  >
+                    <Text style={[s.dispChipT, fStatus === st && { color: '#fff' }]}>
+                      {st === 'concluido' ? '✓ Concluído' : '📚 Cursando'}
+                    </Text>
                   </TouchableOpacity>
-                </View>
-                <View style={{ width: 12 }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={s.fieldLbl}>Ano conclusão</Text>
-                  <TouchableOpacity style={s.selector} onPress={() => setFAnoConclusaoModal(true)}>
-                    <Text style={[s.selectorText, !fAnoConclusao && s.ph]}>{fAnoConclusao || 'Ano'}</Text>
-                    <Text style={s.chevron}>›</Text>
-                  </TouchableOpacity>
-                </View>
+                ))}
               </View>
+
+              {fStatus === 'concluido' ? (
+                <View style={s.rowHalf}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.fieldLbl}>Ano início</Text>
+                    <TouchableOpacity style={s.selector} onPress={() => setFAnoInicioModal(true)}>
+                      <Text style={[s.selectorText, !fAnoInicio && s.ph]}>{fAnoInicio || 'Ano'}</Text>
+                      <Text style={s.chevron}>›</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ width: 12 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.fieldLbl}>Ano conclusão</Text>
+                    <TouchableOpacity style={s.selector} onPress={() => setFAnoConclusaoModal(true)}>
+                      <Text style={[s.selectorText, !fAnoConclusao && s.ph]}>{fAnoConclusao || 'Ano'}</Text>
+                      <Text style={s.chevron}>›</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <View>
+                  <Text style={s.fieldLbl}>Previsão de conclusão (ano)</Text>
+                  <TouchableOpacity style={s.selector} onPress={() => setFPrevisaoModal(true)}>
+                    <Text style={[s.selectorText, !fPrevisao && s.ph]}>{fPrevisao || 'Selecionar ano'}</Text>
+                    <Text style={s.chevron}>›</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </ScrollView>
             <View style={s.modalBtns}>
               <TouchableOpacity style={s.cancelBtn} onPress={() => setFormacaoModal(false)}>
@@ -1074,6 +1127,8 @@ export default function EditarPerfil() {
         onSelect={(v: string) => { setFAnoInicio(v); setFAnoInicioModal(false) }} onClose={() => setFAnoInicioModal(false)} />
       <PickerModal visible={fAnoConclusaoModal} title="Ano de Conclusão" data={ANOS}
         onSelect={(v: string) => { setFAnoConclusao(v); setFAnoConclusaoModal(false) }} onClose={() => setFAnoConclusaoModal(false)} />
+      <PickerModal visible={fPrevisaoModal} title="Previsão de Conclusão" data={Array.from({ length: 15 }, (_, i) => String(new Date().getFullYear() + i))}
+        onSelect={(v: string) => { setFPrevisao(v); setFPrevisaoModal(false) }} onClose={() => setFPrevisaoModal(false)} />
       <PickerModal visible={eInicioModal} title="Ano de Início" data={ANOS}
         onSelect={(v: string) => { setEInicio(v); setEInicioModal(false) }} onClose={() => setEInicioModal(false)} />
       <PickerModal visible={eFimModal} title="Ano de Fim" data={ANOS}
@@ -1223,6 +1278,8 @@ const s = StyleSheet.create({
   entryRemoveBtnT: { fontSize: 12, color: '#D4186A', fontWeight: '900' },
   addMoreBtn: { marginTop: 14, borderWidth: 1.5, borderColor: '#00A880', borderStyle: 'dashed', borderRadius: 12, padding: 12, alignItems: 'center' },
   addMoreBtnT: { fontSize: 13, fontWeight: '700', color: '#00A880' },
+  cursandoBadge: { backgroundColor: '#1A6FD420', borderWidth: 1, borderColor: '#1A6FD460', borderRadius: 100, paddingHorizontal: 8, paddingVertical: 2 },
+  cursandoBadgeT: { fontSize: 10, fontWeight: '800', color: '#1A6FD4' },
 
   // Empty state (inside card)
   emptyState: { alignItems: 'center', paddingVertical: 24 },

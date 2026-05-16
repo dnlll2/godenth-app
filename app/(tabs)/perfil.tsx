@@ -139,6 +139,14 @@ export default function Perfil() {
 
   const tipoCor = TIPO_CORES[profile?.tipo_profissional] || '#007A6E'
 
+  const selo = profile?.plano === 'black'
+    ? { emoji: '👑', label: 'Master', cor: '#C49800' }
+    : profile?.embaixador
+    ? { emoji: '🌟', label: 'Embaixador', cor: '#7B3FC4' }
+    : myPages.length > 0
+    ? { emoji: '🏢', label: 'Dono de Negócio', cor: '#1A6FD4' }
+    : null
+
   const renderSobre = () => (
     <View style={styles.tabContent}>
       {profile?.bio ? (
@@ -147,7 +155,7 @@ export default function Perfil() {
           <Text style={styles.cardText}>{profile.bio}</Text>
         </View>
       ) : (
-        <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil' as any)}>
+        <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil?aba=pessoal' as any)}>
           <Text style={styles.emptyCardT}>+ Adicionar resumo profissional</Text>
         </TouchableOpacity>
       )}
@@ -211,7 +219,7 @@ export default function Perfil() {
         )}
 
         {especialidades.length === 0 && extras.length === 0 && (
-          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil' as any)}>
+          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil?aba=experiencia' as any)}>
             <Text style={styles.emptyCardT}>+ Adicionar experiência</Text>
           </TouchableOpacity>
         )}
@@ -252,7 +260,7 @@ export default function Perfil() {
             </View>
           ))
         ) : (
-          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil')}>
+          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil?aba=formacao' as any)}>
             <Text style={styles.emptyCardT}>+ Adicionar formação acadêmica</Text>
           </TouchableOpacity>
         )}
@@ -275,9 +283,21 @@ export default function Perfil() {
             <Text style={styles.cardTitle}>🎓 Formação Acadêmica</Text>
             {(profile?.formacao || []).map((f: any, i: number) => (
               <View key={f.id || i} style={styles.formacaoItem}>
-                <Text style={styles.formacaoTipo}>{f.tipo ? `${f.tipo} · ` : ''}{f.curso}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <Text style={styles.formacaoTipo}>{f.tipo ? `${f.tipo} · ` : ''}{f.curso}</Text>
+                  {f.status === 'cursando' && (
+                    <View style={styles.cursandoBadge}>
+                      <Text style={styles.cursandoBadgeT}>Cursando</Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={styles.formacaoNome}>{f.instituicao}</Text>
-                {(f.ano_inicio || f.ano_conclusao) && <Text style={styles.formacaoAno}>{f.ano_inicio || '?'} — {f.ano_conclusao || 'Em curso'}</Text>}
+                {f.status === 'cursando'
+                  ? f.previsao_conclusao
+                    ? <Text style={styles.formacaoAno}>Previsão: {f.previsao_conclusao}</Text>
+                    : <Text style={styles.formacaoAno}>Em andamento</Text>
+                  : (f.ano_inicio || f.ano_conclusao) && <Text style={styles.formacaoAno}>{f.ano_inicio || '?'} — {f.ano_conclusao || 'Em curso'}</Text>
+                }
               </View>
             ))}
           </View>
@@ -303,7 +323,7 @@ export default function Perfil() {
             </View>
           </View>
         ) : (
-          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil' as any)}>
+          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/editar-perfil?aba=profissional' as any)}>
             <Text style={styles.emptyCardT}>+ Adicionar habilidades</Text>
           </TouchableOpacity>
         )}
@@ -479,7 +499,14 @@ export default function Perfil() {
       </View>
 
       <View style={styles.info}>
-        <Text style={styles.nome}>{profile?.nome}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Text style={styles.nome}>{profile?.nome}</Text>
+          {selo && (
+            <View style={[styles.seloBadge, { backgroundColor: selo.cor + '20', borderColor: selo.cor + '60' }]}>
+              <Text style={[styles.seloT, { color: selo.cor }]}>{selo.emoji} {selo.label}</Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.cargo}>{profile?.tipo_profissional}</Text>
         {profile?.cidade ? <Text style={styles.loc}>📍 {profile.cidade}{profile.estado ? ` · ${profile.estado}` : ''}</Text> : null}
       </View>
@@ -570,6 +597,10 @@ const styles = StyleSheet.create({
   pageNome: { fontSize: 13, fontWeight: '700', color: '#0A1C14' },
   pageCat: { fontSize: 11, color: '#7A9E8E', marginTop: 1 },
   pageArrow: { fontSize: 20, color: '#D0E8DA', fontWeight: '300' },
+  seloBadge: { borderWidth: 1, borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
+  seloT: { fontSize: 11, fontWeight: '800' },
+  cursandoBadge: { backgroundColor: '#1A6FD420', borderWidth: 1, borderColor: '#1A6FD460', borderRadius: 100, paddingHorizontal: 8, paddingVertical: 2 },
+  cursandoBadgeT: { fontSize: 10, fontWeight: '800', color: '#1A6FD4' },
   adminBtn: { backgroundColor: '#0A1C14', borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#C49800' },
   adminBtnT: { fontSize: 14, fontWeight: '800', color: '#C49800' },
   debugBtn: { backgroundColor: '#EEF7F2', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1.5, borderColor: '#00A880', borderStyle: 'dashed' },

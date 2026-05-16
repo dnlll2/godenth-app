@@ -9,6 +9,7 @@ interface User {
   tipo_profissional: string
   plano: string
   disponibilidade?: string
+  embaixador?: boolean
   cidade?: string
   estado?: string
   bio?: string
