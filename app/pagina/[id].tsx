@@ -133,16 +133,35 @@ function MetricasModal({ visible, onClose, metricas, loading }: {
   )
 }
 
+const STATUS_COR: Record<string, string> = { em_analise: '#C49800', aprovado: '#00A880', reprovado: '#EF4444', enviada: '#C49800' }
+const STATUS_LABEL: Record<string, string> = { em_analise: 'Em análise', aprovado: '✓ Aprovado', reprovado: '✗ Reprovado', enviada: 'Em análise' }
+
 // ─── Modal: Candidatos ────────────────────────────────────────────────────────
-function CandidatosModal({ visible, onClose, candidatos, loading }: {
-  visible: boolean; onClose: () => void; candidatos: any[]; loading: boolean
+function CandidatosModal({ visible, onClose, pageId, candidatos: initialCandidatos, loading }: {
+  visible: boolean; onClose: () => void; pageId: string; candidatos: any[]; loading: boolean
 }) {
+  const [candidatos, setCandidatos] = useState<any[]>(initialCandidatos)
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [updatingId, setUpdatingId] = useState<number | null>(null)
+
+  useEffect(() => { setCandidatos(initialCandidatos) }, [initialCandidatos])
+
   const groupedByVaga: Record<string, any[]> = {}
   candidatos.forEach(c => {
     const key = `${c.vaga_id}|${c.cargo}`
     if (!groupedByVaga[key]) groupedByVaga[key] = []
     groupedByVaga[key].push(c)
   })
+
+  const updateStatus = async (c: any, status: string) => {
+    setUpdatingId(c.id)
+    try {
+      await api.put(`/vagas/${c.vaga_id}/candidaturas/${c.id}/status`, { status })
+      setCandidatos(prev => prev.map(x => x.id === c.id ? { ...x, status } : x))
+    } catch (err: any) {
+      Alert.alert('Erro', err.response?.data?.error || 'Não foi possível atualizar o status.')
+    } finally { setUpdatingId(null) }
+  }
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -173,16 +192,79 @@ function CandidatosModal({ visible, onClose, candidatos, loading }: {
                     {contrato && <View style={fs.tag}><Text style={fs.tagT}>{contrato}</Text></View>}
                     <Text style={fs.groupCount}>{cands.length} candidato{cands.length !== 1 ? 's' : ''}</Text>
                   </View>
-                  {cands.map(c => (
-                    <View key={c.id} style={fs.itemCard}>
-                      <Text style={fs.itemNome}>{c.candidato_nome}</Text>
-                      {c.tipo_profissional && <Text style={fs.itemSub}>{c.tipo_profissional}</Text>}
-                      {(c.candidato_cidade || c.candidato_estado) && (
-                        <Text style={fs.itemSub}>📍 {c.candidato_cidade}{c.candidato_estado ? ` · ${c.candidato_estado}` : ''}</Text>
-                      )}
-                      <Text style={fs.itemDate}>{timeAgo(c.created_at)}</Text>
-                    </View>
-                  ))}
+                  {cands.map(c => {
+                    const pct = c.porcentagem_compatibilidade ?? 0
+                    const barCor = pct >= 80 ? '#00A880' : pct >= 50 ? '#C49800' : '#EF4444'
+                    const statusCor = STATUS_COR[c.status] || '#C49800'
+                    const respostas: string[] = c.respostas || []
+                    const isExpanded = expandedId === c.id
+                    return (
+                      <View key={c.id} style={fs.itemCard}>
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={fs.itemNome}>{c.candidato_nome}</Text>
+                            {c.tipo_profissional && <Text style={fs.itemSub}>{c.tipo_profissional}</Text>}
+                            {(c.candidato_cidade || c.candidato_estado) && (
+                              <Text style={fs.itemSub}>📍 {c.candidato_cidade}{c.candidato_estado ? ` · ${c.candidato_estado}` : ''}</Text>
+                            )}
+                          </View>
+                          <View style={[fs.statusBadge, { backgroundColor: statusCor + '18', borderColor: statusCor + '50' }]}>
+                            <Text style={[fs.statusBadgeT, { color: statusCor }]}>{STATUS_LABEL[c.status] || c.status}</Text>
+                          </View>
+                        </View>
+
+                        {/* Barra de compatibilidade */}
+                        <View style={{ gap: 3, marginBottom: 8 }}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#7A9E8E', textTransform: 'uppercase' }}>Compatibilidade</Text>
+                            <Text style={{ fontSize: 13, fontWeight: '900', color: barCor }}>{pct}%</Text>
+                          </View>
+                          <View style={{ height: 6, backgroundColor: '#EEF7F2', borderRadius: 3, overflow: 'hidden' }}>
+                            <View style={{ height: '100%', width: `${Math.min(100, pct)}%`, backgroundColor: barCor, borderRadius: 3 }} />
+                          </View>
+                        </View>
+
+                        {/* Respostas expandíveis */}
+                        {respostas.length > 0 && (
+                          <TouchableOpacity onPress={() => setExpandedId(isExpanded ? null : c.id)}>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.primary, marginBottom: isExpanded ? 8 : 0 }}>
+                              {isExpanded ? '▲ Ocultar' : `▼ Ver respostas (${respostas.length})`}
+                            </Text>
+                            {isExpanded && respostas.map((r, i) => (
+                              <View key={i} style={fs.respostaCard}>
+                                <Text style={fs.respostaT}>{r}</Text>
+                              </View>
+                            ))}
+                          </TouchableOpacity>
+                        )}
+
+                        {/* Botões de status */}
+                        {updatingId === c.id ? (
+                          <ActivityIndicator color={Colors.primary} size="small" style={{ marginTop: 8 }} />
+                        ) : (
+                          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                            {c.status !== 'aprovado' && (
+                              <TouchableOpacity style={fs.btnAprovar} onPress={() => updateStatus(c, 'aprovado')}>
+                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#00A880' }}>✓ Aprovar</Text>
+                              </TouchableOpacity>
+                            )}
+                            {c.status !== 'reprovado' && (
+                              <TouchableOpacity style={fs.btnReprovar} onPress={() => updateStatus(c, 'reprovado')}>
+                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#EF4444' }}>✗ Reprovar</Text>
+                              </TouchableOpacity>
+                            )}
+                            {c.status !== 'em_analise' && (
+                              <TouchableOpacity style={fs.btnAnalise} onPress={() => updateStatus(c, 'em_analise')}>
+                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#C49800' }}>↩ Análise</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        )}
+
+                        <Text style={fs.itemDate}>{timeAgo(c.created_at)}</Text>
+                      </View>
+                    )
+                  })}
                 </View>
               )
             })}
@@ -327,29 +409,77 @@ function AddServicoModal({ visible, pageId, onClose, onCreated }: {
   )
 }
 
-// ─── Modal: Vaga ──────────────────────────────────────────────────────────────
+const TIPOS_ABREV_VAGA: Record<string, string> = {
+  'Cirurgião-Dentista': 'Dentista', 'Técnico em Prótese Dentária': 'Prótese',
+  'Auxiliar de Saúde Bucal (ASB)': 'ASB', 'Técnico em Saúde Bucal (TSB)': 'TSB',
+  Recepcionista: 'Recep.', Marketing: 'Mkt',
+}
+
+// ─── Modal: Vaga (4 etapas) ───────────────────────────────────────────────────
 function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
   visible: boolean; pageId: string; pageName: string; onClose: () => void; onCreated: () => void
 }) {
+  const [step, setStep] = useState(1)
   const [cargo, setCargo] = useState('')
   const [contrato, setContrato] = useState('')
+  const [salarioMin, setSalarioMin] = useState('')
+  const [salarioMax, setSalarioMax] = useState('')
   const [cidade, setCidade] = useState('')
   const [estado, setEstado] = useState('')
+  const [prazo, setPrazo] = useState('')
   const [descricao, setDescricao] = useState('')
+  const [beneficios, setBeneficios] = useState('')
+  const [opcoes, setOpcoes] = useState<any>({})
+  const [tipoFiltro, setTipoFiltro] = useState('')
+  const [reqObrig, setReqObrig] = useState<string[]>([])
+  const [reqDesej, setReqDesej] = useState<string[]>([])
+  const [novoObrig, setNovoObrig] = useState('')
+  const [novoDesej, setNovoDesej] = useState('')
+  const [perguntas, setPerguntas] = useState<string[]>([])
+  const [novaPergunta, setNovaPergunta] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const reset = () => { setCargo(''); setContrato(''); setCidade(''); setEstado(''); setDescricao('') }
+  useEffect(() => {
+    if (visible) api.get('/vagas/opcoes').then(r => setOpcoes(r.data.opcoes || {})).catch(() => {})
+  }, [visible])
+
+  const reset = () => {
+    setStep(1); setCargo(''); setContrato(''); setSalarioMin(''); setSalarioMax('')
+    setCidade(''); setEstado(''); setPrazo(''); setDescricao(''); setBeneficios('')
+    setTipoFiltro(''); setReqObrig([]); setReqDesej([])
+    setNovoObrig(''); setNovoDesej(''); setPerguntas([]); setNovaPergunta('')
+  }
   const close = () => { reset(); onClose() }
 
+  const getChipState = (c: string) => reqObrig.includes(c) ? 'obrig' : reqDesej.includes(c) ? 'desej' : 'none'
+  const toggleChip = (c: string) => {
+    const st = getChipState(c)
+    if (st === 'none') setReqObrig([...reqObrig, c])
+    else if (st === 'obrig') { setReqObrig(reqObrig.filter(x => x !== c)); setReqDesej([...reqDesej, c]) }
+    else setReqDesej(reqDesej.filter(x => x !== c))
+  }
+  const addManual = (val: string, list: string[], setList: (v: string[]) => void, setInput: (v: string) => void) => {
+    const v = val.trim()
+    if (v && !list.includes(v)) setList([...list, v])
+    setInput('')
+  }
+  const addPergunta = () => { const v = novaPergunta.trim(); if (v) { setPerguntas([...perguntas, v]); setNovaPergunta('') } }
+
+  const chipPool = tipoFiltro
+    ? [...(opcoes[tipoFiltro]?.especialidades || []), ...(opcoes[tipoFiltro]?.habilidades || [])]
+    : [...new Set(Object.values(opcoes).flatMap((o: any) => [...(o.especialidades || []), ...(o.habilidades || [])]) as string[])]
+
   const salvar = async () => {
-    if (!cargo.trim()) return Alert.alert('Atenção', 'Informe o cargo.')
-    if (!contrato) return Alert.alert('Atenção', 'Selecione o tipo de contrato.')
     setSaving(true)
     try {
       await api.post('/vagas', {
         page_id: parseInt(pageId), cargo: cargo.trim(), contrato,
+        salario_min: salarioMin ? parseInt(salarioMin) : null,
+        salario_max: salarioMax ? parseInt(salarioMax) : null,
         cidade: cidade.trim() || null, estado: estado.trim().toUpperCase().slice(0, 2) || null,
-        descricao: descricao.trim() || null,
+        prazo_candidatura: prazo.trim() || null,
+        descricao: descricao.trim() || null, beneficios: beneficios.trim() || null,
+        requisitos_obrigatorios: reqObrig, requisitos_desejaveis: reqDesej, perguntas,
       })
       reset(); onCreated(); onClose()
     } catch (err: any) {
@@ -357,34 +487,209 @@ function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
     } finally { setSaving(false) }
   }
 
+  const stepLabels = ['Informações', 'Requisitos', 'Perguntas', 'Revisão']
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={m.overlay}>
-        <ScrollView contentContainerStyle={m.sheetScroll} keyboardShouldPersistTaps="handled">
+        <View style={m.sheetFull}>
           <View style={m.handle} />
-          <Text style={m.title}>📋 Vaga</Text>
-          <Text style={m.subtitle}>Publicando por: {pageName}</Text>
-          <Text style={m.label}>Cargo *</Text>
-          <TextInput style={m.input} placeholder="Ex: Cirurgião-Dentista" placeholderTextColor={Colors.text3} value={cargo} onChangeText={setCargo} />
-          <Text style={m.label}>Tipo de contrato *</Text>
-          <View style={m.chips}>
-            {TIPOS_CONTRATO.map(c => (
-              <TouchableOpacity key={c} style={[m.chip, contrato === c && m.chipOn]} onPress={() => setContrato(c)}>
-                <Text style={[m.chipT, contrato === c && m.chipTOn]}>{c}</Text>
-              </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <TouchableOpacity onPress={close}><Text style={{ fontSize: 18, color: '#7A9E8E', fontWeight: '700', width: 32 }}>✕</Text></TouchableOpacity>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={m.title}>📋 Nova Vaga</Text>
+              <Text style={{ fontSize: 11, color: Colors.text3 }}>{stepLabels[step - 1]} · Etapa {step} de 4</Text>
+            </View>
+            <View style={{ width: 32 }} />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 5, alignSelf: 'center', marginBottom: 14 }}>
+            {[1,2,3,4].map(n => (
+              <View key={n} style={{ width: n === step ? 20 : 7, height: 7, borderRadius: 4, backgroundColor: n <= step ? Colors.primary : '#D0E8DA' }} />
             ))}
           </View>
-          <Text style={m.label}>Cidade</Text>
-          <TextInput style={m.input} placeholder="Ex: São Paulo" placeholderTextColor={Colors.text3} value={cidade} onChangeText={setCidade} />
-          <Text style={m.label}>Estado (UF)</Text>
-          <TextInput style={m.input} placeholder="Ex: SP" placeholderTextColor={Colors.text3} value={estado} onChangeText={setEstado} maxLength={2} autoCapitalize="characters" />
-          <Text style={m.label}>Descrição</Text>
-          <TextInput style={[m.input, m.textarea]} placeholder="Descreva os requisitos…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={4} textAlignVertical="top" />
-          <TouchableOpacity style={[m.btn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Publicar Vaga →</Text>}
-          </TouchableOpacity>
-          <TouchableOpacity style={m.cancel} onPress={close}><Text style={m.cancelT}>Cancelar</Text></TouchableOpacity>
-        </ScrollView>
+
+          {step === 1 && (
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={m.subtitle}>Publicando por: {pageName}</Text>
+              <Text style={m.label}>Cargo *</Text>
+              <TextInput style={m.input} placeholder="Ex: Cirurgião-Dentista" placeholderTextColor={Colors.text3} value={cargo} onChangeText={setCargo} />
+              <Text style={m.label}>Tipo de contrato *</Text>
+              <View style={m.chips}>
+                {TIPOS_CONTRATO.map(c => (
+                  <TouchableOpacity key={c} style={[m.chip, contrato === c && m.chipOn]} onPress={() => setContrato(c)}>
+                    <Text style={[m.chipT, contrato === c && m.chipTOn]}>{c}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={m.label}>Faixa salarial (R$, opcional)</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TextInput style={[m.input, { flex: 1 }]} placeholder="Mínimo" placeholderTextColor={Colors.text3} value={salarioMin} onChangeText={setSalarioMin} keyboardType="numeric" />
+                <TextInput style={[m.input, { flex: 1 }]} placeholder="Máximo" placeholderTextColor={Colors.text3} value={salarioMax} onChangeText={setSalarioMax} keyboardType="numeric" />
+              </View>
+              <Text style={m.label}>Localização</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TextInput style={[m.input, { flex: 2 }]} placeholder="Cidade" placeholderTextColor={Colors.text3} value={cidade} onChangeText={setCidade} />
+                <TextInput style={[m.input, { flex: 1 }]} placeholder="UF" placeholderTextColor={Colors.text3} value={estado} onChangeText={setEstado} maxLength={2} autoCapitalize="characters" />
+              </View>
+              <Text style={m.label}>Prazo (opcional)</Text>
+              <TextInput style={m.input} placeholder="AAAA-MM-DD" placeholderTextColor={Colors.text3} value={prazo} onChangeText={setPrazo} />
+              <Text style={m.label}>Descrição</Text>
+              <TextInput style={[m.input, m.textarea]} placeholder="Descreva os requisitos…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={3} textAlignVertical="top" />
+              <Text style={m.label}>Benefícios</Text>
+              <TextInput style={m.input} placeholder="Ex: VR, VT, plano..." placeholderTextColor={Colors.text3} value={beneficios} onChangeText={setBeneficios} />
+            </ScrollView>
+          )}
+
+          {step === 2 && (
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={{ fontSize: 12, color: Colors.text3, marginBottom: 8 }}>🟢 Obrigatório · 🔵 Desejável · Toque para alternar</Text>
+              <Text style={m.label}>Filtrar por profissão</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 4 }}>
+                  <TouchableOpacity style={[m.chip, !tipoFiltro && m.chipOn]} onPress={() => setTipoFiltro('')}>
+                    <Text style={[m.chipT, !tipoFiltro && m.chipTOn]}>Todos</Text>
+                  </TouchableOpacity>
+                  {Object.keys(opcoes).map(t => (
+                    <TouchableOpacity key={t} style={[m.chip, tipoFiltro === t && m.chipOn]} onPress={() => setTipoFiltro(t)}>
+                      <Text style={[m.chipT, tipoFiltro === t && m.chipTOn]}>{TIPOS_ABREV_VAGA[t] || t.substring(0, 8)}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+              <Text style={m.label}>Chips de requisitos</Text>
+              <View style={m.chips}>
+                {(chipPool as string[]).map((c, i) => {
+                  const st = getChipState(c)
+                  return (
+                    <TouchableOpacity key={i} style={[m.chip,
+                      st === 'obrig' && { backgroundColor: '#E6F5EE', borderColor: Colors.primary },
+                      st === 'desej' && { backgroundColor: '#EBF2FC', borderColor: '#1A6FD4' },
+                    ]} onPress={() => toggleChip(c)}>
+                      <Text style={[m.chipT, st === 'obrig' && { color: Colors.primary, fontWeight: '800' }, st === 'desej' && { color: '#1A6FD4', fontWeight: '800' }]}>
+                        {st === 'obrig' ? '🟢 ' : st === 'desej' ? '🔵 ' : ''}{c}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+              <Text style={m.label}>Adicionar obrigatório</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TextInput style={[m.input, { flex: 1 }]} value={novoObrig} onChangeText={setNovoObrig} placeholder="Digitar..." placeholderTextColor={Colors.text3} onSubmitEditing={() => addManual(novoObrig, reqObrig, setReqObrig, setNovoObrig)} returnKeyType="done" />
+                <TouchableOpacity style={{ backgroundColor: Colors.primary, borderRadius: 10, width: 44, justifyContent: 'center', alignItems: 'center' }} onPress={() => addManual(novoObrig, reqObrig, setReqObrig, setNovoObrig)}>
+                  <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800' }}>+</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={m.label}>Adicionar desejável</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TextInput style={[m.input, { flex: 1 }]} value={novoDesej} onChangeText={setNovoDesej} placeholder="Digitar..." placeholderTextColor={Colors.text3} onSubmitEditing={() => addManual(novoDesej, reqDesej, setReqDesej, setNovoDesej)} returnKeyType="done" />
+                <TouchableOpacity style={{ backgroundColor: '#1A6FD4', borderRadius: 10, width: 44, justifyContent: 'center', alignItems: 'center' }} onPress={() => addManual(novoDesej, reqDesej, setReqDesej, setNovoDesej)}>
+                  <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800' }}>+</Text>
+                </TouchableOpacity>
+              </View>
+              {reqObrig.length > 0 && <><Text style={m.label}>🟢 Obrigatórios ({reqObrig.length})</Text>
+                <View style={m.chips}>{reqObrig.map((r, i) => (
+                  <TouchableOpacity key={i} style={[m.chip, { backgroundColor: '#E6F5EE', borderColor: Colors.primary }]} onPress={() => setReqObrig(reqObrig.filter(x => x !== r))}>
+                    <Text style={{ fontSize: 11, color: Colors.primary, fontWeight: '700' }}>✓ {r} ✕</Text>
+                  </TouchableOpacity>
+                ))}</View></>}
+              {reqDesej.length > 0 && <><Text style={m.label}>🔵 Desejáveis ({reqDesej.length})</Text>
+                <View style={m.chips}>{reqDesej.map((r, i) => (
+                  <TouchableOpacity key={i} style={[m.chip, { backgroundColor: '#EBF2FC', borderColor: '#1A6FD4' }]} onPress={() => setReqDesej(reqDesej.filter(x => x !== r))}>
+                    <Text style={{ fontSize: 11, color: '#1A6FD4', fontWeight: '700' }}>✓ {r} ✕</Text>
+                  </TouchableOpacity>
+                ))}</View></>}
+            </ScrollView>
+          )}
+
+          {step === 3 && (
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={{ fontSize: 12, color: Colors.text3, marginBottom: 8 }}>Adicione perguntas que os candidatos devem responder.</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TextInput style={[m.input, { flex: 1 }]} value={novaPergunta} onChangeText={setNovaPergunta} placeholder="Adicionar pergunta..." placeholderTextColor={Colors.text3} onSubmitEditing={addPergunta} returnKeyType="done" />
+                <TouchableOpacity style={{ backgroundColor: Colors.primary, borderRadius: 10, width: 44, justifyContent: 'center', alignItems: 'center' }} onPress={addPergunta}>
+                  <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800' }}>+</Text>
+                </TouchableOpacity>
+              </View>
+              {perguntas.length === 0 ? (
+                <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                  <Text style={{ fontSize: 30, marginBottom: 8 }}>❓</Text>
+                  <Text style={{ fontSize: 13, color: Colors.text3 }}>Nenhuma pergunta (opcional)</Text>
+                </View>
+              ) : perguntas.map((p, i) => (
+                <View key={i} style={{ flexDirection: 'row', gap: 10, backgroundColor: '#fff', borderRadius: 10, padding: 12, marginTop: 8, borderWidth: 1, borderColor: '#D0E8DA', alignItems: 'flex-start' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.primary, width: 20 }}>{i + 1}.</Text>
+                  <Text style={{ flex: 1, fontSize: 13, color: Colors.text }}>{p}</Text>
+                  <TouchableOpacity onPress={() => setPerguntas(perguntas.filter((_, j) => j !== i))}>
+                    <Text style={{ fontSize: 15, color: '#EF4444', fontWeight: '700' }}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+
+          {step === 4 && (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 12, color: Colors.text3, marginBottom: 12 }}>Revise e publique.</Text>
+              {[
+                { l: 'Cargo · Contrato', v: `${cargo} · ${contrato}` },
+                salarioMin ? { l: 'Salário', v: `R$ ${salarioMin} – ${salarioMax || '?'}` } : null,
+                cidade ? { l: 'Localização', v: `${cidade} · ${estado}` } : null,
+                prazo ? { l: 'Prazo', v: prazo } : null,
+              ].filter(Boolean).map((row: any, i) => (
+                <View key={i} style={{ backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: '#D0E8DA' }}>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: Colors.text3, textTransform: 'uppercase' }}>{row.l}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.text, marginTop: 2 }}>{row.v}</Text>
+                </View>
+              ))}
+              {reqObrig.length > 0 && <View style={{ backgroundColor: '#E6F5EE', borderRadius: 10, padding: 12, marginBottom: 8 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: Colors.primary, textTransform: 'uppercase', marginBottom: 6 }}>Obrigatórios ({reqObrig.length})</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {reqObrig.map((r, i) => <View key={i} style={{ backgroundColor: '#fff', borderRadius: 100, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: Colors.primary }}><Text style={{ fontSize: 11, color: Colors.primary, fontWeight: '700' }}>{r}</Text></View>)}
+                </View>
+              </View>}
+              {reqDesej.length > 0 && <View style={{ backgroundColor: '#EBF2FC', borderRadius: 10, padding: 12, marginBottom: 8 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#1A6FD4', textTransform: 'uppercase', marginBottom: 6 }}>Desejáveis ({reqDesej.length})</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {reqDesej.map((r, i) => <View key={i} style={{ backgroundColor: '#fff', borderRadius: 100, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: '#1A6FD4' }}><Text style={{ fontSize: 11, color: '#1A6FD4', fontWeight: '700' }}>{r}</Text></View>)}
+                </View>
+              </View>}
+              {perguntas.length > 0 && <View style={{ backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: '#D0E8DA' }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: Colors.text3, textTransform: 'uppercase', marginBottom: 6 }}>Perguntas ({perguntas.length})</Text>
+                {perguntas.map((p, i) => <Text key={i} style={{ fontSize: 13, color: Colors.text, marginBottom: 4 }}>{i + 1}. {p}</Text>)}
+              </View>}
+            </ScrollView>
+          )}
+
+          <View style={{ flexDirection: 'row', gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#EEF7F2', marginTop: 4 }}>
+            {step > 1 ? (
+              <TouchableOpacity style={{ flex: 1, borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 13, alignItems: 'center' }} onPress={() => setStep(step - 1)}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text2 }}>← Anterior</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={{ flex: 1, borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 13, alignItems: 'center' }} onPress={close}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text3 }}>Cancelar</Text>
+              </TouchableOpacity>
+            )}
+            {step < 4 ? (
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: Colors.primary, borderRadius: 12, padding: 13, alignItems: 'center' }}
+                onPress={() => {
+                  if (step === 1) {
+                    if (!cargo.trim()) return Alert.alert('Atenção', 'Informe o cargo.')
+                    if (!contrato) return Alert.alert('Atenção', 'Selecione o tipo de contrato.')
+                  }
+                  setStep(step + 1)
+                }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>Próximo →</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={[{ flex: 1, backgroundColor: Colors.primary, borderRadius: 12, padding: 13, alignItems: 'center' }, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
+                {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Publicar →</Text>}
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
       </KeyboardAvoidingView>
     </Modal>
   )
@@ -1115,6 +1420,7 @@ export default function PaginaDetalhe() {
       <CandidatosModal
         visible={showCandidatos}
         onClose={() => setShowCandidatos(false)}
+        pageId={id as string}
         candidatos={candidatosData}
         loading={candidatosLoading}
       />
@@ -1403,6 +1709,7 @@ const m = StyleSheet.create({
   metricEmoji: { fontSize: 22, marginBottom: 4 },
   metricValue: { fontSize: 22, fontWeight: '900', color: Colors.text },
   metricLabel: { fontSize: 10, color: Colors.text3, fontWeight: '600', marginTop: 2, textAlign: 'center' },
+  sheetFull: { backgroundColor: Colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 28, maxHeight: '94%' },
 })
 
 // ─── Styles full-screen modals ────────────────────────────────────────────────
@@ -1426,4 +1733,11 @@ const fs = StyleSheet.create({
   infoBox: { backgroundColor: '#EFF6FF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#BFDBFE' },
   infoBoxT: { fontSize: 12, color: '#1E40AF', lineHeight: 18 },
   link: { fontSize: 13, fontWeight: '700', color: Colors.primary, marginTop: 6 },
+  statusBadge: { borderWidth: 1, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 3, flexShrink: 1 },
+  statusBadgeT: { fontSize: 11, fontWeight: '700' },
+  respostaCard: { backgroundColor: Colors.bg, borderRadius: 10, padding: 10, marginBottom: 6, borderWidth: 1, borderColor: Colors.border },
+  respostaT: { fontSize: 13, color: Colors.text, lineHeight: 19 },
+  btnAprovar: { backgroundColor: '#ECFDF5', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: '#059669' },
+  btnReprovar: { backgroundColor: '#FEF2F2', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: '#EF4444' },
+  btnAnalise: { backgroundColor: '#FFFBEB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: '#C49800' },
 })

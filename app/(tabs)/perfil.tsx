@@ -55,6 +55,9 @@ export default function Perfil() {
   const [pagesLoaded, setPagesLoaded] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [showPagesModal, setShowPagesModal] = useState(false)
+  const [showCandidaturas, setShowCandidaturas] = useState(false)
+  const [candidaturas, setCandidaturas] = useState<any[]>([])
+  const [candidaturasLoading, setCandidaturasLoading] = useState(false)
 
   const loadProfile = async () => {
     try {
@@ -123,6 +126,14 @@ export default function Perfil() {
         },
       },
     ])
+  }
+
+  const loadCandidaturas = () => {
+    setCandidaturasLoading(true)
+    api.get('/vagas/minhas-candidaturas')
+      .then(r => setCandidaturas(r.data.candidaturas || []))
+      .catch(() => null)
+      .finally(() => setCandidaturasLoading(false))
   }
 
   const handleLogout = async () => {
@@ -433,6 +444,7 @@ export default function Perfil() {
             {[
               { emoji: '✏️', label: 'Editar perfil',    onPress: () => { setShowMenu(false); router.push('/(tabs)/editar-perfil' as any) } },
               { emoji: '🏢', label: 'Minhas Páginas',  onPress: () => { setShowMenu(false); setShowPagesModal(true) } },
+              { emoji: '💼', label: 'Minhas Candidaturas', onPress: () => { setShowMenu(false); loadCandidaturas(); setShowCandidaturas(true) } },
               { emoji: '⚙️', label: 'Configurações',   onPress: () => { setShowMenu(false); router.push('/configuracoes' as any) } },
               { emoji: '🔔', label: 'Notificações',    onPress: () => { setShowMenu(false); router.push('/notificacoes' as any) } },
               { emoji: '📊', label: 'Minha conta',     onPress: () => { setShowMenu(false); router.push('/minha-conta' as any) } },
@@ -483,6 +495,75 @@ export default function Perfil() {
             ))}
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* ── Modal Minhas Candidaturas ── */}
+      <Modal visible={showCandidaturas} transparent animationType="slide" onRequestClose={() => setShowCandidaturas(false)}>
+        <View style={styles.menuOverlay}>
+          <View style={[styles.menuSheet, { maxHeight: '85%' }]}>
+            <View style={styles.menuHandle} />
+            <View style={styles.cardHeader}>
+              <Text style={styles.menuTitle}>💼 Minhas Candidaturas</Text>
+              <TouchableOpacity onPress={() => setShowCandidaturas(false)}><Text style={{ fontSize: 18, color: '#7A9E8E', fontWeight: '700' }}>✕</Text></TouchableOpacity>
+            </View>
+            {candidaturasLoading ? (
+              <ActivityIndicator color="#00A880" size="small" style={{ marginVertical: 20 }} />
+            ) : candidaturas.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+                <Text style={{ fontSize: 36, marginBottom: 10 }}>📭</Text>
+                <Text style={{ fontSize: 14, color: '#7A9E8E', textAlign: 'center' }}>Você ainda não se candidatou a nenhuma vaga.</Text>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {candidaturas.map((c: any) => {
+                  const STATUS_COR: Record<string, string> = { em_analise: '#C49800', aprovado: '#00A880', reprovado: '#EF4444', enviada: '#C49800' }
+                  const STATUS_LABEL: Record<string, string> = { em_analise: 'Em análise', aprovado: '✓ Aprovado', reprovado: '✗ Reprovado', enviada: 'Em análise' }
+                  const CONTRATO_COR: Record<string, string> = { CLT: '#00A880', PJ: '#1A6FD4', Freelancer: '#C49800', Estágio: '#7B3FC4' }
+                  const cor = CONTRATO_COR[c.contrato] || '#00A880'
+                  const statusCor = STATUS_COR[c.status] || '#C49800'
+                  const pct = c.porcentagem_compatibilidade ?? 0
+                  const barCor = pct >= 80 ? '#00A880' : pct >= 50 ? '#C49800' : '#EF4444'
+                  return (
+                    <View key={c.id} style={styles.candCard}>
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.candCargo} numberOfLines={1}>{c.cargo}</Text>
+                          <Text style={styles.candEmpresa}>{c.empresa_nome}</Text>
+                        </View>
+                        <View style={[styles.candStatusBadge, { backgroundColor: statusCor + '18', borderColor: statusCor + '50' }]}>
+                          <Text style={[styles.candStatusT, { color: statusCor }]}>{STATUS_LABEL[c.status] || c.status}</Text>
+                        </View>
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                        <View style={[styles.candChip, { backgroundColor: cor + '18', borderColor: cor + '50' }]}>
+                          <Text style={[styles.candChipT, { color: cor }]}>{c.contrato}</Text>
+                        </View>
+                        {(c.vaga_cidade || c.vaga_estado) && (
+                          <Text style={{ fontSize: 11, color: '#7A9E8E', alignSelf: 'center' }}>📍 {[c.vaga_cidade, c.vaga_estado].filter(Boolean).join(', ')}</Text>
+                        )}
+                        {(c.salario_min || c.salario_max) && (
+                          <Text style={{ fontSize: 11, color: '#7A9E8E', alignSelf: 'center' }}>💰 R$ {c.salario_min?.toLocaleString('pt-BR') || '?'}</Text>
+                        )}
+                      </View>
+                      <View style={{ gap: 4 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <Text style={{ fontSize: 10, fontWeight: '800', color: '#3A6550', textTransform: 'uppercase' }}>Compatibilidade</Text>
+                          <Text style={{ fontSize: 13, fontWeight: '900', color: barCor }}>{pct}%</Text>
+                        </View>
+                        <View style={{ height: 6, backgroundColor: '#EEF7F2', borderRadius: 3, overflow: 'hidden' }}>
+                          <View style={{ height: '100%', width: `${Math.min(100, pct)}%`, backgroundColor: barCor, borderRadius: 3 }} />
+                        </View>
+                      </View>
+                      <Text style={{ fontSize: 10, color: '#AECEBE', marginTop: 6 }}>
+                        Candidatura enviada em {new Date(c.created_at).toLocaleDateString('pt-BR')}
+                      </Text>
+                    </View>
+                  )
+                })}
+              </ScrollView>
+            )}
+          </View>
+        </View>
       </Modal>
 
       <View style={[styles.cover, { backgroundColor: tipoCor }]}>
@@ -626,4 +707,12 @@ const styles = StyleSheet.create({
   portSaveBtnT: { color: '#fff', fontWeight: '800', fontSize: 15 },
   portCancelBtn: { borderRadius: 12, padding: 14, alignItems: 'center' },
   portCancelBtnT: { fontSize: 14, fontWeight: '700', color: '#7A9E8E' },
+  // candidaturas
+  candCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', marginBottom: 10 },
+  candCargo: { fontSize: 14, fontWeight: '800', color: '#0A1C14' },
+  candEmpresa: { fontSize: 12, color: '#3A6550', marginTop: 2 },
+  candStatusBadge: { borderWidth: 1, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4, flexShrink: 0 },
+  candStatusT: { fontSize: 10, fontWeight: '800' },
+  candChip: { borderWidth: 1, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 3 },
+  candChipT: { fontSize: 10, fontWeight: '800' },
 })
