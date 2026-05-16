@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, Modal, TextInput } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, Modal, TextInput, Platform } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -53,6 +53,7 @@ export default function Perfil() {
   const [addSaving, setAddSaving] = useState(false)
   const [myPages, setMyPages] = useState<any[]>([])
   const [pagesLoaded, setPagesLoaded] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
 
   const loadProfile = async () => {
     try {
@@ -424,10 +425,36 @@ export default function Perfil() {
           <Text style={styles.back}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Meu Perfil</Text>
-        <TouchableOpacity style={[styles.navSide, { alignItems: 'flex-end' }]} onPress={handleLogout}>
-          <Text style={styles.logout}>Sair</Text>
+        <TouchableOpacity style={[styles.navSide, { alignItems: 'flex-end' }]} onPress={() => setShowMenu(true)}>
+          <Text style={styles.hamburger}>☰</Text>
         </TouchableOpacity>
       </View>
+
+      {/* ── Menu lateral ── */}
+      <Modal visible={showMenu} transparent animationType="slide" onRequestClose={() => setShowMenu(false)}>
+        <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={() => setShowMenu(false)}>
+          <View style={styles.menuSheet}>
+            <View style={styles.menuHandle} />
+            <Text style={styles.menuTitle}>Menu</Text>
+            {[
+              { emoji: '⚙️', label: 'Configurações', onPress: () => { setShowMenu(false); router.push('/configuracoes' as any) } },
+              { emoji: '🔔', label: 'Notificações',  onPress: () => { setShowMenu(false); router.push('/notificacoes' as any) } },
+              { emoji: '📊', label: 'Minha conta',   onPress: () => { setShowMenu(false); router.push('/minha-conta' as any) } },
+              { emoji: '🚪', label: 'Sair',          onPress: () => { setShowMenu(false); handleLogout() }, danger: true },
+            ].map((item, i, arr) => (
+              <TouchableOpacity
+                key={item.label}
+                style={[styles.menuItem, i === arr.length - 1 && { borderBottomWidth: 0 }]}
+                onPress={item.onPress}
+              >
+                <Text style={styles.menuEmoji}>{item.emoji}</Text>
+                <Text style={[styles.menuLabel, (item as any).danger && { color: '#EF4444' }]}>{item.label}</Text>
+                {!(item as any).danger && <Text style={styles.menuArrow}>›</Text>}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <View style={[styles.cover, { backgroundColor: tipoCor }]}>
         <Text style={styles.coverWatermark} numberOfLines={1} ellipsizeMode="clip">
@@ -483,7 +510,15 @@ const styles = StyleSheet.create({
   navSide: { width: 60 },
   back: { fontSize: 24, color: '#fff', fontWeight: '700' },
   headerTitle: { flex: 1, fontSize: 18, fontWeight: '800', color: '#fff', textAlign: 'center' },
-  logout: { fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
+  hamburger: { fontSize: 22, color: '#fff', fontWeight: '700' },
+  menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  menuSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 28 },
+  menuHandle: { width: 40, height: 4, backgroundColor: '#D0E8DA', borderRadius: 2, alignSelf: 'center', marginBottom: 18 },
+  menuTitle: { fontSize: 18, fontWeight: '900', color: '#0A1C14', marginBottom: 8 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#EEF7F2' },
+  menuEmoji: { fontSize: 22, marginRight: 14 },
+  menuLabel: { flex: 1, fontSize: 16, fontWeight: '700', color: '#0A1C14' },
+  menuArrow: { fontSize: 22, color: '#7A9E8E' },
   cover: { height: 100, overflow: 'hidden' },
   coverWatermark: { position: 'absolute', bottom: -8, left: 10, right: 10, fontSize: 58, fontWeight: '900', color: 'rgba(255,255,255,0.13)', letterSpacing: 3 },
   avatarRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: -30, marginBottom: 8 },
