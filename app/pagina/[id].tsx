@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, Image, Linking, Platform, Alert,
-  Modal, TextInput, KeyboardAvoidingView, Animated,
+  Modal, TextInput, KeyboardAvoidingView,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import api from '../../services/api'
@@ -32,7 +32,11 @@ const CAT_LABEL: Record<string, string> = {
 }
 
 const ABAS = ['Sobre', 'Publicações', 'Vagas']
-const CONTRATOS = ['CLT', 'PJ', 'Freelancer', 'Estágio']
+const TIPOS_CONTRATO = ['CLT', 'PJ', 'Estágio', 'Freelancer']
+const MODALIDADES_CURSO = ['Presencial', 'Online', 'Híbrido']
+const TIPOS_EVENTO = ['Congresso', 'Feira', 'Simpósio', 'Outro']
+
+type ModalTipo = 'vaga' | 'curso' | 'treinamento' | 'palestra' | 'evento' | null
 
 function resolveUrl(url?: string | null) {
   if (!url) return null
@@ -41,81 +45,60 @@ function resolveUrl(url?: string | null) {
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
-  const m = Math.floor(diff / 60000)
-  if (m < 1) return 'agora'
-  if (m < 60) return `${m}m`
-  const h = Math.floor(m / 60)
+  const mm = Math.floor(diff / 60000)
+  if (mm < 1) return 'agora'
+  if (mm < 60) return `${mm}m`
+  const h = Math.floor(mm / 60)
   if (h < 24) return `${h}h`
-  const d = Math.floor(h / 24)
-  return `${d}d`
+  return `${Math.floor(h / 24)}d`
 }
 
-// ─── Modal: Nova Publicação ───────────────────────────────────────────────────
-function NovaPublicacaoModal({ visible, pageId, onClose, onCreated }: {
-  visible: boolean; pageId: string; onClose: () => void; onCreated: () => void
+// ─── Menu: Publicar ────────────────────────────────────────────────────────────
+function PublicarMenu({ visible, onSelect, onClose }: {
+  visible: boolean; onSelect: (tipo: ModalTipo) => void; onClose: () => void
 }) {
-  const [texto, setTexto] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  const close = () => { setTexto(''); onClose() }
-
-  const salvar = async () => {
-    if (!texto.trim()) return Alert.alert('Atenção', 'Escreva algo antes de publicar.')
-    setSaving(true)
-    try {
-      await api.post('/posts', {
-        tipo_post: 'texto',
-        data_json: { descricao: texto.trim() },
-        page_id: parseInt(pageId),
-      })
-      setTexto('')
-      onCreated()
-      onClose()
-    } catch (err: any) {
-      Alert.alert('Erro', err.response?.data?.error || 'Não foi possível publicar.')
-    } finally { setSaving(false) }
-  }
-
+  const opcoes: { key: ModalTipo; emoji: string; label: string }[] = [
+    { key: 'vaga', emoji: '📋', label: 'Vaga' },
+    { key: 'curso', emoji: '🎓', label: 'Curso' },
+    { key: 'treinamento', emoji: '🏋️', label: 'Treinamento' },
+    { key: 'palestra', emoji: '🎤', label: 'Palestra' },
+    { key: 'evento', emoji: '🗓️', label: 'Evento' },
+  ]
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={m.overlay}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={m.overlay} activeOpacity={1} onPress={onClose}>
         <View style={m.sheet}>
           <View style={m.handle} />
-          <Text style={m.title}>Nova Publicação</Text>
-          <TextInput
-            style={m.textarea}
-            placeholder="Compartilhe uma novidade, conquista ou informação relevante…"
-            placeholderTextColor={Colors.text3}
-            value={texto}
-            onChangeText={setTexto}
-            multiline
-            numberOfLines={6}
-            textAlignVertical="top"
-            autoFocus
-          />
-          <TouchableOpacity style={[m.btn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Publicar →</Text>}
-          </TouchableOpacity>
-          <TouchableOpacity style={m.cancel} onPress={close}>
-            <Text style={m.cancelT}>Cancelar</Text>
-          </TouchableOpacity>
+          <Text style={m.title}>O que deseja publicar?</Text>
+          {opcoes.map(o => (
+            <TouchableOpacity
+              key={o.key as string}
+              style={m.menuItem}
+              onPress={() => { onClose(); onSelect(o.key) }}
+            >
+              <Text style={m.menuEmoji}>{o.emoji}</Text>
+              <Text style={m.menuLabel}>{o.label}</Text>
+              <Text style={m.menuArrow}>›</Text>
+            </TouchableOpacity>
+          ))}
         </View>
-      </KeyboardAvoidingView>
+      </TouchableOpacity>
     </Modal>
   )
 }
 
-// ─── Modal: Nova Vaga ─────────────────────────────────────────────────────────
-function NovaVagaModal({ visible, pageId, pageName, onClose, onCreated }: {
+// ─── Modal: Vaga ──────────────────────────────────────────────────────────────
+function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
   visible: boolean; pageId: string; pageName: string; onClose: () => void; onCreated: () => void
 }) {
   const [cargo, setCargo] = useState('')
   const [contrato, setContrato] = useState('')
-  const [salario, setSalario] = useState('')
-  const [especialidade, setEspecialidade] = useState('')
+  const [cidade, setCidade] = useState('')
+  const [estado, setEstado] = useState('')
+  const [descricao, setDescricao] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const reset = () => { setCargo(''); setContrato(''); setSalario(''); setEspecialidade('') }
+  const reset = () => { setCargo(''); setContrato(''); setCidade(''); setEstado(''); setDescricao('') }
   const close = () => { reset(); onClose() }
 
   const salvar = async () => {
@@ -127,12 +110,11 @@ function NovaVagaModal({ visible, pageId, pageName, onClose, onCreated }: {
         page_id: parseInt(pageId),
         cargo: cargo.trim(),
         contrato,
-        salario: salario.trim() || null,
-        especialidade: especialidade.trim() || null,
+        cidade: cidade.trim() || null,
+        estado: estado.trim().toUpperCase().slice(0, 2) || null,
+        descricao: descricao.trim() || null,
       })
-      reset()
-      onCreated()
-      onClose()
+      reset(); onCreated(); onClose()
     } catch (err: any) {
       Alert.alert('Erro', err.response?.data?.error || 'Não foi possível publicar a vaga.')
     } finally { setSaving(false) }
@@ -143,7 +125,7 @@ function NovaVagaModal({ visible, pageId, pageName, onClose, onCreated }: {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={m.overlay}>
         <ScrollView contentContainerStyle={m.sheetScroll} keyboardShouldPersistTaps="handled">
           <View style={m.handle} />
-          <Text style={m.title}>Nova Vaga</Text>
+          <Text style={m.title}>📋 Vaga</Text>
           <Text style={m.subtitle}>Publicando por: {pageName}</Text>
 
           <Text style={m.label}>Cargo *</Text>
@@ -151,21 +133,313 @@ function NovaVagaModal({ visible, pageId, pageName, onClose, onCreated }: {
 
           <Text style={m.label}>Tipo de contrato *</Text>
           <View style={m.chips}>
-            {CONTRATOS.map(c => (
+            {TIPOS_CONTRATO.map(c => (
               <TouchableOpacity key={c} style={[m.chip, contrato === c && m.chipOn]} onPress={() => setContrato(c)}>
                 <Text style={[m.chipT, contrato === c && m.chipTOn]}>{c}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <Text style={m.label}>Salário</Text>
-          <TextInput style={m.input} placeholder="Ex: R$ 4.000 - R$ 6.000" placeholderTextColor={Colors.text3} value={salario} onChangeText={setSalario} />
+          <Text style={m.label}>Cidade</Text>
+          <TextInput style={m.input} placeholder="Ex: São Paulo" placeholderTextColor={Colors.text3} value={cidade} onChangeText={setCidade} />
 
-          <Text style={m.label}>Especialidade</Text>
-          <TextInput style={m.input} placeholder="Ex: Implantodontia" placeholderTextColor={Colors.text3} value={especialidade} onChangeText={setEspecialidade} />
+          <Text style={m.label}>Estado (UF)</Text>
+          <TextInput style={m.input} placeholder="Ex: SP" placeholderTextColor={Colors.text3} value={estado} onChangeText={setEstado} maxLength={2} autoCapitalize="characters" />
+
+          <Text style={m.label}>Descrição</Text>
+          <TextInput style={[m.input, m.textarea]} placeholder="Descreva os requisitos e responsabilidades…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={4} textAlignVertical="top" />
 
           <TouchableOpacity style={[m.btn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
             {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Publicar Vaga →</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={m.cancel} onPress={close}>
+            <Text style={m.cancelT}>Cancelar</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>
+  )
+}
+
+// ─── Modal: Curso ─────────────────────────────────────────────────────────────
+function CursoModal({ visible, pageId, onClose, onCreated }: {
+  visible: boolean; pageId: string; onClose: () => void; onCreated: () => void
+}) {
+  const [titulo, setTitulo] = useState('')
+  const [modalidade, setModalidade] = useState('')
+  const [cargaHoraria, setCargaHoraria] = useState('')
+  const [dataInicio, setDataInicio] = useState('')
+  const [linkInscricao, setLinkInscricao] = useState('')
+  const [descricao, setDescricao] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const reset = () => { setTitulo(''); setModalidade(''); setCargaHoraria(''); setDataInicio(''); setLinkInscricao(''); setDescricao('') }
+  const close = () => { reset(); onClose() }
+
+  const salvar = async () => {
+    if (!titulo.trim()) return Alert.alert('Atenção', 'Informe o título do curso.')
+    setSaving(true)
+    try {
+      await api.post(`/pages/${pageId}/publicacoes`, {
+        tipo: 'curso',
+        titulo: titulo.trim(),
+        dados: {
+          modalidade: modalidade || null,
+          carga_horaria: cargaHoraria.trim() || null,
+          data_inicio: dataInicio.trim() || null,
+          link_inscricao: linkInscricao.trim() || null,
+          descricao: descricao.trim() || null,
+        },
+      })
+      reset(); onCreated(); onClose()
+    } catch (err: any) {
+      Alert.alert('Erro', err.response?.data?.error || 'Não foi possível publicar.')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={m.overlay}>
+        <ScrollView contentContainerStyle={m.sheetScroll} keyboardShouldPersistTaps="handled">
+          <View style={m.handle} />
+          <Text style={m.title}>🎓 Curso</Text>
+
+          <Text style={m.label}>Título *</Text>
+          <TextInput style={m.input} placeholder="Ex: Implantodontia Avançada" placeholderTextColor={Colors.text3} value={titulo} onChangeText={setTitulo} />
+
+          <Text style={m.label}>Modalidade</Text>
+          <View style={m.chips}>
+            {MODALIDADES_CURSO.map(c => (
+              <TouchableOpacity key={c} style={[m.chip, modalidade === c && m.chipOn]} onPress={() => setModalidade(c)}>
+                <Text style={[m.chipT, modalidade === c && m.chipTOn]}>{c}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={m.label}>Carga horária</Text>
+          <TextInput style={m.input} placeholder="Ex: 40h" placeholderTextColor={Colors.text3} value={cargaHoraria} onChangeText={setCargaHoraria} />
+
+          <Text style={m.label}>Data de início</Text>
+          <TextInput style={m.input} placeholder="Ex: 15/06/2025" placeholderTextColor={Colors.text3} value={dataInicio} onChangeText={setDataInicio} />
+
+          <Text style={m.label}>Link de inscrição</Text>
+          <TextInput style={m.input} placeholder="https://…" placeholderTextColor={Colors.text3} value={linkInscricao} onChangeText={setLinkInscricao} autoCapitalize="none" keyboardType="url" />
+
+          <Text style={m.label}>Descrição</Text>
+          <TextInput style={[m.input, m.textarea]} placeholder="Detalhes do curso…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={4} textAlignVertical="top" />
+
+          <TouchableOpacity style={[m.btn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Publicar Curso →</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={m.cancel} onPress={close}>
+            <Text style={m.cancelT}>Cancelar</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>
+  )
+}
+
+// ─── Modal: Treinamento ───────────────────────────────────────────────────────
+function TreinamentoModal({ visible, pageId, onClose, onCreated }: {
+  visible: boolean; pageId: string; onClose: () => void; onCreated: () => void
+}) {
+  const [titulo, setTitulo] = useState('')
+  const [publicoAlvo, setPublicoAlvo] = useState('')
+  const [data, setData] = useState('')
+  const [local, setLocal] = useState('')
+  const [descricao, setDescricao] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const reset = () => { setTitulo(''); setPublicoAlvo(''); setData(''); setLocal(''); setDescricao('') }
+  const close = () => { reset(); onClose() }
+
+  const salvar = async () => {
+    if (!titulo.trim()) return Alert.alert('Atenção', 'Informe o título.')
+    setSaving(true)
+    try {
+      await api.post(`/pages/${pageId}/publicacoes`, {
+        tipo: 'treinamento',
+        titulo: titulo.trim(),
+        dados: {
+          publico_alvo: publicoAlvo.trim() || null,
+          data: data.trim() || null,
+          local: local.trim() || null,
+          descricao: descricao.trim() || null,
+        },
+      })
+      reset(); onCreated(); onClose()
+    } catch (err: any) {
+      Alert.alert('Erro', err.response?.data?.error || 'Não foi possível publicar.')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={m.overlay}>
+        <ScrollView contentContainerStyle={m.sheetScroll} keyboardShouldPersistTaps="handled">
+          <View style={m.handle} />
+          <Text style={m.title}>🏋️ Treinamento</Text>
+
+          <Text style={m.label}>Título *</Text>
+          <TextInput style={m.input} placeholder="Ex: Treinamento em Biossegurança" placeholderTextColor={Colors.text3} value={titulo} onChangeText={setTitulo} />
+
+          <Text style={m.label}>Público-alvo</Text>
+          <TextInput style={m.input} placeholder="Ex: Dentistas e auxiliares" placeholderTextColor={Colors.text3} value={publicoAlvo} onChangeText={setPublicoAlvo} />
+
+          <Text style={m.label}>Data</Text>
+          <TextInput style={m.input} placeholder="Ex: 20/06/2025" placeholderTextColor={Colors.text3} value={data} onChangeText={setData} />
+
+          <Text style={m.label}>Local</Text>
+          <TextInput style={m.input} placeholder="Ex: Online ou endereço" placeholderTextColor={Colors.text3} value={local} onChangeText={setLocal} />
+
+          <Text style={m.label}>Descrição</Text>
+          <TextInput style={[m.input, m.textarea]} placeholder="Detalhes do treinamento…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={4} textAlignVertical="top" />
+
+          <TouchableOpacity style={[m.btn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Publicar Treinamento →</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={m.cancel} onPress={close}>
+            <Text style={m.cancelT}>Cancelar</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>
+  )
+}
+
+// ─── Modal: Palestra ──────────────────────────────────────────────────────────
+function PalestraModal({ visible, pageId, onClose, onCreated }: {
+  visible: boolean; pageId: string; onClose: () => void; onCreated: () => void
+}) {
+  const [titulo, setTitulo] = useState('')
+  const [palestrante, setPalestrante] = useState('')
+  const [data, setData] = useState('')
+  const [local, setLocal] = useState('')
+  const [descricao, setDescricao] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const reset = () => { setTitulo(''); setPalestrante(''); setData(''); setLocal(''); setDescricao('') }
+  const close = () => { reset(); onClose() }
+
+  const salvar = async () => {
+    if (!titulo.trim()) return Alert.alert('Atenção', 'Informe o título.')
+    setSaving(true)
+    try {
+      await api.post(`/pages/${pageId}/publicacoes`, {
+        tipo: 'palestra',
+        titulo: titulo.trim(),
+        dados: {
+          palestrante: palestrante.trim() || null,
+          data: data.trim() || null,
+          local: local.trim() || null,
+          descricao: descricao.trim() || null,
+        },
+      })
+      reset(); onCreated(); onClose()
+    } catch (err: any) {
+      Alert.alert('Erro', err.response?.data?.error || 'Não foi possível publicar.')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={m.overlay}>
+        <ScrollView contentContainerStyle={m.sheetScroll} keyboardShouldPersistTaps="handled">
+          <View style={m.handle} />
+          <Text style={m.title}>🎤 Palestra</Text>
+
+          <Text style={m.label}>Título *</Text>
+          <TextInput style={m.input} placeholder="Ex: Tendências em Odontologia Digital" placeholderTextColor={Colors.text3} value={titulo} onChangeText={setTitulo} />
+
+          <Text style={m.label}>Palestrante</Text>
+          <TextInput style={m.input} placeholder="Ex: Dr. João Silva" placeholderTextColor={Colors.text3} value={palestrante} onChangeText={setPalestrante} />
+
+          <Text style={m.label}>Data</Text>
+          <TextInput style={m.input} placeholder="Ex: 25/06/2025" placeholderTextColor={Colors.text3} value={data} onChangeText={setData} />
+
+          <Text style={m.label}>Local</Text>
+          <TextInput style={m.input} placeholder="Ex: Online ou endereço" placeholderTextColor={Colors.text3} value={local} onChangeText={setLocal} />
+
+          <Text style={m.label}>Descrição</Text>
+          <TextInput style={[m.input, m.textarea]} placeholder="Detalhes da palestra…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={4} textAlignVertical="top" />
+
+          <TouchableOpacity style={[m.btn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Publicar Palestra →</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={m.cancel} onPress={close}>
+            <Text style={m.cancelT}>Cancelar</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>
+  )
+}
+
+// ─── Modal: Evento ────────────────────────────────────────────────────────────
+function EventoModal({ visible, pageId, onClose, onCreated }: {
+  visible: boolean; pageId: string; onClose: () => void; onCreated: () => void
+}) {
+  const [titulo, setTitulo] = useState('')
+  const [tipoEvento, setTipoEvento] = useState('')
+  const [data, setData] = useState('')
+  const [local, setLocal] = useState('')
+  const [descricao, setDescricao] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const reset = () => { setTitulo(''); setTipoEvento(''); setData(''); setLocal(''); setDescricao('') }
+  const close = () => { reset(); onClose() }
+
+  const salvar = async () => {
+    if (!titulo.trim()) return Alert.alert('Atenção', 'Informe o título do evento.')
+    setSaving(true)
+    try {
+      await api.post(`/pages/${pageId}/publicacoes`, {
+        tipo: 'evento',
+        titulo: titulo.trim(),
+        dados: {
+          tipo_evento: tipoEvento || null,
+          data: data.trim() || null,
+          local: local.trim() || null,
+          descricao: descricao.trim() || null,
+        },
+      })
+      reset(); onCreated(); onClose()
+    } catch (err: any) {
+      Alert.alert('Erro', err.response?.data?.error || 'Não foi possível publicar.')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={m.overlay}>
+        <ScrollView contentContainerStyle={m.sheetScroll} keyboardShouldPersistTaps="handled">
+          <View style={m.handle} />
+          <Text style={m.title}>🗓️ Evento</Text>
+
+          <Text style={m.label}>Título *</Text>
+          <TextInput style={m.input} placeholder="Ex: Congresso Nacional de Odontologia" placeholderTextColor={Colors.text3} value={titulo} onChangeText={setTitulo} />
+
+          <Text style={m.label}>Tipo de evento</Text>
+          <View style={m.chips}>
+            {TIPOS_EVENTO.map(t => (
+              <TouchableOpacity key={t} style={[m.chip, tipoEvento === t && m.chipOn]} onPress={() => setTipoEvento(t)}>
+                <Text style={[m.chipT, tipoEvento === t && m.chipTOn]}>{t}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={m.label}>Data</Text>
+          <TextInput style={m.input} placeholder="Ex: 10/07/2025" placeholderTextColor={Colors.text3} value={data} onChangeText={setData} />
+
+          <Text style={m.label}>Local</Text>
+          <TextInput style={m.input} placeholder="Ex: Centro de Convenções de São Paulo" placeholderTextColor={Colors.text3} value={local} onChangeText={setLocal} />
+
+          <Text style={m.label}>Descrição</Text>
+          <TextInput style={[m.input, m.textarea]} placeholder="Detalhes do evento…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={4} textAlignVertical="top" />
+
+          <TouchableOpacity style={[m.btn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={m.btnT}>Publicar Evento →</Text>}
           </TouchableOpacity>
           <TouchableOpacity style={m.cancel} onPress={close}>
             <Text style={m.cancelT}>Cancelar</Text>
@@ -183,15 +457,15 @@ export default function PaginaDetalhe() {
   const [page, setPage] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [aba, setAba] = useState('Sobre')
-  const [posts, setPosts] = useState<any[]>([])
-  const [postsLoading, setPostsLoading] = useState(false)
-  const [following, setFollowing] = useState(false)
-  const [followCount, setFollowCount] = useState(0)
-  const [followLoading, setFollowLoading] = useState(false)
+  const [publicacoes, setPublicacoes] = useState<any[]>([])
+  const [publicacoesLoading, setPublicacoesLoading] = useState(false)
+  const [liked, setLiked] = useState(false)
+  const [likeCount, setLikeCount] = useState(0)
+  const [likeLoading, setLikeLoading] = useState(false)
   const [candidaturas, setCandidaturas] = useState<Set<number>>(new Set())
   const [candidatandoId, setCandidatandoId] = useState<number | null>(null)
-  const [modalPost, setModalPost] = useState(false)
-  const [modalVaga, setModalVaga] = useState(false)
+  const [showPublicarMenu, setShowPublicarMenu] = useState(false)
+  const [modalTipo, setModalTipo] = useState<ModalTipo>(null)
 
   const isOwner = user?.id === page?.user_id
 
@@ -200,36 +474,36 @@ export default function PaginaDetalhe() {
     api.get(`/pages/${id}`)
       .then(r => {
         setPage(r.data)
-        setFollowing(r.data.is_following)
-        setFollowCount(r.data.seguidores || 0)
+        setLiked(r.data.is_liked)
+        setLikeCount(r.data.curtidas || 0)
       })
       .catch(() => Alert.alert('Erro', 'Não foi possível carregar a página'))
       .finally(() => setLoading(false))
   }
 
-  const loadPosts = () => {
-    setPostsLoading(true)
-    api.get(`/pages/${id}/posts`)
-      .then(r => setPosts(r.data.posts || []))
+  const loadPublicacoes = () => {
+    setPublicacoesLoading(true)
+    api.get(`/pages/${id}/publicacoes`)
+      .then(r => setPublicacoes(r.data.publicacoes || []))
       .catch(() => null)
-      .finally(() => setPostsLoading(false))
+      .finally(() => setPublicacoesLoading(false))
   }
 
   useEffect(() => { loadPage() }, [id])
 
   useEffect(() => {
-    if (aba === 'Publicações' && posts.length === 0) loadPosts()
+    if (aba === 'Publicações' && publicacoes.length === 0) loadPublicacoes()
   }, [aba])
 
-  const toggleFollow = async () => {
-    setFollowLoading(true)
+  const toggleLike = async () => {
+    setLikeLoading(true)
     try {
       const res = await api.post(`/follows/${id}`)
-      setFollowing(res.data.following)
-      setFollowCount(prev => res.data.following ? prev + 1 : Math.max(0, prev - 1))
+      setLiked(res.data.following)
+      setLikeCount(prev => res.data.following ? prev + 1 : Math.max(0, prev - 1))
     } catch {
       Alert.alert('Erro', 'Não foi possível processar.')
-    } finally { setFollowLoading(false) }
+    } finally { setLikeLoading(false) }
   }
 
   const candidatar = async (vagaId: number) => {
@@ -241,6 +515,9 @@ export default function PaginaDetalhe() {
       Alert.alert('Erro', err.response?.data?.error || 'Não foi possível candidatar.')
     } finally { setCandidatandoId(null) }
   }
+
+  const openModal = (tipo: ModalTipo) => setModalTipo(tipo)
+  const closeModal = () => setModalTipo(null)
 
   if (loading) return <View style={s.center}><ActivityIndicator color={Colors.primary} size="large" /></View>
 
@@ -275,7 +552,7 @@ export default function PaginaDetalhe() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* ── Cover + Logo (LinkedIn style) ── */}
+        {/* ── Cover + Logo ── */}
         <View style={[s.cover, { backgroundColor: cor }]}>
           {coverSrc ? (
             <Image source={{ uri: coverSrc }} style={StyleSheet.absoluteFill} resizeMode="cover" />
@@ -302,21 +579,21 @@ export default function PaginaDetalhe() {
             )}
           </View>
 
-          {/* Botão Seguir / Editar */}
+          {/* Botão Curtir / Editar */}
           {isOwner ? (
             <TouchableOpacity style={s.editBtn} onPress={() => router.push(`/editar-pagina/${id}` as any)}>
               <Text style={[s.editBtnT, { color: cor }]}>✏️ Editar página</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={[s.followBtn, following ? s.followingBtn : { backgroundColor: cor }]}
-              onPress={toggleFollow}
-              disabled={followLoading}
+              style={[s.likeBtn, liked ? s.likedBtn : { backgroundColor: cor }]}
+              onPress={toggleLike}
+              disabled={likeLoading}
             >
-              {followLoading
-                ? <ActivityIndicator color={following ? cor : '#fff'} size="small" />
-                : <Text style={[s.followBtnT, following && { color: cor }]}>
-                    {following ? '✓ Seguindo' : '+ Seguir'}
+              {likeLoading
+                ? <ActivityIndicator color={liked ? cor : '#fff'} size="small" />
+                : <Text style={[s.likeBtnT, liked && { color: cor }]}>
+                    {liked ? '❤️ Curtido' : '🤍 Curtir'}
                   </Text>}
             </TouchableOpacity>
           )}
@@ -334,15 +611,15 @@ export default function PaginaDetalhe() {
         {/* ── Stats ── */}
         <View style={s.statsRow}>
           <View style={s.stat}>
-            <Text style={[s.statN, { color: cor }]}>{followCount}</Text>
-            <Text style={s.statL}>Seguidores</Text>
+            <Text style={[s.statN, { color: cor }]}>{likeCount}</Text>
+            <Text style={s.statL}>Curtidas</Text>
           </View>
           <View style={[s.stat, s.statBorder]}>
             <Text style={[s.statN, { color: cor }]}>{vagas.length}</Text>
             <Text style={s.statL}>Vagas abertas</Text>
           </View>
           <View style={s.stat}>
-            <Text style={[s.statN, { color: cor }]}>{posts.length > 0 ? posts.length : '—'}</Text>
+            <Text style={[s.statN, { color: cor }]}>{publicacoes.length > 0 ? publicacoes.length : '—'}</Text>
             <Text style={s.statL}>Publicações</Text>
           </View>
         </View>
@@ -367,14 +644,9 @@ export default function PaginaDetalhe() {
         {isOwner && (
           <View style={s.ownerPanel}>
             <Text style={s.ownerTitle}>Gerenciar página</Text>
-            <View style={s.ownerBtns}>
-              <TouchableOpacity style={[s.ownerBtn, { backgroundColor: cor }]} onPress={() => setModalPost(true)}>
-                <Text style={s.ownerBtnT}>✏️ Nova Publicação</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[s.ownerBtn, s.ownerBtnGold]} onPress={() => setModalVaga(true)}>
-                <Text style={s.ownerBtnT}>💼 Nova Vaga</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity style={[s.ownerBtn, { backgroundColor: cor }]} onPress={() => setShowPublicarMenu(true)}>
+              <Text style={s.ownerBtnT}>✏️ Publicar</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -414,20 +686,20 @@ export default function PaginaDetalhe() {
         {/* ── Tab: Publicações ── */}
         {aba === 'Publicações' && (
           <View style={s.tab}>
-            {postsLoading ? (
+            {publicacoesLoading ? (
               <ActivityIndicator color={cor} style={{ marginTop: 32 }} />
-            ) : posts.length === 0 ? (
+            ) : publicacoes.length === 0 ? (
               <View style={s.emptyCard}>
                 <Text style={{ fontSize: 32, marginBottom: 8 }}>📢</Text>
                 <Text style={s.emptyT}>Nenhuma publicação ainda</Text>
                 {isOwner && (
-                  <TouchableOpacity style={[s.emptyBtn, { borderColor: cor }]} onPress={() => setModalPost(true)}>
+                  <TouchableOpacity style={[s.emptyBtn, { borderColor: cor }]} onPress={() => setShowPublicarMenu(true)}>
                     <Text style={[s.emptyBtnT, { color: cor }]}>+ Criar primeira publicação</Text>
                   </TouchableOpacity>
                 )}
               </View>
-            ) : posts.map(post => (
-              <PostCard key={post.id} post={post} pageLogo={logoSrc} pageName={page.nome} cor={cor} />
+            ) : publicacoes.map(pub => (
+              <PublicacaoCard key={pub.id} pub={pub} pageLogo={logoSrc} pageName={page.nome} cor={cor} />
             ))}
           </View>
         )}
@@ -436,7 +708,7 @@ export default function PaginaDetalhe() {
         {aba === 'Vagas' && (
           <View style={s.tab}>
             {isOwner && (
-              <TouchableOpacity style={[s.newVagaBtn, { backgroundColor: cor }]} onPress={() => setModalVaga(true)}>
+              <TouchableOpacity style={[s.newVagaBtn, { backgroundColor: cor }]} onPress={() => openModal('vaga')}>
                 <Text style={s.newVagaBtnT}>+ Nova Vaga</Text>
               </TouchableOpacity>
             )}
@@ -462,19 +734,44 @@ export default function PaginaDetalhe() {
         <View style={{ height: 60 }} />
       </ScrollView>
 
-      {/* ── Modais ── */}
-      <NovaPublicacaoModal
-        visible={modalPost}
-        pageId={id}
-        onClose={() => setModalPost(false)}
-        onCreated={() => { setPosts([]); loadPosts() }}
+      {/* ── Menu Publicar ── */}
+      <PublicarMenu
+        visible={showPublicarMenu}
+        onSelect={openModal}
+        onClose={() => setShowPublicarMenu(false)}
       />
-      <NovaVagaModal
-        visible={modalVaga}
+
+      {/* ── Modais ── */}
+      <VagaModal
+        visible={modalTipo === 'vaga'}
         pageId={id}
         pageName={page.nome}
-        onClose={() => setModalVaga(false)}
+        onClose={closeModal}
         onCreated={loadPage}
+      />
+      <CursoModal
+        visible={modalTipo === 'curso'}
+        pageId={id}
+        onClose={closeModal}
+        onCreated={() => { setPublicacoes([]); loadPublicacoes() }}
+      />
+      <TreinamentoModal
+        visible={modalTipo === 'treinamento'}
+        pageId={id}
+        onClose={closeModal}
+        onCreated={() => { setPublicacoes([]); loadPublicacoes() }}
+      />
+      <PalestraModal
+        visible={modalTipo === 'palestra'}
+        pageId={id}
+        onClose={closeModal}
+        onCreated={() => { setPublicacoes([]); loadPublicacoes() }}
+      />
+      <EventoModal
+        visible={modalTipo === 'evento'}
+        pageId={id}
+        onClose={closeModal}
+        onCreated={() => { setPublicacoes([]); loadPublicacoes() }}
       />
     </View>
   )
@@ -490,8 +787,35 @@ function InfoRow({ label, value, color }: { label: string; value: string; color?
   )
 }
 
-function PostCard({ post, pageLogo, pageName, cor }: any) {
-  const texto = post.data_json?.descricao || ''
+const TIPO_EMOJI: Record<string, string> = {
+  curso: '🎓',
+  treinamento: '🏋️',
+  palestra: '🎤',
+  evento: '🗓️',
+}
+
+const TIPO_LABEL_PUB: Record<string, string> = {
+  curso: 'Curso',
+  treinamento: 'Treinamento',
+  palestra: 'Palestra',
+  evento: 'Evento',
+}
+
+function PublicacaoCard({ pub, pageLogo, pageName, cor }: any) {
+  const emoji = TIPO_EMOJI[pub.tipo] || '📢'
+  const label = TIPO_LABEL_PUB[pub.tipo] || pub.tipo
+  const dados = pub.dados || {}
+
+  const infos: string[] = []
+  if (dados.modalidade) infos.push(dados.modalidade)
+  if (dados.carga_horaria) infos.push(dados.carga_horaria)
+  if (dados.data_inicio) infos.push(`Início: ${dados.data_inicio}`)
+  if (dados.data) infos.push(dados.data)
+  if (dados.local) infos.push(`📍 ${dados.local}`)
+  if (dados.palestrante) infos.push(`Por: ${dados.palestrante}`)
+  if (dados.publico_alvo) infos.push(`Para: ${dados.publico_alvo}`)
+  if (dados.tipo_evento) infos.push(dados.tipo_evento)
+
   return (
     <View style={s.postCard}>
       <View style={s.postHeader}>
@@ -504,10 +828,22 @@ function PostCard({ post, pageLogo, pageName, cor }: any) {
         )}
         <View style={{ flex: 1 }}>
           <Text style={s.postAuthor}>{pageName}</Text>
-          <Text style={s.postTime}>{timeAgo(post.created_at)}</Text>
+          <Text style={s.postTime}>{timeAgo(pub.created_at)}</Text>
+        </View>
+        <View style={[s.tipoBadge, { backgroundColor: cor + '18' }]}>
+          <Text style={[s.tipoBadgeT, { color: cor }]}>{emoji} {label}</Text>
         </View>
       </View>
-      {texto ? <Text style={s.postText}>{texto}</Text> : null}
+      <Text style={s.pubTitulo}>{pub.titulo}</Text>
+      {infos.length > 0 && <Text style={s.pubInfos}>{infos.join('  ·  ')}</Text>}
+      {dados.descricao ? <Text style={s.postText}>{dados.descricao}</Text> : null}
+      {dados.link_inscricao ? (
+        <TouchableOpacity onPress={() => Linking.openURL(
+          dados.link_inscricao.startsWith('http') ? dados.link_inscricao : `https://${dados.link_inscricao}`
+        )}>
+          <Text style={[s.linkInscricao, { color: cor }]}>🔗 Inscrever-se</Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   )
 }
@@ -555,11 +891,7 @@ const s = StyleSheet.create({
   btnBack: { backgroundColor: Colors.primary, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10 },
   btnBackT: { color: '#fff', fontWeight: '800', fontSize: 14 },
 
-  navBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 14,
-    paddingTop: Platform.OS === 'ios' ? 52 : 14,
-  },
+  navBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, paddingTop: Platform.OS === 'ios' ? 52 : 14 },
   navSide: { width: 56 },
   navBack: { fontSize: 24, color: '#fff', fontWeight: '700' },
   navTitle: { flex: 1, fontSize: 17, fontWeight: '800', color: '#fff', textAlign: 'center' },
@@ -578,9 +910,9 @@ const s = StyleSheet.create({
 
   editBtn: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 9, backgroundColor: Colors.white, marginBottom: 4 },
   editBtnT: { fontSize: 13, fontWeight: '800' },
-  followBtn: { borderRadius: 100, paddingHorizontal: 22, paddingVertical: 10, marginBottom: 4, minWidth: 100, alignItems: 'center' },
-  followingBtn: { backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border },
-  followBtnT: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  likeBtn: { borderRadius: 100, paddingHorizontal: 22, paddingVertical: 10, marginBottom: 4, minWidth: 110, alignItems: 'center' },
+  likedBtn: { backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border },
+  likeBtnT: { color: '#fff', fontSize: 14, fontWeight: '800' },
 
   info: { paddingHorizontal: 16, marginBottom: 10 },
   nome: { fontSize: 22, fontWeight: '900', color: Colors.text },
@@ -599,9 +931,7 @@ const s = StyleSheet.create({
 
   ownerPanel: { backgroundColor: '#FFFBEA', borderBottomWidth: 1, borderTopWidth: 1, borderColor: '#F5C800', paddingHorizontal: 16, paddingVertical: 14 },
   ownerTitle: { fontSize: 11, fontWeight: '800', color: '#A07800', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
-  ownerBtns: { flexDirection: 'row', gap: 10 },
-  ownerBtn: { flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  ownerBtnGold: { backgroundColor: '#C49800' },
+  ownerBtn: { borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
   ownerBtnT: { color: '#fff', fontSize: 13, fontWeight: '800' },
 
   abas: { flexDirection: 'row', backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border },
@@ -627,7 +957,12 @@ const s = StyleSheet.create({
   postAvatar: { width: 42, height: 42, borderRadius: 12 },
   postAuthor: { fontSize: 14, fontWeight: '800', color: Colors.text },
   postTime: { fontSize: 11, color: Colors.text3, marginTop: 1 },
-  postText: { fontSize: 14, color: Colors.text, lineHeight: 22 },
+  postText: { fontSize: 14, color: Colors.text, lineHeight: 22, marginTop: 8 },
+  tipoBadge: { borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 },
+  tipoBadgeT: { fontSize: 11, fontWeight: '700' },
+  pubTitulo: { fontSize: 16, fontWeight: '800', color: Colors.text, marginBottom: 4 },
+  pubInfos: { fontSize: 12, color: Colors.text3, marginBottom: 4 },
+  linkInscricao: { fontSize: 13, fontWeight: '700', marginTop: 8 },
 
   vagaCard: { backgroundColor: Colors.white, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: Colors.border },
   vagaTop: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
@@ -654,7 +989,7 @@ const m = StyleSheet.create({
   subtitle: { fontSize: 12, color: Colors.text3, marginBottom: 16 },
   label: { fontSize: 12, fontWeight: '700', color: Colors.text2, marginBottom: 6, marginTop: 10 },
   input: { backgroundColor: Colors.bg, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12, padding: 13, fontSize: 14, color: Colors.text, marginBottom: 4 },
-  textarea: { backgroundColor: Colors.bg, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12, padding: 13, fontSize: 14, color: Colors.text, height: 140, marginBottom: 16, textAlignVertical: 'top' },
+  textarea: { height: 100, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   chip: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 8 },
   chipOn: { backgroundColor: Colors.primary, borderColor: Colors.primary },
@@ -664,4 +999,8 @@ const m = StyleSheet.create({
   btnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
   cancel: { borderRadius: 14, padding: 14, alignItems: 'center' },
   cancelT: { fontSize: 14, fontWeight: '700', color: Colors.text3 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  menuEmoji: { fontSize: 22, marginRight: 14 },
+  menuLabel: { flex: 1, fontSize: 16, fontWeight: '700', color: Colors.text },
+  menuArrow: { fontSize: 22, color: Colors.text3 },
 })
