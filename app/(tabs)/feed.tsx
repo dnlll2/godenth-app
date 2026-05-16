@@ -415,7 +415,11 @@ function PostModal({ visible, onClose, onPublished, user }: {
   )
 }
 
-// ── main ──────────────────────────────────────────────────────────────────────
+function getMeta(tipo: string) {
+  return TIPOS_META[tipo] || { emoji: '📋', label: tipo, cor: '#00A880' }
+}
+
+// ── main ───────────────────────────────────���──────────────────────────────────
 
 export default function Feed() {
   const [posts, setPosts] = useState([])
@@ -444,9 +448,7 @@ export default function Feed() {
 
   useFocusEffect(useCallback(() => { setLoading(true); loadFeed() }, [filtro]))
 
-  const getMeta = (tipo: string) => TIPOS_META[tipo] || { emoji: '📋', label: tipo, cor: '#00A880' }
-
-  const renderPost = ({ item }: any) => {
+  const renderPost = useCallback(({ item }: any) => {
     const meta  = getMeta(item.tipo_post)
     const cor   = meta.cor
     const nome  = item.page_nome || item.author_nome || 'Usuário'
@@ -546,7 +548,7 @@ export default function Feed() {
         </View>
       </View>
     )
-  }
+  }, [])
 
   const avatarUrl = user?.avatar_url
     ? (user.avatar_url.startsWith('http') ? user.avatar_url : API_BASE + user.avatar_url)

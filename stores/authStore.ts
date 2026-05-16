@@ -100,13 +100,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loadUser: async () => {
     try {
       const token = await AsyncStorage.getItem('godenth_token')
-      const userStr = await AsyncStorage.getItem('godenth_user')
-      if (token && userStr) {
-        const user = JSON.parse(userStr)
-        setAuthToken(token)
+      if (!token) { set({ isLoading: false }); return }
+      setAuthToken(token)
+      try {
+        const res = await api.get('/users/me')
+        const user = res.data
+        await AsyncStorage.setItem('godenth_user', JSON.stringify(user))
         set({ user, token, isAuthenticated: true, isLoading: false })
-      } else {
-        set({ isLoading: false })
+      } catch {
+        const userStr = await AsyncStorage.getItem('godenth_user')
+        if (userStr) {
+          set({ user: JSON.parse(userStr), token, isAuthenticated: true, isLoading: false })
+        } else {
+          set({ isLoading: false })
+        }
       }
     } catch {
       set({ isLoading: false })
