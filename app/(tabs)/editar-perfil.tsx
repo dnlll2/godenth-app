@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, Modal, FlatList, ActivityIndicator, Alert,
@@ -12,11 +12,20 @@ import { useAuthStore } from '../../stores/authStore'
 
 const API_BASE = 'https://godenth-api-production.up.railway.app'
 
+const ABAS = [
+  { key: 'pessoal',      label: 'Pessoal',      emoji: '👤' },
+  { key: 'localizacao',  label: 'Localização',  emoji: '📍' },
+  { key: 'profissional', label: 'Profissional',  emoji: '⭐' },
+  { key: 'formacao',     label: 'Formação',      emoji: '🎓' },
+  { key: 'experiencia',  label: 'Experiência',   emoji: '💼' },
+  { key: 'redes',        label: 'Redes',         emoji: '🔗' },
+]
+
 const DISPONIBILIDADE = [
   { key: 'disponivel', label: 'Disponível', cor: '#00A880' },
   { key: 'contratado', label: 'Contratado', cor: '#1A6FD4' },
   { key: 'freelancer', label: 'Freelancer', cor: '#C49800' },
-  { key: 'parceria', label: 'Parcerias', cor: '#7B3FC4' },
+  { key: 'parceria',   label: 'Parcerias',  cor: '#7B3FC4' },
 ]
 
 const TIPOS_FORMACAO = ['Graduação', 'Pós-graduação', 'Especialização', 'MBA', 'Mestrado', 'Doutorado', 'Curso Técnico', 'Curso Livre']
@@ -128,12 +137,6 @@ const DEFAULT_PRIVACIDADE = {
   ocultar_experiencia: false, ocultar_instagram: false,
 }
 
-const maskDate = (v: string) => {
-  const d = v.replace(/\D/g, '').slice(0, 8)
-  if (d.length <= 2) return d
-  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`
-  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`
-}
 const isoToDisplay = (iso: string) => {
   const [y, m, d] = iso.split('T')[0].split('-')
   return `${d}/${m}/${y}`
@@ -144,7 +147,7 @@ const displayToIso = (display: string) => {
   return `${p[2]}-${p[1]}-${p[0]}`
 }
 
-// ── sub-components ────────────────────────────────────────────────────────────
+// ── sub-components ─────────────────────────────────────────────────────────────
 
 function IBGEModal({ visible, title, data, onSelect, onClose, loading = false }: any) {
   const [busca, setBusca] = useState('')
@@ -203,9 +206,12 @@ function PickerModal({ visible, title, data, onSelect, onClose }: any) {
   )
 }
 
-// ── main ──────────────────────────────────────────────────────────────────────
+// ── main ───────────────────────────────────────────────────────────────────────
 
 export default function EditarPerfil() {
+  const [abaAtiva, setAbaAtiva] = useState('pessoal')
+  const tabScrollRef = useRef<ScrollView>(null)
+
   const [avatarUri, setAvatarUri] = useState<string | null>(null)
   const [avatarRemote, setAvatarRemote] = useState<string | null>(null)
   const [nome, setNome] = useState('')
@@ -393,22 +399,12 @@ export default function EditarPerfil() {
   }
 
   const salvar = async () => {
-    console.log('[salvar] função chamada')
-    if (!nome.trim()) { Alert.alert('Atenção', 'O nome é obrigatório.'); return }
-
-    console.log('[salvar] setSaving(true)')
     setSaving(true)
-
     let controller: AbortController | undefined
     let tid: ReturnType<typeof setTimeout> | undefined
-
     try {
       controller = new AbortController()
-      tid = setTimeout(() => {
-        console.log('[salvar] timeout de 20s — abortando requisição')
-        controller?.abort()
-      }, 20000)
-
+      tid = setTimeout(() => controller?.abort(), 20000)
       const payload = {
         nome: nome.trim(), bio, cidade, estado,
         disponibilidade: disponibilidade || null,
@@ -416,21 +412,9 @@ export default function EditarPerfil() {
         privacidade, instagram,
         especialidades, habilidades, formacao, experiencia, servicos,
       }
-      console.log('[salvar] enviando PUT /users/me com payload:', JSON.stringify(payload))
-
-      const res = await api.put('/users/me', payload, { signal: controller.signal })
-
-      console.log('[salvar] PUT respondeu — status:', res.status, 'data:', JSON.stringify(res.data))
+      await api.put('/users/me', payload, { signal: controller.signal })
       router.back()
     } catch (err: any) {
-      console.log('[salvar] ERRO capturado:')
-      console.log('  name:', err?.name)
-      console.log('  message:', err?.message)
-      console.log('  code:', err?.code)
-      console.log('  response status:', err?.response?.status)
-      console.log('  response data:', JSON.stringify(err?.response?.data))
-      console.log('  signal aborted:', controller?.signal?.aborted)
-
       if (controller?.signal?.aborted) {
         Alert.alert('Tempo esgotado', 'O servidor demorou para responder. Verifique sua conexão e tente novamente.')
       } else if (!err.response) {
@@ -439,11 +423,316 @@ export default function EditarPerfil() {
         Alert.alert('Erro ao salvar', err.response.data?.error || 'Não foi possível salvar o perfil.')
       }
     } finally {
-      console.log('[salvar] finally — setSaving(false)')
       if (tid) clearTimeout(tid)
       setSaving(false)
     }
   }
+
+  // ── tab renderers ────────────────────────────────────────────────────────────
+
+  const avatarSrc = avatarUri || avatarRemote
+
+  const renderPessoal = () => (
+    <View style={s.tabContent}>
+      {/* Avatar */}
+      <View style={s.avatarSection}>
+        <TouchableOpacity style={s.avatarWrap} onPress={pickAvatar} disabled={uploadingAvatar}>
+          {avatarSrc
+            ? <Image source={{ uri: avatarSrc }} style={s.avatarImg} />
+            : <View style={s.avatarPlaceholder}><Text style={s.avatarInitial}>{nome.charAt(0).toUpperCase() || '?'}</Text></View>
+          }
+          <View style={s.cameraBadge}>
+            {uploadingAvatar
+              ? <ActivityIndicator color="#007A6E" size="small" />
+              : <Text style={{ fontSize: 13 }}>📷</Text>
+            }
+          </View>
+        </TouchableOpacity>
+        <Text style={s.avatarName}>{nome || 'Seu nome'}</Text>
+        <Text style={s.avatarHint}>Toque na foto para alterar</Text>
+      </View>
+
+      {/* Campos travados */}
+      <View style={s.card}>
+        <Text style={s.fieldLbl}>Nome completo 🔒 <Text style={s.readOnlyTag}>(não editável)</Text></Text>
+        <View style={[s.input, s.inputReadOnly, s.inputLocked]}>
+          <Text style={s.inputLockedT}>{nome || '—'}</Text>
+        </View>
+
+        <Text style={s.fieldLbl}>Data de nascimento 🔒 <Text style={s.readOnlyTag}>(não editável)</Text></Text>
+        <View style={[s.input, s.inputReadOnly, s.inputLocked]}>
+          <Text style={s.inputLockedT}>{dataNascimento || '—'}</Text>
+        </View>
+
+        <Text style={s.fieldLbl}>Cargo principal 🔒 <Text style={s.readOnlyTag}>(não editável)</Text></Text>
+        <View style={s.lockedCargoRow}>
+          <View style={[s.input, s.inputReadOnly, s.inputLocked, { flex: 1 }]}>
+            <Text style={s.inputLockedT}>{tipoProf || '—'}</Text>
+          </View>
+          <TouchableOpacity style={s.solicitarBtn} onPress={() => setShowCargoModal(true)}>
+            <Text style={s.solicitarBtnT}>Solicitar{'\n'}alteração</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Bio */}
+      <Text style={s.sectionLabel}>Bio profissional</Text>
+      <View style={s.card}>
+        <TextInput style={[s.input, s.inputArea]} value={bio}
+          onChangeText={t => t.length <= 500 && setBio(t)}
+          placeholder="Apresente-se brevemente — aparece no topo do seu perfil..."
+          placeholderTextColor="#A0B8AC" multiline numberOfLines={4} textAlignVertical="top" />
+        <Text style={[s.charCount, bio.length >= 450 && { color: '#D4186A' }]}>{bio.length}/500</Text>
+      </View>
+
+      {/* Disponibilidade */}
+      <Text style={s.sectionLabel}>Disponibilidade</Text>
+      <View style={s.card}>
+        <View style={s.chipsWrap}>
+          {DISPONIBILIDADE.map(d => {
+            const on = disponibilidade === d.key
+            return (
+              <TouchableOpacity key={d.key}
+                style={[s.dispChip, on && { backgroundColor: d.cor, borderColor: d.cor }]}
+                onPress={() => setDisponibilidade(prev => prev === d.key ? '' : d.key)}>
+                <Text style={[s.dispChipT, on && { color: '#fff' }]}>{on ? '✓ ' : ''}{d.label}</Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      </View>
+    </View>
+  )
+
+  const renderLocalizacao = () => (
+    <View style={s.tabContent}>
+      <View style={s.card}>
+        <Text style={s.fieldLbl}>Estado</Text>
+        <TouchableOpacity style={s.selector} onPress={() => setEstadoModal(true)}>
+          <Text style={[s.selectorText, !estado && s.ph]}>{estado || 'Selecionar estado'}</Text>
+          <Text style={s.chevron}>›</Text>
+        </TouchableOpacity>
+
+        <Text style={s.fieldLbl}>Cidade</Text>
+        <TouchableOpacity style={[s.selector, !estado && s.selectorOff]}
+          onPress={() => estado && setCidadeModal(true)} disabled={!estado}>
+          <Text style={[s.selectorText, !cidade && s.ph]}>{cidade || 'Selecionar cidade'}</Text>
+          <Text style={s.chevron}>›</Text>
+        </TouchableOpacity>
+
+        {!estado && (
+          <Text style={s.locHint}>Selecione primeiro o estado para escolher a cidade.</Text>
+        )}
+      </View>
+    </View>
+  )
+
+  const renderProfissional = () => (
+    <View style={s.tabContent}>
+      {espDisponiveis.length > 0 && (
+        <>
+          <Text style={s.sectionLabel}>Especialidades</Text>
+          <View style={s.card}>
+            <Text style={s.chipHint}>Selecione as que se aplicam ao seu perfil</Text>
+            <View style={s.chipsWrap}>
+              {espDisponiveis.map(esp => {
+                const on = especialidades.includes(esp)
+                return (
+                  <TouchableOpacity key={esp} style={[s.chip, on && s.chipEspOn]}
+                    onPress={() => setEspecialidades(prev => on ? prev.filter(e => e !== esp) : [...prev, esp])}>
+                    <Text style={[s.chipT, on && s.chipTOn]}>{on ? '✓ ' : ''}{esp}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          </View>
+        </>
+      )}
+
+      {Object.keys(habCategorias).length > 0 && (
+        <>
+          <Text style={s.sectionLabel}>Habilidades e Competências</Text>
+          <View style={s.card}>
+            {Object.entries(habCategorias).map(([cat, items]) => (
+              <View key={cat} style={s.habSection}>
+                <View style={s.habCatRow}>
+                  <View style={s.habCatDot} />
+                  <Text style={s.habCat}>{cat}</Text>
+                  <Text style={s.habCatCount}>{items.filter(h => habilidades.includes(h)).length}/{items.length}</Text>
+                </View>
+                <View style={s.chipsWrap}>
+                  {items.map(hab => {
+                    const on = habilidades.includes(hab)
+                    return (
+                      <TouchableOpacity key={hab} style={[s.chip, s.chipHab, on && s.chipHabOn]}
+                        onPress={() => setHabilidades(prev => on ? prev.filter(h => h !== hab) : [...prev, hab])}>
+                        <Text style={[s.chipT, on && s.chipTOn]}>{on ? '✓ ' : ''}{hab}</Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+              </View>
+            ))}
+          </View>
+        </>
+      )}
+
+      {servicosDisponiveis.length > 0 && (
+        <>
+          <Text style={s.sectionLabel}>Meus Serviços</Text>
+          <View style={s.card}>
+            <Text style={s.chipHint}>Selecione os serviços que você oferece</Text>
+            <View style={s.chipsWrap}>
+              {servicosDisponiveis.map((srv: any) => {
+                const on = servicos.includes(srv.nome)
+                return (
+                  <TouchableOpacity key={srv.id} style={[s.chip, on && s.chipEspOn]}
+                    onPress={() => setServicos(prev => on ? prev.filter(n => n !== srv.nome) : [...prev, srv.nome])}>
+                    <Text style={[s.chipT, on && s.chipTOn]}>{on ? '✓ ' : ''}{srv.nome}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          </View>
+        </>
+      )}
+
+      {espDisponiveis.length === 0 && Object.keys(habCategorias).length === 0 && servicosDisponiveis.length === 0 && (
+        <View style={s.emptyTab}>
+          <Text style={s.emptyTabIcon}>⭐</Text>
+          <Text style={s.emptyTabTitle}>Nenhuma opção disponível</Text>
+          <Text style={s.emptyTabSub}>As especialidades e habilidades são definidas pelo seu cargo principal.</Text>
+        </View>
+      )}
+    </View>
+  )
+
+  const renderFormacao = () => (
+    <View style={s.tabContent}>
+      <View style={s.sectionRow}>
+        <Text style={s.sectionLabel}>Formação Acadêmica</Text>
+        <TouchableOpacity style={s.sectionAddBtn} onPress={openAddFormacao}>
+          <Text style={s.sectionAddBtnT}>+ Adicionar</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={s.card}>
+        {formacao.length === 0
+          ? (
+            <TouchableOpacity style={s.emptyState} onPress={openAddFormacao}>
+              <Text style={s.emptyStateIcon}>🎓</Text>
+              <Text style={s.emptyStateTitle}>Nenhuma formação adicionada</Text>
+              <Text style={s.emptyStateSub}>Adicione graduações, cursos e especializações</Text>
+              <View style={s.emptyStateBtn}><Text style={s.emptyStateBtnT}>+ Adicionar formação</Text></View>
+            </TouchableOpacity>
+          )
+          : (
+            <>
+              {formacao.map((f, i) => (
+                <View key={f.id} style={[s.entryItem, i > 0 && s.entryBorder]}>
+                  <View style={[s.entryIconCircle, { backgroundColor: '#EEF7F2' }]}>
+                    <Text style={s.entryIconEmoji}>🎓</Text>
+                  </View>
+                  <View style={s.entryContent}>
+                    <Text style={s.entryTitle}>{f.curso}</Text>
+                    <Text style={s.entrySub}>{f.instituicao}{f.tipo ? ` · ${f.tipo}` : ''}</Text>
+                    {(f.ano_inicio || f.ano_conclusao) && (
+                      <Text style={s.entryDate}>{f.ano_inicio || '?'} – {f.ano_conclusao || 'Em curso'}</Text>
+                    )}
+                  </View>
+                  <View style={s.entryActions}>
+                    <TouchableOpacity style={s.entryEditBtn} onPress={() => openEditFormacao(f)}>
+                      <Text style={s.entryEditBtnT}>✏️</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.entryRemoveBtn} onPress={() => removeFormacao(f.id)}>
+                      <Text style={s.entryRemoveBtnT}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+              <TouchableOpacity style={s.addMoreBtn} onPress={openAddFormacao}>
+                <Text style={s.addMoreBtnT}>+ Adicionar outra formação</Text>
+              </TouchableOpacity>
+            </>
+          )
+        }
+      </View>
+    </View>
+  )
+
+  const renderExperiencia = () => (
+    <View style={s.tabContent}>
+      <View style={s.sectionRow}>
+        <Text style={s.sectionLabel}>Experiência Profissional</Text>
+        <TouchableOpacity style={s.sectionAddBtn} onPress={openAddExp}>
+          <Text style={s.sectionAddBtnT}>+ Adicionar</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={s.card}>
+        {experiencia.length === 0
+          ? (
+            <TouchableOpacity style={s.emptyState} onPress={openAddExp}>
+              <Text style={s.emptyStateIcon}>💼</Text>
+              <Text style={s.emptyStateTitle}>Nenhuma experiência adicionada</Text>
+              <Text style={s.emptyStateSub}>Mostre sua trajetória profissional</Text>
+              <View style={s.emptyStateBtn}><Text style={s.emptyStateBtnT}>+ Adicionar experiência</Text></View>
+            </TouchableOpacity>
+          )
+          : (
+            <>
+              {experiencia.map((e, i) => (
+                <View key={e.id} style={[s.entryItem, i > 0 && s.entryBorder]}>
+                  <View style={[s.entryIconCircle, { backgroundColor: '#EEF3FC' }]}>
+                    <Text style={s.entryIconEmoji}>💼</Text>
+                  </View>
+                  <View style={s.entryContent}>
+                    <Text style={s.entryTitle}>{e.cargo}</Text>
+                    <Text style={s.entrySub}>{e.empresa}</Text>
+                    {(e.inicio || e.fim) && (
+                      <Text style={s.entryDate}>{e.inicio || '?'} – {e.atual ? 'Atualmente' : (e.fim || '?')}</Text>
+                    )}
+                  </View>
+                  <View style={s.entryActions}>
+                    <TouchableOpacity style={s.entryEditBtn} onPress={() => openEditExp(e)}>
+                      <Text style={s.entryEditBtnT}>✏️</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.entryRemoveBtn} onPress={() => removeExp(e.id)}>
+                      <Text style={s.entryRemoveBtnT}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+              <TouchableOpacity style={s.addMoreBtn} onPress={openAddExp}>
+                <Text style={s.addMoreBtnT}>+ Adicionar outra experiência</Text>
+              </TouchableOpacity>
+            </>
+          )
+        }
+      </View>
+    </View>
+  )
+
+  const renderRedes = () => (
+    <View style={s.tabContent}>
+      <Text style={s.sectionLabel}>Contato</Text>
+      <View style={s.card}>
+        <Text style={s.fieldLbl}>Celular / WhatsApp</Text>
+        <TextInput style={s.input} value={celular} onChangeText={setCelular}
+          placeholder="(11) 99999-9999" placeholderTextColor="#A0B8AC" keyboardType="phone-pad" />
+      </View>
+
+      <Text style={s.sectionLabel}>Redes Sociais</Text>
+      <View style={s.card}>
+        <Text style={s.fieldLbl}>Instagram</Text>
+        <View style={s.prefixRow}>
+          <View style={s.prefixBox}><Text style={s.prefixText}>instagram.com/</Text></View>
+          <TextInput style={[s.input, s.prefixInput]} value={instagram} onChangeText={setInstagram}
+            placeholder="seu_usuario" placeholderTextColor="#A0B8AC" autoCapitalize="none" />
+        </View>
+      </View>
+    </View>
+  )
+
+  // ── loading ──────────────────────────────────────────────────────────────────
 
   if (loading) return (
     <View style={s.center}>
@@ -452,12 +741,12 @@ export default function EditarPerfil() {
     </View>
   )
 
-  const avatarSrc = avatarUri || avatarRemote
+  // ── render ───────────────────────────────────────────────────────────────────
 
   return (
     <View style={s.root}>
 
-      {/* ── HEADER GRADIENT ──────────────────────────────────────────────── */}
+      {/* ── HEADER ───────────────────────────────────────────────────────── */}
       <LinearGradient colors={['#007A6E', '#004D44']} style={s.headerGrad}>
         <View style={s.headerBar}>
           <TouchableOpacity onPress={() => router.back()} style={s.headerSide}>
@@ -471,306 +760,40 @@ export default function EditarPerfil() {
             }
           </View>
         </View>
-
-        {/* ── AVATAR ───────────────────────────────────────────────────── */}
-        <View style={s.avatarArea}>
-          <TouchableOpacity style={s.avatarWrap} onPress={pickAvatar} disabled={uploadingAvatar}>
-            {avatarSrc
-              ? <Image source={{ uri: avatarSrc }} style={s.avatarImg} />
-              : (
-                <View style={s.avatarPlaceholder}>
-                  <Text style={s.avatarInitial}>{nome.charAt(0).toUpperCase() || '?'}</Text>
-                </View>
-              )
-            }
-            <View style={s.cameraBadge}>
-              {uploadingAvatar
-                ? <ActivityIndicator color="#007A6E" size="small" />
-                : <Text style={{ fontSize: 13 }}>📷</Text>
-              }
-            </View>
-          </TouchableOpacity>
-          <Text style={s.avatarName}>{nome || 'Seu nome'}</Text>
-          <Text style={s.avatarHint}>Toque na foto para alterar</Text>
-        </View>
       </LinearGradient>
 
-      {/* ── SCROLL ───────────────────────────────────────────────────────── */}
+      {/* ── ABAS ─────────────────────────────────────────────────────────── */}
+      <View style={s.tabBarWrapper}>
+        <ScrollView
+          ref={tabScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.tabBarContent}
+        >
+          {ABAS.map(aba => {
+            const on = abaAtiva === aba.key
+            return (
+              <TouchableOpacity
+                key={aba.key}
+                style={[s.tab, on && s.tabOn]}
+                onPress={() => setAbaAtiva(aba.key)}
+              >
+                <Text style={s.tabEmoji}>{aba.emoji}</Text>
+                <Text style={[s.tabT, on && s.tabTOn]}>{aba.label}</Text>
+              </TouchableOpacity>
+            )
+          })}
+        </ScrollView>
+      </View>
+
+      {/* ── CONTEÚDO DA ABA ──────────────────────────────────────────────── */}
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} keyboardShouldPersistTaps="handled">
-
-        {/* 2. Informações Básicas */}
-        <Text style={s.sectionLabel}>Informações Básicas</Text>
-        <View style={s.card}>
-          <Text style={s.fieldLbl}>Nome completo 🔒 <Text style={s.readOnlyTag}>(não editável)</Text></Text>
-          <View style={[s.input, s.inputReadOnly, s.inputLocked]}>
-            <Text style={s.inputLockedT}>{nome || '—'}</Text>
-          </View>
-
-          <Text style={s.fieldLbl}>Data de nascimento 🔒 <Text style={s.readOnlyTag}>(não editável)</Text></Text>
-          <View style={[s.input, s.inputReadOnly, s.inputLocked]}>
-            <Text style={s.inputLockedT}>{dataNascimento || '—'}</Text>
-          </View>
-
-          <Text style={s.fieldLbl}>Cargo principal 🔒 <Text style={s.readOnlyTag}>(não editável)</Text></Text>
-          <View style={s.lockedCargoRow}>
-            <View style={[s.input, s.inputReadOnly, s.inputLocked, { flex: 1 }]}>
-              <Text style={s.inputLockedT}>{tipoProf || '—'}</Text>
-            </View>
-            <TouchableOpacity style={s.solicitarBtn} onPress={() => setShowCargoModal(true)}>
-              <Text style={s.solicitarBtnT}>Solicitar{'\n'}alteração</Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={s.fieldLbl}>E-mail <Text style={s.readOnlyTag}>(não editável)</Text></Text>
-          <View style={[s.input, s.inputReadOnly]}>
-            <Text style={s.inputReadOnlyT}>{email || '—'}</Text>
-          </View>
-
-          <Text style={s.fieldLbl}>Celular / WhatsApp</Text>
-          <TextInput style={s.input} value={celular} onChangeText={setCelular}
-            placeholder="(11) 99999-9999" placeholderTextColor="#A0B8AC" keyboardType="phone-pad" />
-        </View>
-
-        {/* 4. Localização */}
-        <Text style={s.sectionLabel}>Localização</Text>
-        <View style={s.card}>
-          <Text style={s.fieldLbl}>Estado</Text>
-          <TouchableOpacity style={s.selector} onPress={() => setEstadoModal(true)}>
-            <Text style={[s.selectorText, !estado && s.ph]}>{estado || 'Selecionar estado'}</Text>
-            <Text style={s.chevron}>›</Text>
-          </TouchableOpacity>
-          <Text style={s.fieldLbl}>Cidade</Text>
-          <TouchableOpacity style={[s.selector, !estado && s.selectorOff]}
-            onPress={() => estado && setCidadeModal(true)} disabled={!estado}>
-            <Text style={[s.selectorText, !cidade && s.ph]}>{cidade || 'Selecionar cidade'}</Text>
-            <Text style={s.chevron}>›</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* 5. Sobre */}
-        <Text style={s.sectionLabel}>Sobre</Text>
-        <View style={s.card}>
-          <Text style={s.fieldLbl}>Bio profissional</Text>
-          <TextInput style={[s.input, s.inputArea]} value={bio}
-            onChangeText={t => t.length <= 500 && setBio(t)}
-            placeholder="Apresente-se brevemente — aparece no topo do seu perfil..."
-            placeholderTextColor="#A0B8AC" multiline numberOfLines={4} textAlignVertical="top" />
-          <Text style={[s.charCount, bio.length >= 450 && { color: '#D4186A' }]}>{bio.length}/500</Text>
-        </View>
-
-        {/* 6. Disponibilidade */}
-        <Text style={s.sectionLabel}>Disponibilidade</Text>
-        <View style={s.card}>
-          <View style={s.chipsWrap}>
-            {DISPONIBILIDADE.map(d => {
-              const on = disponibilidade === d.key
-              return (
-                <TouchableOpacity key={d.key}
-                  style={[s.dispChip, on && { backgroundColor: d.cor, borderColor: d.cor }]}
-                  onPress={() => setDisponibilidade(prev => prev === d.key ? '' : d.key)}>
-                  <Text style={[s.dispChipT, on && { color: '#fff' }]}>
-                    {on ? '✓ ' : ''}{d.label}
-                  </Text>
-                </TouchableOpacity>
-              )
-            })}
-          </View>
-        </View>
-
-        {/* 7. Formação Acadêmica */}
-        <View style={s.sectionRow}>
-          <Text style={s.sectionLabel}>Formação Acadêmica</Text>
-          <TouchableOpacity style={s.sectionAddBtn} onPress={openAddFormacao}>
-            <Text style={s.sectionAddBtnT}>+ Adicionar</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={s.card}>
-          {formacao.length === 0
-            ? (
-              <TouchableOpacity style={s.emptyState} onPress={openAddFormacao}>
-                <Text style={s.emptyStateIcon}>🎓</Text>
-                <Text style={s.emptyStateTitle}>Nenhuma formação adicionada</Text>
-                <Text style={s.emptyStateSub}>Adicione graduações, cursos e especializações</Text>
-                <View style={s.emptyStateBtn}><Text style={s.emptyStateBtnT}>+ Adicionar formação</Text></View>
-              </TouchableOpacity>
-            )
-            : (
-              <>
-                {formacao.map((f, i) => (
-                  <View key={f.id} style={[s.entryItem, i > 0 && s.entryBorder]}>
-                    <View style={[s.entryIconCircle, { backgroundColor: '#EEF7F2' }]}>
-                      <Text style={s.entryIconEmoji}>🎓</Text>
-                    </View>
-                    <View style={s.entryContent}>
-                      <Text style={s.entryTitle}>{f.curso}</Text>
-                      <Text style={s.entrySub}>{f.instituicao}{f.tipo ? ` · ${f.tipo}` : ''}</Text>
-                      {(f.ano_inicio || f.ano_conclusao) && (
-                        <Text style={s.entryDate}>{f.ano_inicio || '?'} – {f.ano_conclusao || 'Em curso'}</Text>
-                      )}
-                    </View>
-                    <View style={s.entryActions}>
-                      <TouchableOpacity style={s.entryEditBtn} onPress={() => openEditFormacao(f)}>
-                        <Text style={s.entryEditBtnT}>✏️</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={s.entryRemoveBtn} onPress={() => removeFormacao(f.id)}>
-                        <Text style={s.entryRemoveBtnT}>✕</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))}
-                <TouchableOpacity style={s.addMoreBtn} onPress={openAddFormacao}>
-                  <Text style={s.addMoreBtnT}>+ Adicionar outra formação</Text>
-                </TouchableOpacity>
-              </>
-            )
-          }
-        </View>
-
-        {/* 8. Experiência Profissional */}
-        <View style={s.sectionRow}>
-          <Text style={s.sectionLabel}>Experiência Profissional</Text>
-          <TouchableOpacity style={s.sectionAddBtn} onPress={openAddExp}>
-            <Text style={s.sectionAddBtnT}>+ Adicionar</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={s.card}>
-          {experiencia.length === 0
-            ? (
-              <TouchableOpacity style={s.emptyState} onPress={openAddExp}>
-                <Text style={s.emptyStateIcon}>💼</Text>
-                <Text style={s.emptyStateTitle}>Nenhuma experiência adicionada</Text>
-                <Text style={s.emptyStateSub}>Mostre sua trajetória profissional</Text>
-                <View style={s.emptyStateBtn}><Text style={s.emptyStateBtnT}>+ Adicionar experiência</Text></View>
-              </TouchableOpacity>
-            )
-            : (
-              <>
-                {experiencia.map((e, i) => (
-                  <View key={e.id} style={[s.entryItem, i > 0 && s.entryBorder]}>
-                    <View style={[s.entryIconCircle, { backgroundColor: '#EEF3FC' }]}>
-                      <Text style={s.entryIconEmoji}>💼</Text>
-                    </View>
-                    <View style={s.entryContent}>
-                      <Text style={s.entryTitle}>{e.cargo}</Text>
-                      <Text style={s.entrySub}>{e.empresa}</Text>
-                      {(e.inicio || e.fim) && (
-                        <Text style={s.entryDate}>{e.inicio || '?'} – {e.atual ? 'Atualmente' : (e.fim || '?')}</Text>
-                      )}
-                    </View>
-                    <View style={s.entryActions}>
-                      <TouchableOpacity style={s.entryEditBtn} onPress={() => openEditExp(e)}>
-                        <Text style={s.entryEditBtnT}>✏️</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={s.entryRemoveBtn} onPress={() => removeExp(e.id)}>
-                        <Text style={s.entryRemoveBtnT}>✕</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))}
-                <TouchableOpacity style={s.addMoreBtn} onPress={openAddExp}>
-                  <Text style={s.addMoreBtnT}>+ Adicionar outra experiência</Text>
-                </TouchableOpacity>
-              </>
-            )
-          }
-        </View>
-
-        {/* 9. Especialidades */}
-        {espDisponiveis.length > 0 && (
-          <>
-            <Text style={s.sectionLabel}>Especialidades</Text>
-            <View style={s.card}>
-              <Text style={s.chipHint}>Selecione as que se aplicam ao seu perfil</Text>
-              <View style={s.chipsWrap}>
-                {espDisponiveis.map(esp => {
-                  const on = especialidades.includes(esp)
-                  return (
-                    <TouchableOpacity key={esp} style={[s.chip, on && s.chipEspOn]}
-                      onPress={() => setEspecialidades(prev => on ? prev.filter(e => e !== esp) : [...prev, esp])}>
-                      <Text style={[s.chipT, on && s.chipTOn]}>{on ? '✓ ' : ''}{esp}</Text>
-                    </TouchableOpacity>
-                  )
-                })}
-              </View>
-            </View>
-          </>
-        )}
-
-        {/* 10. Habilidades */}
-        {Object.keys(habCategorias).length > 0 && (
-          <>
-            <Text style={s.sectionLabel}>Habilidades e Competências</Text>
-            <View style={s.card}>
-              {Object.entries(habCategorias).map(([cat, items]) => (
-                <View key={cat} style={s.habSection}>
-                  <View style={s.habCatRow}>
-                    <View style={s.habCatDot} />
-                    <Text style={s.habCat}>{cat}</Text>
-                    <Text style={s.habCatCount}>
-                      {items.filter(h => habilidades.includes(h)).length}/{items.length}
-                    </Text>
-                  </View>
-                  <View style={s.chipsWrap}>
-                    {items.map(hab => {
-                      const on = habilidades.includes(hab)
-                      return (
-                        <TouchableOpacity key={hab} style={[s.chip, s.chipHab, on && s.chipHabOn]}
-                          onPress={() => setHabilidades(prev => on ? prev.filter(h => h !== hab) : [...prev, hab])}>
-                          <Text style={[s.chipT, on && s.chipTOn]}>{on ? '✓ ' : ''}{hab}</Text>
-                        </TouchableOpacity>
-                      )
-                    })}
-                  </View>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-
-        {/* 11. Meus Serviços */}
-        {servicosDisponiveis.length > 0 && (
-          <>
-            <Text style={s.sectionLabel}>Meus Serviços</Text>
-            <View style={s.card}>
-              <Text style={s.chipHint}>Selecione os serviços que você oferece aos seus clientes</Text>
-              <View style={s.chipsWrap}>
-                {servicosDisponiveis.map((srv: any) => {
-                  const on = servicos.includes(srv.nome)
-                  return (
-                    <TouchableOpacity
-                      key={srv.id}
-                      style={[s.chip, on && s.chipEspOn]}
-                      onPress={() => setServicos(prev => on ? prev.filter(n => n !== srv.nome) : [...prev, srv.nome])}
-                    >
-                      <Text style={[s.chipT, on && s.chipTOn]}>{on ? '✓ ' : ''}{srv.nome}</Text>
-                    </TouchableOpacity>
-                  )
-                })}
-              </View>
-            </View>
-          </>
-        )}
-
-        {/* 12. Redes Sociais */}
-        <Text style={s.sectionLabel}>Redes Sociais</Text>
-        <View style={s.card}>
-          <Text style={s.fieldLbl}>Instagram</Text>
-          <View style={s.prefixRow}>
-            <View style={s.prefixBox}>
-              <Text style={s.prefixText}>instagram.com/</Text>
-            </View>
-            <TextInput
-              style={[s.input, s.prefixInput]}
-              value={instagram}
-              onChangeText={setInstagram}
-              placeholder="seu_usuario"
-              placeholderTextColor="#A0B8AC"
-              autoCapitalize="none"
-            />
-          </View>
-        </View>
-
-        <View style={{ height: 110 }} />
+        {abaAtiva === 'pessoal'      && renderPessoal()}
+        {abaAtiva === 'localizacao'  && renderLocalizacao()}
+        {abaAtiva === 'profissional' && renderProfissional()}
+        {abaAtiva === 'formacao'     && renderFormacao()}
+        {abaAtiva === 'experiencia'  && renderExperiencia()}
+        {abaAtiva === 'redes'        && renderRedes()}
       </ScrollView>
 
       {/* ── FOOTER ───────────────────────────────────────────────────────── */}
@@ -905,8 +928,7 @@ export default function EditarPerfil() {
             <View style={s.sheetHandle} />
             <Text style={s.sheetTitle}>Solicitar alteração de cargo</Text>
             <Text style={[s.toggleSub, { marginBottom: 16 }]}>
-              O cargo principal é definido no cadastro e só pode ser alterado pela equipe Godenth.
-              Explique o motivo da solicitação abaixo.
+              O cargo principal é definido no cadastro e só pode ser alterado pela equipe Godenth. Explique o motivo abaixo.
             </Text>
             <Text style={s.fieldLbl}>Cargo atual</Text>
             <View style={[s.input, s.inputReadOnly, s.inputLocked, { marginBottom: 12 }]}>
@@ -915,12 +937,9 @@ export default function EditarPerfil() {
             <Text style={s.fieldLbl}>Motivo da solicitação *</Text>
             <TextInput
               style={[s.input, { height: 100, textAlignVertical: 'top', marginBottom: 16 }]}
-              value={cargoMotivo}
-              onChangeText={setCargoMotivo}
+              value={cargoMotivo} onChangeText={setCargoMotivo}
               placeholder="Descreva o motivo pelo qual deseja alterar o cargo..."
-              placeholderTextColor="#A0B8AC"
-              multiline
-              maxLength={500}
+              placeholderTextColor="#A0B8AC" multiline maxLength={500}
             />
             <View style={s.modalBtns}>
               <TouchableOpacity style={s.cancelBtn} onPress={() => { setShowCargoModal(false); setCargoMotivo('') }}>
@@ -931,12 +950,9 @@ export default function EditarPerfil() {
                 disabled={!cargoMotivo.trim()}
                 onPress={() => {
                   const subject = encodeURIComponent('Solicitação de alteração de cargo — Godenth')
-                  const body = encodeURIComponent(
-                    `Nome: ${nome}\nE-mail: ${email}\nCargo atual: ${tipoProf}\n\nMotivo:\n${cargoMotivo}`
-                  )
+                  const body = encodeURIComponent(`Nome: ${nome}\nE-mail: ${email}\nCargo atual: ${tipoProf}\n\nMotivo:\n${cargoMotivo}`)
                   Linking.openURL(`mailto:contato.idealilab@gmail.com?subject=${subject}&body=${body}`)
-                  setShowCargoModal(false)
-                  setCargoMotivo('')
+                  setShowCargoModal(false); setCargoMotivo('')
                 }}
               >
                 <Text style={s.confirmBtnT}>Enviar solicitação</Text>
@@ -961,39 +977,67 @@ export default function EditarPerfil() {
   )
 }
 
-// ── styles ────────────────────────────────────────────────────────────────────
+// ── styles ─────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F2F5F4' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F2F5F4', gap: 12 },
   loadingText: { fontSize: 14, color: '#7A9E8E', fontWeight: '600' },
 
-  // Header gradient
+  // Header
   headerGrad: { paddingTop: Platform.OS === 'ios' ? 52 : 28 },
-  headerBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 4 },
+  headerBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 14 },
   headerSide: { width: 70 },
   backBtn: { fontSize: 24, color: '#fff', fontWeight: '700' },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '800', color: '#fff' },
   saveTextBtn: { fontSize: 15, fontWeight: '800', color: '#F5C800' },
 
-  // Avatar
-  avatarArea: { alignItems: 'center', paddingVertical: 20, paddingBottom: 28 },
-  avatarWrap: { width: 104, height: 104, borderRadius: 52, position: 'relative' },
-  avatarImg: { width: 104, height: 104, borderRadius: 52, borderWidth: 3, borderColor: 'rgba(255,255,255,0.9)' },
-  avatarPlaceholder: { width: 104, height: 104, borderRadius: 52, backgroundColor: '#00A880', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: 'rgba(255,255,255,0.9)' },
-  avatarInitial: { color: '#fff', fontSize: 40, fontWeight: '800' },
-  cameraBadge: { position: 'absolute', bottom: 2, right: 2, width: 30, height: 30, borderRadius: 15, backgroundColor: '#F5C800', justifyContent: 'center', alignItems: 'center', borderWidth: 2.5, borderColor: '#fff' },
-  avatarName: { color: '#fff', fontSize: 18, fontWeight: '800', marginTop: 12, letterSpacing: 0.2 },
-  avatarHint: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4, fontWeight: '500' },
+  // Tab bar
+  tabBarWrapper: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8F0EC',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabBarContent: { paddingHorizontal: 8, paddingVertical: 0 },
+  tab: {
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 2.5,
+    borderBottomColor: 'transparent',
+    gap: 2,
+  },
+  tabOn: { borderBottomColor: '#007A6E' },
+  tabEmoji: { fontSize: 14 },
+  tabT: { fontSize: 11, fontWeight: '700', color: '#A0B8AC' },
+  tabTOn: { color: '#007A6E' },
 
   // Scroll
   scroll: { flex: 1 },
-  scrollContent: { paddingTop: 6, paddingBottom: 16 },
+  scrollContent: { paddingBottom: 16 },
+
+  // Tab content wrapper
+  tabContent: { paddingTop: 8, paddingBottom: 80, gap: 0 },
+
+  // Avatar (inside Pessoal tab)
+  avatarSection: { alignItems: 'center', paddingVertical: 24, paddingBottom: 16 },
+  avatarWrap: { width: 96, height: 96, borderRadius: 48, position: 'relative' },
+  avatarImg: { width: 96, height: 96, borderRadius: 48, borderWidth: 3, borderColor: '#007A6E' },
+  avatarPlaceholder: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#007A6E', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#007A6E' },
+  avatarInitial: { color: '#fff', fontSize: 36, fontWeight: '800' },
+  cameraBadge: { position: 'absolute', bottom: 2, right: 2, width: 28, height: 28, borderRadius: 14, backgroundColor: '#F5C800', justifyContent: 'center', alignItems: 'center', borderWidth: 2.5, borderColor: '#fff' },
+  avatarName: { fontSize: 16, fontWeight: '800', color: '#0A1C14', marginTop: 10 },
+  avatarHint: { fontSize: 11, color: '#7A9E8E', marginTop: 3, fontWeight: '500' },
 
   // Section label
-  sectionLabel: { fontSize: 11, fontWeight: '800', color: '#007A6E', textTransform: 'uppercase', letterSpacing: 1.2, paddingHorizontal: 16, paddingTop: 22, paddingBottom: 8 },
+  sectionLabel: { fontSize: 11, fontWeight: '800', color: '#007A6E', textTransform: 'uppercase', letterSpacing: 1.2, paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8 },
   sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 16 },
-  sectionAddBtn: { backgroundColor: '#E3F4EE', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, marginTop: 14 },
+  sectionAddBtn: { backgroundColor: '#E3F4EE', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, marginTop: 12 },
   sectionAddBtnT: { fontSize: 12, fontWeight: '800', color: '#007A6E' },
 
   // Card
@@ -1023,6 +1067,9 @@ const s = StyleSheet.create({
   solicitarBtnT: { fontSize: 11, fontWeight: '800', color: '#007A6E', textAlign: 'center' },
   readOnlyTag: { fontSize: 10, color: '#A0B8AC', fontWeight: '500', textTransform: 'none' },
   charCount: { fontSize: 11, color: '#A0B8AC', textAlign: 'right', marginTop: 4 },
+
+  // Localização hint
+  locHint: { fontSize: 12, color: '#A0B8AC', marginTop: 12, textAlign: 'center', fontStyle: 'italic' },
 
   // Selector
   selector: { backgroundColor: '#F2F5F4', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 2 },
@@ -1056,7 +1103,7 @@ const s = StyleSheet.create({
   habCat: { fontSize: 11, fontWeight: '800', color: '#1A6FD4', textTransform: 'uppercase', letterSpacing: 0.8, flex: 1 },
   habCatCount: { fontSize: 11, fontWeight: '700', color: '#A0B8AC' },
 
-  // Entry items (formação / experiência)
+  // Entry items
   entryItem: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 14, gap: 12 },
   entryBorder: { borderTopWidth: 1, borderTopColor: '#F2F5F4' },
   entryIconCircle: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
@@ -1073,13 +1120,19 @@ const s = StyleSheet.create({
   addMoreBtn: { marginTop: 14, borderWidth: 1.5, borderColor: '#00A880', borderStyle: 'dashed', borderRadius: 12, padding: 12, alignItems: 'center' },
   addMoreBtnT: { fontSize: 13, fontWeight: '700', color: '#00A880' },
 
-  // Empty state
+  // Empty state (inside card)
   emptyState: { alignItems: 'center', paddingVertical: 24 },
   emptyStateIcon: { fontSize: 40, marginBottom: 10 },
   emptyStateTitle: { fontSize: 15, fontWeight: '700', color: '#3A6550', marginBottom: 4 },
   emptyStateSub: { fontSize: 12, color: '#A0B8AC', marginBottom: 16, textAlign: 'center' },
   emptyStateBtn: { backgroundColor: '#E3F4EE', borderRadius: 20, paddingHorizontal: 20, paddingVertical: 9 },
   emptyStateBtnT: { fontSize: 13, fontWeight: '800', color: '#007A6E' },
+
+  // Empty tab (full tab, no card)
+  emptyTab: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 },
+  emptyTabIcon: { fontSize: 48, marginBottom: 16 },
+  emptyTabTitle: { fontSize: 16, fontWeight: '800', color: '#3A6550', marginBottom: 8, textAlign: 'center' },
+  emptyTabSub: { fontSize: 13, color: '#A0B8AC', textAlign: 'center', lineHeight: 20 },
 
   // Social prefix
   prefixRow: { flexDirection: 'row', alignItems: 'stretch' },
