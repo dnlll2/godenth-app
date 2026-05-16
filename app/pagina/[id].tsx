@@ -624,7 +624,7 @@ function EventoModal({ visible, pageId, onClose, onCreated }: {
 // ─── Tela principal ───────────────────────────────────────────────────────────
 export default function PaginaDetalhe() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const { user } = useAuthStore()
+  const { user, isLoading: authLoading } = useAuthStore()
 
   const [page, setPage] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -663,7 +663,7 @@ export default function PaginaDetalhe() {
   const [showAddServico, setShowAddServico] = useState(false)
   const [modalTipo, setModalTipo] = useState<ModalTipo>(null)
 
-  const isOwner = user?.id === page?.user_id
+  const isOwner = !authLoading && !!user && user.id === page?.user_id
 
   // ── Loaders ───────────────────────────────────────────────────────────────
   const loadPage = () => {
@@ -730,6 +730,10 @@ export default function PaginaDetalhe() {
 
   // ── Actions ───────────────────────────────────────────────────────────────
   const toggleLike = async () => {
+    if (!user) {
+      Alert.alert('Faça login', 'Para curtir uma página, você precisa estar logado.')
+      return
+    }
     setLikeLoading(true)
     try {
       const res = await api.post(`/follows/${id}`)
