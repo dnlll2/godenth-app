@@ -428,6 +428,8 @@ export default function Feed() {
   const [filtro, setFiltro] = useState('todos')
   const [unreadCount, setUnreadCount] = useState(0)
   const [postModal, setPostModal] = useState(false)
+  const [menuPost, setMenuPost] = useState<number | null>(null)
+  const [reporting, setReporting] = useState(false)
   const { user } = useAuthStore()
 
   const loadFeed = async () => {
@@ -503,25 +505,7 @@ export default function Feed() {
               </View>
               <TouchableOpacity
                 hitSlop={{ top: 8, bottom: 8, left: 12, right: 8 }}
-                onPress={() => Alert.alert('Publicação', 'O que deseja fazer?', [
-                  {
-                    text: 'Reportar publicação',
-                    style: 'destructive',
-                    onPress: async () => {
-                      try {
-                        await api.post(`/posts/${item.id}/report`)
-                        Alert.alert('Obrigado', 'Publicação reportada. Nossa equipe vai analisar em breve.')
-                      } catch {
-                        Alert.alert('Erro', 'Não foi possível reportar. Tente novamente.')
-                      }
-                    },
-                  },
-                  {
-                    text: 'Copiar link',
-                    onPress: () => Share.share({ message: `https://godenth.com/post/${item.id}` }),
-                  },
-                  { text: 'Cancelar', style: 'cancel' },
-                ])}
+                onPress={() => setMenuPost(item.id)}
               >
                 <Text style={styles.moreBtn}>···</Text>
               </TouchableOpacity>
@@ -632,6 +616,54 @@ export default function Feed() {
         }}
         user={user}
       />
+
+      {/* ── Menu "..." bottom sheet ── */}
+      <Modal
+        visible={menuPost !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMenuPost(null)}
+      >
+        <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={() => setMenuPost(null)}>
+          <View style={styles.menuSheet}>
+            <View style={styles.menuHandle} />
+            <TouchableOpacity
+              style={styles.menuAction}
+              disabled={reporting}
+              onPress={async () => {
+                if (!menuPost) return
+                setReporting(true)
+                try {
+                  await api.post(`/posts/${menuPost}/report`)
+                  setMenuPost(null)
+                  Alert.alert('Obrigado', 'Publicação reportada. Nossa equipe vai analisar em breve.')
+                } catch {
+                  Alert.alert('Erro', 'Não foi possível reportar. Tente novamente.')
+                } finally {
+                  setReporting(false)
+                }
+              }}
+            >
+              {reporting
+                ? <ActivityIndicator color="#E53935" />
+                : <Text style={styles.menuActionReport}>🚩 Reportar publicação</Text>
+              }
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuAction}
+              onPress={() => {
+                Share.share({ message: `https://godenth.com/post/${menuPost}` })
+                setMenuPost(null)
+              }}
+            >
+              <Text style={styles.menuActionText}>🔗 Copiar link</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuCancel} onPress={() => setMenuPost(null)}>
+              <Text style={styles.menuCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   )
 }
@@ -674,6 +706,14 @@ const styles = StyleSheet.create({
   data: { fontSize: 11, color: '#7A9E8E', fontWeight: '600' },
   btn: { borderRadius: 10, paddingHorizontal: 16, paddingVertical: 9 },
   btnT: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  menuSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingTop: 12, paddingBottom: Platform.OS === 'ios' ? 36 : 20 },
+  menuHandle: { width: 36, height: 4, backgroundColor: '#D0E8DA', borderRadius: 2, alignSelf: 'center', marginBottom: 14 },
+  menuAction: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F0F4F2', alignItems: 'flex-start' },
+  menuActionText: { fontSize: 15, fontWeight: '600', color: '#0A1C14' },
+  menuActionReport: { fontSize: 15, fontWeight: '600', color: '#E53935' },
+  menuCancel: { paddingVertical: 16, alignItems: 'center' },
+  menuCancelText: { fontSize: 15, fontWeight: '800', color: '#7A9E8E' },
 })
 
 const pm = StyleSheet.create({
