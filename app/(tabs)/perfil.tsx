@@ -420,9 +420,13 @@ export default function Perfil() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { backgroundColor: tipoCor }]}>
-        <TouchableOpacity onPress={() => router.back()}><Text style={styles.back}>←</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.navSide} onPress={() => router.back()}>
+          <Text style={styles.back}>←</Text>
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Meu Perfil</Text>
-        <TouchableOpacity onPress={handleLogout}><Text style={styles.logout}>Sair</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.navSide, { alignItems: 'flex-end' }]} onPress={handleLogout}>
+          <Text style={styles.logout}>Sair</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={[styles.cover, { backgroundColor: tipoCor }]}>
@@ -475,9 +479,10 @@ export default function Perfil() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#EEF7F2' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
+  navSide: { width: 60 },
   back: { fontSize: 24, color: '#fff', fontWeight: '700' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  headerTitle: { flex: 1, fontSize: 18, fontWeight: '800', color: '#fff', textAlign: 'center' },
   logout: { fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
   cover: { height: 100, overflow: 'hidden' },
   coverWatermark: { position: 'absolute', bottom: -8, left: 10, right: 10, fontSize: 58, fontWeight: '900', color: 'rgba(255,255,255,0.13)', letterSpacing: 3 },
