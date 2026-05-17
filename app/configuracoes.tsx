@@ -38,6 +38,12 @@ export default function Configuracoes() {
   const [celular, setCelular] = useState('')
   const [privacidade, setPrivacidade] = useState<any>(DEFAULT_PRIVACIDADE)
 
+  const [emailVerificado, setEmailVerificado] = useState(false)
+  const [telefoneVerificado, setTelefoneVerificado] = useState(false)
+  const [enviandoVerif, setEnviandoVerif] = useState(false)
+  const [verifEnviado, setVerifEnviado] = useState(false)
+  const [mostrarTelefoneInput, setMostrarTelefoneInput] = useState(false)
+
   const [senhaModal, setSenhaModal] = useState(false)
   const [senhaAtual, setSenhaAtual] = useState('')
   const [novaSenha, setNovaSenha] = useState('')
@@ -53,8 +59,23 @@ export default function Configuracoes() {
       setEmail(p.email || '')
       setCelular(p.celular || '')
       setPrivacidade({ ...DEFAULT_PRIVACIDADE, ...(p.privacidade || {}) })
+      setEmailVerificado(p.email_verificado || false)
+      setTelefoneVerificado(p.telefone_verificado || false)
     } catch (err) { console.log(err) }
     finally { setLoading(false) }
+  }
+
+  const handleEnviarVerificacaoEmail = async () => {
+    if (enviandoVerif || verifEnviado) return
+    setEnviandoVerif(true)
+    try {
+      await api.post('/auth/enviar-verificacao-email')
+      setVerifEnviado(true)
+    } catch (err: any) {
+      Alert.alert('Erro', err.response?.data?.error || 'Não foi possível enviar o e-mail.')
+    } finally {
+      setEnviandoVerif(false)
+    }
   }
 
   const salvar = async () => {
@@ -116,6 +137,88 @@ export default function Configuracoes() {
       </LinearGradient>
 
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} keyboardShouldPersistTaps="handled">
+
+        {/* ── 0. Verificação da Conta ────────────────────────────────────── */}
+        <Text style={s.sectionLabel}>Verificação da Conta</Text>
+        <Text style={s.sectionSub}>Confirme sua identidade para acesso completo</Text>
+        <View style={s.card}>
+
+          {/* E-mail */}
+          <View style={s.verifRow}>
+            <View style={s.verifIcon}>
+              <Text style={{ fontSize: 20 }}>📧</Text>
+            </View>
+            <View style={s.verifInfo}>
+              <Text style={s.verifLabel}>E-mail</Text>
+              <Text style={s.verifSub} numberOfLines={1}>{email || '—'}</Text>
+            </View>
+            {emailVerificado ? (
+              <View style={s.badgeOk}>
+                <Text style={s.badgeOkT}>✓ Verificado</Text>
+              </View>
+            ) : verifEnviado ? (
+              <View style={s.badgePending}>
+                <Text style={s.badgePendingT}>📨 Enviado</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[s.verifBtn, enviandoVerif && { opacity: 0.6 }]}
+                onPress={handleEnviarVerificacaoEmail}
+                disabled={enviandoVerif}
+              >
+                {enviandoVerif
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={s.verifBtnT}>Verificar agora</Text>
+                }
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {verifEnviado && (
+            <View style={s.verifMsg}>
+              <Text style={s.verifMsgT}>📨 Verifique sua caixa de entrada. O link expira em 24 horas.</Text>
+            </View>
+          )}
+
+          <View style={s.divider} />
+
+          {/* Telefone */}
+          <View style={s.verifRow}>
+            <View style={s.verifIcon}>
+              <Text style={{ fontSize: 20 }}>📱</Text>
+            </View>
+            <View style={s.verifInfo}>
+              <Text style={s.verifLabel}>Telefone</Text>
+              <Text style={s.verifSub}>{celular || 'Não informado'}</Text>
+            </View>
+            {telefoneVerificado ? (
+              <View style={s.badgeOk}>
+                <Text style={s.badgeOkT}>✓ Verificado</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={s.verifBtn}
+                onPress={() => setMostrarTelefoneInput(v => !v)}
+              >
+                <Text style={s.verifBtnT}>Verificar</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {mostrarTelefoneInput && !telefoneVerificado && (
+            <View style={s.telInputWrap}>
+              <TextInput
+                style={s.telInput}
+                value={celular}
+                onChangeText={setCelular}
+                placeholder="(11) 99999-9999"
+                placeholderTextColor="#A0B8AC"
+                keyboardType="phone-pad"
+              />
+              <Text style={s.telHint}>Salve o número e aguarde a verificação por SMS em breve.</Text>
+            </View>
+          )}
+        </View>
 
         {/* ── 1. Privacidade ─────────────────────────────────────────────── */}
         <Text style={s.sectionLabel}>Privacidade</Text>
@@ -289,6 +392,24 @@ const s = StyleSheet.create({
   inputReadOnly: { justifyContent: 'center' },
   inputReadOnlyT: { fontSize: 15, color: '#A0B8AC' },
   readOnlyTag: { fontSize: 10, color: '#A0B8AC', fontWeight: '500', textTransform: 'none' },
+
+  // Verificação
+  verifRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  verifIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EEF7F2', justifyContent: 'center', alignItems: 'center' },
+  verifInfo: { flex: 1 },
+  verifLabel: { fontSize: 14, fontWeight: '700', color: '#0A1C14' },
+  verifSub: { fontSize: 11, color: '#7A9E8E', marginTop: 2 },
+  verifBtn: { backgroundColor: '#E65100', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7 },
+  verifBtnT: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  badgeOk: { backgroundColor: '#E6F9F1', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  badgeOkT: { color: '#00875A', fontSize: 11, fontWeight: '800' },
+  badgePending: { backgroundColor: '#FFF4E5', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  badgePendingT: { color: '#B45309', fontSize: 11, fontWeight: '700' },
+  verifMsg: { backgroundColor: '#FFF4E5', borderRadius: 10, padding: 12, marginTop: 2, marginBottom: 4 },
+  verifMsgT: { fontSize: 12, color: '#92400E', lineHeight: 17 },
+  telInputWrap: { marginTop: 8, marginBottom: 4 },
+  telInput: { backgroundColor: '#F2F5F4', borderRadius: 12, padding: 14, fontSize: 15, color: '#0A1C14', marginBottom: 6 },
+  telHint: { fontSize: 11, color: '#7A9E8E', lineHeight: 16 },
 
   secRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   secIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EEF7F2', justifyContent: 'center', alignItems: 'center' },

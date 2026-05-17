@@ -25,6 +25,8 @@ interface User {
   instagram?: string
   formacao?: any[]
   experiencia?: any[]
+  email_verificado?: boolean
+  telefone_verificado?: boolean
 }
 
 interface CadastroData {

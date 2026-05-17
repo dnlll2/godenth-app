@@ -684,6 +684,17 @@ export default function Feed() {
         ))}
       </View>
 
+      {!user?.email_verificado && (
+        <TouchableOpacity
+          style={styles.verifBanner}
+          activeOpacity={0.85}
+          onPress={() => router.push('/configuracoes')}
+        >
+          <Text style={styles.verifBannerT}>⚠️ Verifique seu email para garantir o acesso completo à plataforma</Text>
+          <Text style={styles.verifBannerLink}>Verificar →</Text>
+        </TouchableOpacity>
+      )}
+
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#00A880" />
@@ -783,6 +794,13 @@ const styles = StyleSheet.create({
   notifBadgeT: { color: '#fff', fontSize: 9, fontWeight: '800' },
   uav: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1A6FD4', justifyContent: 'center', alignItems: 'center' },
   uavt: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  verifBanner: {
+    backgroundColor: '#FFF3E0', borderBottomWidth: 1, borderBottomColor: '#FFCC80',
+    paddingHorizontal: 16, paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+  },
+  verifBannerT: { flex: 1, fontSize: 12, color: '#92400E', lineHeight: 17, fontWeight: '600' },
+  verifBannerLink: { fontSize: 12, color: '#E65100', fontWeight: '800', flexShrink: 0 },
   filtrosRow: { flexDirection: 'row', backgroundColor: '#FAFAF8', borderBottomWidth: 1, borderBottomColor: '#D0E8DA', paddingHorizontal: 14, paddingVertical: 10, gap: 8 },
   filtro: { backgroundColor: '#EEF7F2', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 100, paddingHorizontal: 16, paddingVertical: 7 },
   filtroOn: { backgroundColor: '#00A880', borderColor: '#00A880' },
