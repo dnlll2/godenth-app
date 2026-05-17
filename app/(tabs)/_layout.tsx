@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router'
 import { Platform } from 'react-native'
-import Svg, { Path, Circle, Line } from 'react-native-svg'
+import Svg, { Path, Circle, Line, Rect } from 'react-native-svg'
 
 const IC_ON  = '#00C9B1'
 const IC_OFF = '#B8D0C8'
@@ -51,6 +51,20 @@ function ChatIcon({ color }: { color: string }) {
   )
 }
 
+function GroupsIcon({ color }: { color: string }) {
+  const b = mk(color)
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24">
+      <Circle cx="12" cy="8" r="3" {...b} />
+      <Path d="M5,20 C5,16.7 8.1,14 12,14 C15.9,14 19,16.7 19,20" {...b} />
+      <Circle cx="19.5" cy="7" r="2.5" {...b} />
+      <Path d="M22,18.5 C22,16.6 20.9,15.2 19.5,15" {...b} />
+      <Circle cx="4.5" cy="7" r="2.5" {...b} />
+      <Path d="M2,18.5 C2,16.6 3.1,15.2 4.5,15" {...b} />
+    </Svg>
+  )
+}
+
 function PersonIcon({ color }: { color: string }) {
   const b = mk(color)
   return (
@@ -86,13 +100,14 @@ export default function TabsLayout() {
       },
     }}>
       <Tabs.Screen name="feed"         options={{ title: 'Início',    tabBarIcon: ({ color }) => <HomeIcon   color={color} /> }} />
-      <Tabs.Screen name="buscar"       options={{ title: 'Buscar',    tabBarIcon: ({ color }) => <SearchIcon color={color} /> }} />
+      <Tabs.Screen name="grupos"       options={{ title: 'Grupos',    tabBarIcon: ({ color }) => <GroupsIcon color={color} /> }} />
       <Tabs.Screen name="notificacoes" options={{ title: 'Alertas',   tabBarIcon: ({ color }) => <BellIcon   color={color} /> }} />
       <Tabs.Screen name="mensagens"    options={{ title: 'Chat',      tabBarIcon: ({ color }) => <ChatIcon   color={color} /> }} />
       <Tabs.Screen name="perfil"       options={{ title: 'Perfil',    tabBarIcon: ({ color }) => <PersonIcon color={color} /> }} />
       <Tabs.Screen name="publicar"     options={{ href: null }} />
       <Tabs.Screen name="editar-perfil" options={{ href: null }} />
       <Tabs.Screen name="vagas"        options={{ href: null }} />
+      <Tabs.Screen name="buscar"       options={{ href: null }} />
     </Tabs>
   )
 }
