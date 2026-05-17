@@ -206,9 +206,14 @@ function CandidatosModal({ visible, onClose, pageId, candidatos: initialCandidat
                   </View>
                   {cands.map(c => {
                     const pct = c.porcentagem_compatibilidade ?? 0
-                    const barCor = pct >= 80 ? '#00A880' : pct >= 50 ? '#C49800' : '#EF4444'
+                    const barCor = pct > 70 ? '#00A880' : pct >= 40 ? '#C49800' : '#EF4444'
                     const statusCor = STATUS_COR[c.status] || '#C49800'
-                    const respostas: string[] = c.respostas || []
+                    const respostasTexto: string[] = c.respostas || []
+                    const reqResp = c.respostas_requisitos || {}
+                    const obrigResp: Array<{req: string; sim: boolean}> = reqResp.obrigatorios || []
+                    const desejResp: Array<{req: string; sim: boolean}> = reqResp.desejaveis || []
+                    const perguntas: string[] = c.perguntas || []
+                    const hasRespostas = obrigResp.length > 0 || desejResp.length > 0 || respostasTexto.length > 0
                     const isExpanded = expandedId === c.id
                     return (
                       <View key={c.id} style={fs.itemCard}>
@@ -225,10 +230,10 @@ function CandidatosModal({ visible, onClose, pageId, candidatos: initialCandidat
                           </View>
                         </View>
 
-                        {/* Barra de compatibilidade */}
+                        {/* % declarada pelo candidato */}
                         <View style={{ gap: 3, marginBottom: 8 }}>
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#7A9E8E', textTransform: 'uppercase' }}>Compatibilidade</Text>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#7A9E8E', textTransform: 'uppercase' }}>Declarado pelo candidato</Text>
                             <Text style={{ fontSize: 13, fontWeight: '900', color: barCor }}>{pct}%</Text>
                           </View>
                           <View style={{ height: 6, backgroundColor: '#EEF7F2', borderRadius: 3, overflow: 'hidden' }}>
@@ -237,16 +242,47 @@ function CandidatosModal({ visible, onClose, pageId, candidatos: initialCandidat
                         </View>
 
                         {/* Respostas expandíveis */}
-                        {respostas.length > 0 && (
+                        {hasRespostas && (
                           <TouchableOpacity onPress={() => setExpandedId(isExpanded ? null : c.id)}>
                             <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.primary, marginBottom: isExpanded ? 8 : 0 }}>
-                              {isExpanded ? '▲ Ocultar' : `▼ Ver respostas (${respostas.length})`}
+                              {isExpanded ? '▲ Ocultar respostas' : '▼ Ver respostas declaradas'}
                             </Text>
-                            {isExpanded && respostas.map((r, i) => (
-                              <View key={i} style={fs.respostaCard}>
-                                <Text style={fs.respostaT}>{r}</Text>
+                            {isExpanded && (
+                              <View style={{ gap: 6 }}>
+                                {obrigResp.map((item, i) => (
+                                  <View key={i} style={fs.respostaCard}>
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#7A9E8E', textTransform: 'uppercase', marginBottom: 2 }}>Obrigatório</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                      <Text style={[fs.respostaT, { flex: 1 }]}>{item.req}</Text>
+                                      <Text style={{ fontSize: 13, fontWeight: '800', color: item.sim ? '#00A880' : '#EF4444' }}>
+                                        {item.sim ? '✅ Sim' : '❌ Não'}
+                                      </Text>
+                                    </View>
+                                  </View>
+                                ))}
+                                {desejResp.map((item, i) => (
+                                  <View key={i} style={fs.respostaCard}>
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#7A9E8E', textTransform: 'uppercase', marginBottom: 2 }}>Desejável</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                      <Text style={[fs.respostaT, { flex: 1 }]}>{item.req}</Text>
+                                      <Text style={{ fontSize: 13, fontWeight: '800', color: item.sim ? '#1A6FD4' : '#AECEBE' }}>
+                                        {item.sim ? '🔵 Sim' : '⬜ Não'}
+                                      </Text>
+                                    </View>
+                                  </View>
+                                ))}
+                                {respostasTexto.map((r, i) => (
+                                  <View key={i} style={fs.respostaCard}>
+                                    {perguntas[i] && (
+                                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#7A9E8E', marginBottom: 2 }}>
+                                        {i + 1}. {perguntas[i]}
+                                      </Text>
+                                    )}
+                                    <Text style={fs.respostaT}>{r}</Text>
+                                  </View>
+                                ))}
                               </View>
-                            ))}
+                            )}
                           </TouchableOpacity>
                         )}
 
@@ -1111,7 +1147,7 @@ export default function PaginaDetalhe() {
   const [publicacoesLoading, setPublicacoesLoading] = useState(false)
 
   const [candidaturas, setCandidaturas] = useState<Set<number>>(new Set())
-  const [candidatandoId, setCandidatandoId] = useState<number | null>(null)
+  const [candidatarVaga, setCandidatarVaga] = useState<any | null>(null)
 
   // Gear menu + sub-modals
   const [showGearMenu, setShowGearMenu] = useState(false)
@@ -1209,14 +1245,9 @@ export default function PaginaDetalhe() {
     } finally { setLikeLoading(false) }
   }
 
-  const candidatar = async (vagaId: number) => {
-    setCandidatandoId(vagaId)
-    try {
-      await api.post(`/vagas/${vagaId}/candidatar`, { respostas: [] })
-      setCandidaturas(prev => new Set([...prev, vagaId]))
-    } catch (err: any) {
-      Alert.alert('Erro', err.response?.data?.error || 'Não foi possível candidatar.')
-    } finally { setCandidatandoId(null) }
+  const onCandidatou = (vagaId: number) => {
+    setCandidaturas(prev => new Set([...prev, vagaId]))
+    setCandidatarVaga(null)
   }
 
   const handlePickPortfolio = async () => {
@@ -1522,7 +1553,7 @@ export default function PaginaDetalhe() {
                 )}
               </View>
             ) : vagas.map(vaga => (
-              <VagaCard key={vaga.id} vaga={vaga} cor={cor} jaCandidata={candidaturas.has(vaga.id)} loading={candidatandoId === vaga.id} onCandidatar={() => candidatar(vaga.id)} isOwner={isOwner} />
+              <VagaCard key={vaga.id} vaga={vaga} cor={cor} jaCandidata={candidaturas.has(vaga.id)} onCandidatar={() => setCandidatarVaga(vaga)} isOwner={isOwner} />
             ))}
           </View>
         )}
@@ -1591,6 +1622,14 @@ export default function PaginaDetalhe() {
         onClose={() => setShowInscritos(false)}
         publicacoes={publicacoes}
         loading={publicacoesLoading}
+      />
+
+      {/* ── Candidatura ── */}
+      <CandidatarFlowModal
+        vaga={candidatarVaga}
+        cor={cor}
+        onClose={() => setCandidatarVaga(null)}
+        onDone={onCandidatou}
       />
 
       {/* ── Menu Publicar ── */}
@@ -1704,7 +1743,194 @@ function PublicacaoCard({ pub, pageLogo, pageName, cor }: any) {
   )
 }
 
-function VagaCard({ vaga, cor, jaCandidata, loading, onCandidatar, isOwner }: any) {
+// ─── Modal: Formulário de Candidatura ────────────────────────────────────────
+function CandidatarFlowModal({ vaga, cor, onClose, onDone }: {
+  vaga: any | null; cor: string; onClose: () => void; onDone: (vagaId: number) => void
+}) {
+  const [vagaFull, setVagaFull] = useState<any>(null)
+  const [loadingFull, setLoadingFull] = useState(false)
+  const [respostasObrig, setRespostasObrig] = useState<Record<number, boolean | null>>({})
+  const [respostasDesej, setRespostasDesej] = useState<Record<number, boolean | null>>({})
+  const [respostasTexto, setRespostasTexto] = useState<string[]>([])
+  const [sending, setSending] = useState(false)
+
+  useEffect(() => {
+    if (!vaga) return
+    setVagaFull(null)
+    setRespostasObrig({})
+    setRespostasDesej({})
+    setLoadingFull(true)
+    api.get(`/vagas/${vaga.id}`)
+      .then(r => {
+        setVagaFull(r.data)
+        setRespostasTexto(new Array((r.data.perguntas || []).length).fill(''))
+      })
+      .catch(() => {})
+      .finally(() => setLoadingFull(false))
+  }, [vaga?.id])
+
+  if (!vaga) return null
+
+  const reqObrig: string[] = vagaFull?.requisitos_obrigatorios || []
+  const reqDesej: string[] = vagaFull?.requisitos_desejaveis || []
+  const perguntas: string[] = vagaFull?.perguntas || []
+
+  const calcPct = () => {
+    const obrigSim = reqObrig.filter((_, i) => respostasObrig[i] === true).length
+    const desejSim = reqDesej.filter((_, i) => respostasDesej[i] === true).length
+    const obrigScore = reqObrig.length > 0 ? (obrigSim / reqObrig.length) * 70 : 70
+    const desejScore = reqDesej.length > 0 ? (desejSim / reqDesej.length) * 30 : 30
+    return Math.round(obrigScore + desejScore)
+  }
+
+  const confirmar = async () => {
+    const pct = calcPct()
+    setSending(true)
+    try {
+      await api.post(`/vagas/${vaga.id}/candidatar`, {
+        respostas: respostasTexto,
+        porcentagem_compatibilidade: pct,
+        respostas_requisitos: {
+          obrigatorios: reqObrig.map((r, i) => ({ req: r, sim: respostasObrig[i] === true })),
+          desejaveis: reqDesej.map((r, i) => ({ req: r, sim: respostasDesej[i] === true })),
+        },
+      })
+      onDone(vaga.id)
+      Alert.alert('✅ Candidatura enviada!', `Você declarou atender ${calcPct()}% dos requisitos.`)
+    } catch (err: any) {
+      Alert.alert('Aviso', err.response?.data?.error || 'Erro ao candidatar')
+    } finally { setSending(false) }
+  }
+
+  const pct = vagaFull ? calcPct() : 0
+  const barCor = pct > 70 ? '#00A880' : pct >= 40 ? '#C49800' : '#EF4444'
+
+  return (
+    <Modal visible={!!vaga} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.52)', justifyContent: 'flex-end' }}>
+        <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: Platform.OS === 'ios' ? 36 : 20, maxHeight: '90%' }}>
+          <View style={{ width: 40, height: 4, backgroundColor: '#D0E8DA', borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
+              <Text style={{ fontSize: 18, color: '#7A9E8E', fontWeight: '700' }}>✕</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: '#0A1C14' }}>Candidatura</Text>
+            <View style={{ width: 32 }} />
+          </View>
+          {loadingFull ? (
+            <ActivityIndicator color={cor} style={{ marginVertical: 40 }} />
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: '900', color: '#0A1C14', marginBottom: 16 }}>{vaga.cargo || vaga.titulo}</Text>
+
+              {reqObrig.length > 0 && (
+                <>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#0A1C14', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>🔴 Requisitos Obrigatórios</Text>
+                  <Text style={{ fontSize: 11, color: '#7A9E8E', marginBottom: 10 }}>Peso: 70% da compatibilidade</Text>
+                  {reqObrig.map((r, i) => (
+                    <View key={i} style={{ backgroundColor: '#F8FCFA', borderWidth: 1, borderColor: '#D0E8DA', borderRadius: 12, padding: 12, marginBottom: 8, gap: 10 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#0A1C14' }}>{r}</Text>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TouchableOpacity
+                          style={{ flex: 1, borderWidth: 1.5, borderColor: respostasObrig[i] === true ? '#00A880' : '#D0E8DA', borderRadius: 8, paddingVertical: 8, alignItems: 'center', backgroundColor: respostasObrig[i] === true ? '#00A880' : '#fff' }}
+                          onPress={() => setRespostasObrig(prev => ({ ...prev, [i]: true }))}
+                        >
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: respostasObrig[i] === true ? '#fff' : '#3A6550' }}>Sim</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{ flex: 1, borderWidth: 1.5, borderColor: respostasObrig[i] === false ? '#EF4444' : '#D0E8DA', borderRadius: 8, paddingVertical: 8, alignItems: 'center', backgroundColor: respostasObrig[i] === false ? '#EF4444' : '#fff' }}
+                          onPress={() => setRespostasObrig(prev => ({ ...prev, [i]: false }))}
+                        >
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: respostasObrig[i] === false ? '#fff' : '#3A6550' }}>Não</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {reqDesej.length > 0 && (
+                <>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#0A1C14', textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 16, marginBottom: 4 }}>🔵 Requisitos Desejáveis</Text>
+                  <Text style={{ fontSize: 11, color: '#7A9E8E', marginBottom: 10 }}>Peso: 30% da compatibilidade</Text>
+                  {reqDesej.map((r, i) => (
+                    <View key={i} style={{ backgroundColor: '#F8FCFA', borderWidth: 1, borderColor: '#D0E8DA', borderRadius: 12, padding: 12, marginBottom: 8, gap: 10 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#0A1C14' }}>{r}</Text>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TouchableOpacity
+                          style={{ flex: 1, borderWidth: 1.5, borderColor: respostasDesej[i] === true ? '#1A6FD4' : '#D0E8DA', borderRadius: 8, paddingVertical: 8, alignItems: 'center', backgroundColor: respostasDesej[i] === true ? '#1A6FD4' : '#fff' }}
+                          onPress={() => setRespostasDesej(prev => ({ ...prev, [i]: true }))}
+                        >
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: respostasDesej[i] === true ? '#fff' : '#3A6550' }}>Sim</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{ flex: 1, borderWidth: 1.5, borderColor: respostasDesej[i] === false ? '#EF4444' : '#D0E8DA', borderRadius: 8, paddingVertical: 8, alignItems: 'center', backgroundColor: respostasDesej[i] === false ? '#EF4444' : '#fff' }}
+                          onPress={() => setRespostasDesej(prev => ({ ...prev, [i]: false }))}
+                        >
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: respostasDesej[i] === false ? '#fff' : '#3A6550' }}>Não</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {perguntas.length > 0 && (
+                <>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#0A1C14', textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 16, marginBottom: 10 }}>❓ Perguntas do Recrutador</Text>
+                  {perguntas.map((p, i) => (
+                    <View key={i} style={{ marginBottom: 14 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#0A1C14', marginBottom: 6 }}>{i + 1}. {p}</Text>
+                      <TextInput
+                        style={{ backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 13, fontSize: 14, color: '#0A1C14', minHeight: 70, textAlignVertical: 'top' }}
+                        value={respostasTexto[i] || ''}
+                        onChangeText={v => { const r = [...respostasTexto]; r[i] = v; setRespostasTexto(r) }}
+                        placeholder="Sua resposta..."
+                        placeholderTextColor="#A0B8AC"
+                        multiline
+                      />
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {/* % calculada ao vivo */}
+              <View style={{ backgroundColor: '#EEF7F2', borderRadius: 12, padding: 14, marginTop: 20, borderWidth: 1, borderColor: '#D0E8DA' }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: '#3A6550', textTransform: 'uppercase', marginBottom: 10 }}>
+                  Você atende {pct}% dos requisitos desta vaga
+                </Text>
+                <View style={{ gap: 6 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#3A6550', textTransform: 'uppercase', letterSpacing: 0.6 }}>Compatibilidade</Text>
+                    <Text style={{ fontSize: 20, fontWeight: '900', color: barCor }}>{pct}%</Text>
+                  </View>
+                  <View style={{ height: 8, backgroundColor: '#fff', borderRadius: 4, overflow: 'hidden' }}>
+                    <View style={{ height: '100%', width: `${Math.min(100, pct)}%`, backgroundColor: barCor, borderRadius: 4 }} />
+                  </View>
+                </View>
+                <Text style={{ fontSize: 11, color: '#7A9E8E', marginTop: 8, textAlign: 'center' }}>
+                  Esta porcentagem será declarada ao recrutador
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={{ backgroundColor: cor, borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 16, opacity: sending ? 0.7 : 1 }}
+                onPress={confirmar}
+                disabled={sending}
+              >
+                {sending
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>Confirmar candidatura com {pct}% →</Text>}
+              </TouchableOpacity>
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
+function VagaCard({ vaga, cor, jaCandidata, onCandidatar, isOwner }: any) {
   return (
     <View style={s.vagaCard}>
       <View style={s.vagaTop}>
@@ -1725,13 +1951,11 @@ function VagaCard({ vaga, cor, jaCandidata, loading, onCandidatar, isOwner }: an
         <TouchableOpacity
           style={[s.candidatarBtn, jaCandidata ? s.candidatarBtnDone : { backgroundColor: cor }]}
           onPress={!jaCandidata ? onCandidatar : undefined}
-          disabled={jaCandidata || loading}
+          disabled={jaCandidata}
         >
-          {loading
-            ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={[s.candidatarBtnT, jaCandidata && { color: '#059669' }]}>
-                {jaCandidata ? '✓ Candidatura enviada' : 'Candidatar-se →'}
-              </Text>}
+          <Text style={[s.candidatarBtnT, jaCandidata && { color: '#059669' }]}>
+            {jaCandidata ? '✓ Candidatura enviada' : 'Candidatar-se →'}
+          </Text>
         </TouchableOpacity>
       )}
     </View>

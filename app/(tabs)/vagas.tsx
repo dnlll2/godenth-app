@@ -58,7 +58,7 @@ const dateDisplayToIso = (display: string) => {
 
 // ─── Barra de compatibilidade ─────────────────────────────────────────────────
 function CompatBar({ pct }: { pct: number }) {
-  const cor = pct >= 80 ? '#00A880' : pct >= 50 ? '#C49800' : '#EF4444'
+  const cor = pct > 70 ? '#00A880' : pct >= 40 ? '#C49800' : '#EF4444'
   return (
     <View style={{ gap: 6 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -592,10 +592,11 @@ function VagaDetalheModal({ vaga, isOwner, onClose, onCandidatou }: {
   vaga: any | null; isOwner: boolean; onClose: () => void; onCandidatou: () => void
 }) {
   const [vagaFull, setVagaFull] = useState<any>(null)
-  const [compat, setCompat] = useState<any>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [step, setStep] = useState<'detail' | 'apply'>('detail')
-  const [respostas, setRespostas] = useState<string[]>([])
+  const [respostasObrig, setRespostasObrig] = useState<Record<number, boolean | null>>({})
+  const [respostasDesej, setRespostasDesej] = useState<Record<number, boolean | null>>({})
+  const [respostasTexto, setRespostasTexto] = useState<string[]>([])
   const [sending, setSending] = useState(false)
   const [candidatou, setCandidatou] = useState(false)
 
@@ -604,46 +605,58 @@ function VagaDetalheModal({ vaga, isOwner, onClose, onCandidatou }: {
     setStep('detail')
     setCandidatou(false)
     setVagaFull(null)
-    setCompat(null)
-    setRespostas([])
+    setRespostasObrig({})
+    setRespostasDesej({})
+    setRespostasTexto([])
     setLoadingDetail(true)
-    Promise.all([
-      api.get(`/vagas/${vaga.id}`),
-      api.get(`/vagas/${vaga.id}/compatibilidade`).catch(() => null),
-    ]).then(([vagaRes, compatRes]) => {
-      setVagaFull(vagaRes.data)
-      if (compatRes) setCompat(compatRes.data)
-    }).catch(() => {})
-    .finally(() => setLoadingDetail(false))
+    api.get(`/vagas/${vaga.id}`)
+      .then(r => setVagaFull(r.data))
+      .catch(() => {})
+      .finally(() => setLoadingDetail(false))
   }, [vaga?.id])
 
   if (!vaga) return null
 
   const cor = CONTRATO_COR[vaga.contrato] || '#00A880'
   const perguntas: string[] = vagaFull?.perguntas || []
+  const reqObrig: string[] = vagaFull?.requisitos_obrigatorios || []
+  const reqDesej: string[] = vagaFull?.requisitos_desejaveis || []
   const jaCandidatou = !!(vagaFull?.minha_candidatura)
   const statusAtual = vagaFull?.minha_candidatura?.status
 
-  const goToApply = () => {
-    if (perguntas.length > 0) {
-      setRespostas(new Array(perguntas.length).fill(''))
-      setStep('apply')
-    } else {
-      confirmar([])
-    }
+  const calcPct = () => {
+    const obrigSim = reqObrig.filter((_, i) => respostasObrig[i] === true).length
+    const desejSim = reqDesej.filter((_, i) => respostasDesej[i] === true).length
+    const obrigScore = reqObrig.length > 0 ? (obrigSim / reqObrig.length) * 70 : 70
+    const desejScore = reqDesej.length > 0 ? (desejSim / reqDesej.length) * 30 : 30
+    return Math.round(obrigScore + desejScore)
   }
 
-  const confirmar = async (resps: string[]) => {
+  const goToApply = () => {
+    setRespostasObrig({})
+    setRespostasDesej({})
+    setRespostasTexto(new Array(perguntas.length).fill(''))
+    setStep('apply')
+  }
+
+  const confirmar = async () => {
+    const pct = calcPct()
     setSending(true)
     try {
-      await api.post(`/vagas/${vaga.id}/candidatar`, { respostas: resps })
+      await api.post(`/vagas/${vaga.id}/candidatar`, {
+        respostas: respostasTexto,
+        porcentagem_compatibilidade: pct,
+        respostas_requisitos: {
+          obrigatorios: reqObrig.map((r, i) => ({ req: r, sim: respostasObrig[i] === true })),
+          desejaveis: reqDesej.map((r, i) => ({ req: r, sim: respostasDesej[i] === true })),
+        },
+      })
       setCandidatou(true)
       setStep('detail')
       onCandidatou()
-      Alert.alert('✅ Candidatura enviada!', `Sua candidatura foi registrada${compat ? ` com ${compat.porcentagem}% de compatibilidade.` : '.'}`)
+      Alert.alert('✅ Candidatura enviada!', `Você declarou atender ${pct}% dos requisitos desta vaga.`)
     } catch (err: any) {
-      const msg = err.response?.data?.error || 'Erro ao candidatar'
-      Alert.alert('Aviso', msg)
+      Alert.alert('Aviso', err.response?.data?.error || 'Erro ao candidatar')
     } finally { setSending(false) }
   }
 
@@ -676,26 +689,6 @@ function VagaDetalheModal({ vaga, isOwner, onClose, onCandidatou }: {
               </TouchableOpacity>
               {(vaga.cidade || vaga.estado) && (
                 <Text style={dm.loc}>📍 {[vaga.cidade, vaga.estado].filter(Boolean).join(', ')}</Text>
-              )}
-
-              {/* Compatibilidade */}
-              {compat && !isOwner && !jaCandidatou && !candidatou && (
-                <View style={dm.compatCard}>
-                  <CompatBar pct={compat.porcentagem} />
-                  {(compat.obrigatorios_atendidos?.length > 0 || compat.obrigatorios_faltando?.length > 0) && (
-                    <View style={{ marginTop: 10, gap: 6 }}>
-                      {compat.obrigatorios_atendidos?.map((r: string, i: number) => (
-                        <Text key={i} style={dm.compatItem}>✅ {r}</Text>
-                      ))}
-                      {compat.obrigatorios_faltando?.map((r: string, i: number) => (
-                        <Text key={i} style={dm.compatItemFalta}>❌ {r}</Text>
-                      ))}
-                      {compat.desejaveis_atendidos?.map((r: string, i: number) => (
-                        <Text key={i} style={dm.compatItemDesej}>🔵 {r}</Text>
-                      ))}
-                    </View>
-                  )}
-                </View>
               )}
 
               {/* Status candidatura atual */}
@@ -742,11 +735,11 @@ function VagaDetalheModal({ vaga, isOwner, onClose, onCandidatou }: {
               )}
 
               {/* Requisitos */}
-              {vagaFull?.requisitos_obrigatorios?.length > 0 && (
+              {reqObrig.length > 0 && (
                 <View style={[dm.row, { flexDirection: 'column', alignItems: 'flex-start', gap: 8 }]}>
                   <Text style={dm.rowLabel}>🔴 Requisitos Obrigatórios</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                    {vagaFull.requisitos_obrigatorios.map((r: string, i: number) => (
+                    {reqObrig.map((r, i) => (
                       <View key={i} style={[dm.reqChip, { backgroundColor: '#E6F5EE', borderColor: '#00A88060' }]}>
                         <Text style={{ fontSize: 11, fontWeight: '600', color: '#00A880' }}>{r}</Text>
                       </View>
@@ -754,11 +747,11 @@ function VagaDetalheModal({ vaga, isOwner, onClose, onCandidatou }: {
                   </View>
                 </View>
               )}
-              {vagaFull?.requisitos_desejaveis?.length > 0 && (
+              {reqDesej.length > 0 && (
                 <View style={[dm.row, { flexDirection: 'column', alignItems: 'flex-start', gap: 8 }]}>
                   <Text style={dm.rowLabel}>🔵 Requisitos Desejáveis</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                    {vagaFull.requisitos_desejaveis.map((r: string, i: number) => (
+                    {reqDesej.map((r, i) => (
                       <View key={i} style={[dm.reqChip, { backgroundColor: '#EBF2FC', borderColor: '#1A6FD460' }]}>
                         <Text style={{ fontSize: 11, fontWeight: '600', color: '#1A6FD4' }}>{r}</Text>
                       </View>
@@ -785,43 +778,110 @@ function VagaDetalheModal({ vaga, isOwner, onClose, onCandidatou }: {
                   <Text style={dm.rowValue}>{vagaFull.empresa_desc}</Text>
                 </View>
               )}
-              {perguntas.length > 0 && !jaCandidatou && !candidatou && (
+              {(reqObrig.length > 0 || reqDesej.length > 0 || perguntas.length > 0) && !jaCandidatou && !candidatou && (
                 <View style={dm.row}>
-                  <Text style={dm.rowLabel}>❓ Perguntas</Text>
-                  <Text style={dm.rowValue}>{perguntas.length} pergunta{perguntas.length !== 1 ? 's' : ''} para responder</Text>
+                  <Text style={dm.rowLabel}>📝 Formulário</Text>
+                  <Text style={dm.rowValue}>
+                    {[
+                      reqObrig.length > 0 && `${reqObrig.length} obrigatório${reqObrig.length !== 1 ? 's' : ''}`,
+                      reqDesej.length > 0 && `${reqDesej.length} desejável${reqDesej.length !== 1 ? 'is' : ''}`,
+                      perguntas.length > 0 && `${perguntas.length} pergunta${perguntas.length !== 1 ? 's' : ''}`,
+                    ].filter(Boolean).join(' · ')}
+                  </Text>
                 </View>
               )}
 
               <Text style={dm.data}>Publicada em {new Date(vaga.created_at).toLocaleDateString('pt-BR')}</Text>
             </ScrollView>
           ) : (
-            // Step: apply - answer questions
+            // Step: apply - Sim/Não + perguntas + barra de %
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={dm.scroll} keyboardShouldPersistTaps="handled">
               <Text style={dm.cargo}>{vaga.cargo}</Text>
               <Text style={[dm.empresa, { color: cor, marginBottom: 16 }]}>{vaga.empresa_nome}</Text>
-              {compat && (
-                <View style={[dm.compatCard, { marginBottom: 16 }]}>
-                  <CompatBar pct={compat.porcentagem} />
-                </View>
+
+              {reqObrig.length > 0 && (
+                <>
+                  <Text style={ap.sectionTitle}>🔴 Requisitos Obrigatórios</Text>
+                  <Text style={ap.sectionHint}>Peso: 70% da compatibilidade</Text>
+                  {reqObrig.map((r, i) => (
+                    <View key={i} style={ap.reqRow}>
+                      <Text style={ap.reqText}>{r}</Text>
+                      <View style={ap.simnaoRow}>
+                        <TouchableOpacity
+                          style={[ap.simBtn, respostasObrig[i] === true && ap.simBtnOn]}
+                          onPress={() => setRespostasObrig(prev => ({ ...prev, [i]: true }))}
+                        >
+                          <Text style={[ap.simnaoT, respostasObrig[i] === true && ap.simTOn]}>Sim</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[ap.naoBtn, respostasObrig[i] === false && ap.naoBtnOn]}
+                          onPress={() => setRespostasObrig(prev => ({ ...prev, [i]: false }))}
+                        >
+                          <Text style={[ap.simnaoT, respostasObrig[i] === false && ap.naoTOn]}>Não</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </>
               )}
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#3A6550', marginBottom: 12 }}>
-                Responda as perguntas do recrutador:
-              </Text>
-              {perguntas.map((p, i) => (
-                <View key={i} style={{ marginBottom: 14 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#0A1C14', marginBottom: 6 }}>{i + 1}. {p}</Text>
-                  <TextInput
-                    style={cm.input}
-                    value={respostas[i] || ''}
-                    onChangeText={v => { const r = [...respostas]; r[i] = v; setRespostas(r) }}
-                    placeholder="Sua resposta..."
-                    placeholderTextColor="#A0B8AC"
-                    multiline
-                    numberOfLines={3}
-                    textAlignVertical="top"
-                  />
-                </View>
-              ))}
+
+              {reqDesej.length > 0 && (
+                <>
+                  <Text style={[ap.sectionTitle, { marginTop: 20 }]}>🔵 Requisitos Desejáveis</Text>
+                  <Text style={ap.sectionHint}>Peso: 30% da compatibilidade</Text>
+                  {reqDesej.map((r, i) => (
+                    <View key={i} style={ap.reqRow}>
+                      <Text style={ap.reqText}>{r}</Text>
+                      <View style={ap.simnaoRow}>
+                        <TouchableOpacity
+                          style={[ap.simBtn, respostasDesej[i] === true && ap.simBtnOn]}
+                          onPress={() => setRespostasDesej(prev => ({ ...prev, [i]: true }))}
+                        >
+                          <Text style={[ap.simnaoT, respostasDesej[i] === true && ap.simTOn]}>Sim</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[ap.naoBtn, respostasDesej[i] === false && ap.naoBtnOn]}
+                          onPress={() => setRespostasDesej(prev => ({ ...prev, [i]: false }))}
+                        >
+                          <Text style={[ap.simnaoT, respostasDesej[i] === false && ap.naoTOn]}>Não</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {perguntas.length > 0 && (
+                <>
+                  <Text style={[ap.sectionTitle, { marginTop: 20 }]}>❓ Perguntas do Recrutador</Text>
+                  {perguntas.map((p, i) => (
+                    <View key={i} style={{ marginBottom: 14 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#0A1C14', marginBottom: 6 }}>{i + 1}. {p}</Text>
+                      <TextInput
+                        style={cm.input}
+                        value={respostasTexto[i] || ''}
+                        onChangeText={v => { const r = [...respostasTexto]; r[i] = v; setRespostasTexto(r) }}
+                        placeholder="Sua resposta..."
+                        placeholderTextColor="#A0B8AC"
+                        multiline
+                        numberOfLines={3}
+                        textAlignVertical="top"
+                      />
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {/* Barra de % calculada ao vivo */}
+              <View style={[dm.compatCard, { marginTop: 20 }]}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: '#3A6550', textTransform: 'uppercase', marginBottom: 10 }}>
+                  Você atende {calcPct()}% dos requisitos desta vaga
+                </Text>
+                <CompatBar pct={calcPct()} />
+                <Text style={{ fontSize: 11, color: '#7A9E8E', marginTop: 8, textAlign: 'center' }}>
+                  Esta porcentagem será declarada ao recrutador
+                </Text>
+              </View>
             </ScrollView>
           )}
 
@@ -834,18 +894,18 @@ function VagaDetalheModal({ vaga, isOwner, onClose, onCandidatou }: {
                 <Text style={dm.candidatarBtnT}>✓ Candidatura enviada!</Text>
               </View>
             ) : step === 'detail' ? (
-              <TouchableOpacity style={[dm.candidatarBtn, { backgroundColor: cor }]} onPress={goToApply}>
-                <Text style={dm.candidatarBtnT}>
-                  {perguntas.length > 0 ? `Responder e candidatar (${perguntas.length} perguntas) →` : 'Candidatar-se →'}
-                </Text>
+              <TouchableOpacity style={[dm.candidatarBtn, { backgroundColor: cor }]} onPress={goToApply} disabled={!vagaFull}>
+                <Text style={dm.candidatarBtnT}>Candidatar-se →</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
                 style={[dm.candidatarBtn, { backgroundColor: cor }, sending && { opacity: 0.7 }]}
-                onPress={() => confirmar(respostas)}
+                onPress={confirmar}
                 disabled={sending}
               >
-                {sending ? <ActivityIndicator color="#fff" /> : <Text style={dm.candidatarBtnT}>Confirmar candidatura →</Text>}
+                {sending
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={dm.candidatarBtnT}>Confirmar candidatura com {calcPct()}% →</Text>}
               </TouchableOpacity>
             )
           )}
@@ -1063,6 +1123,21 @@ const dm = StyleSheet.create({
   candidatarBtnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
   ownerNote: { backgroundColor: '#EEF7F2', borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8 },
   ownerNoteT: { fontSize: 14, fontWeight: '700', color: '#7A9E8E' },
+})
+
+const ap = StyleSheet.create({
+  sectionTitle: { fontSize: 12, fontWeight: '800', color: '#0A1C14', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },
+  sectionHint: { fontSize: 11, color: '#7A9E8E', marginBottom: 10 },
+  reqRow: { backgroundColor: '#F8FCFA', borderWidth: 1, borderColor: '#D0E8DA', borderRadius: 12, padding: 12, marginBottom: 8, gap: 10 },
+  reqText: { fontSize: 13, fontWeight: '600', color: '#0A1C14', lineHeight: 18 },
+  simnaoRow: { flexDirection: 'row', gap: 8 },
+  simBtn: { flex: 1, borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 8, paddingVertical: 8, alignItems: 'center', backgroundColor: '#fff' },
+  simBtnOn: { backgroundColor: '#00A880', borderColor: '#00A880' },
+  naoBtn: { flex: 1, borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 8, paddingVertical: 8, alignItems: 'center', backgroundColor: '#fff' },
+  naoBtnOn: { backgroundColor: '#EF4444', borderColor: '#EF4444' },
+  simnaoT: { fontSize: 13, fontWeight: '700', color: '#3A6550' },
+  simTOn: { color: '#fff' },
+  naoTOn: { color: '#fff' },
 })
 
 const cm = StyleSheet.create({
