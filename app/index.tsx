@@ -12,7 +12,7 @@ export default function Index() {
       if (isAuthenticated) {
         router.replace('/(tabs)/feed')
       } else {
-        router.replace('/(auth)/login')
+        router.replace('/landing' as any)
       }
     }
   }, [isLoading, isAuthenticated])
