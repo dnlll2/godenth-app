@@ -610,7 +610,15 @@ function VagaDetalheModal({ vaga, isOwner, onClose, onCandidatou }: {
     setRespostasTexto([])
     setLoadingDetail(true)
     api.get(`/vagas/${vaga.id}`)
-      .then(r => setVagaFull(r.data))
+      .then(r => {
+        console.log('[VagaDetalhe] vagaFull carregado:', JSON.stringify({
+          id: r.data.id,
+          requisitos_obrigatorios: r.data.requisitos_obrigatorios,
+          requisitos_desejaveis: r.data.requisitos_desejaveis,
+          perguntas: r.data.perguntas,
+        }))
+        setVagaFull(r.data)
+      })
       .catch(() => {})
       .finally(() => setLoadingDetail(false))
   }, [vaga?.id])
@@ -633,6 +641,12 @@ function VagaDetalheModal({ vaga, isOwner, onClose, onCandidatou }: {
   }
 
   const goToApply = () => {
+    console.log('[CandidatarFlow] goToApply chamado', {
+      reqObrig,
+      reqDesej,
+      perguntas,
+      vagaFull: !!vagaFull,
+    })
     setRespostasObrig({})
     setRespostasDesej({})
     setRespostasTexto(new Array(perguntas.length).fill(''))
@@ -870,6 +884,18 @@ function VagaDetalheModal({ vaga, isOwner, onClose, onCandidatou }: {
                     </View>
                   ))}
                 </>
+              )}
+
+              {reqObrig.length === 0 && reqDesej.length === 0 && perguntas.length === 0 && (
+                <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                  <Text style={{ fontSize: 36, marginBottom: 10 }}>✅</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#0A1C14', textAlign: 'center' }}>
+                    Esta vaga não possui requisitos específicos.
+                  </Text>
+                  <Text style={{ fontSize: 13, color: '#7A9E8E', textAlign: 'center', marginTop: 6 }}>
+                    Confirme abaixo para enviar sua candidatura.
+                  </Text>
+                </View>
               )}
 
               {/* Barra de % calculada ao vivo */}
