@@ -1553,7 +1553,7 @@ export default function PaginaDetalhe() {
                 )}
               </View>
             ) : vagas.map(vaga => (
-              <VagaCard key={vaga.id} vaga={vaga} cor={cor} jaCandidata={candidaturas.has(vaga.id)} onCandidatar={() => setCandidatarVaga(vaga)} isOwner={isOwner} />
+              <VagaCard key={vaga.id} vaga={vaga} cor={cor} jaCandidata={candidaturas.has(vaga.id)} onCandidatar={() => setCandidatarVaga(vaga)} isOwner={isOwner} onVerCandidatos={openCandidatos} />
             ))}
           </View>
         )}
@@ -1930,7 +1930,7 @@ function CandidatarFlowModal({ vaga, cor, onClose, onDone }: {
   )
 }
 
-function VagaCard({ vaga, cor, jaCandidata, onCandidatar, isOwner }: any) {
+function VagaCard({ vaga, cor, jaCandidata, onCandidatar, isOwner, onVerCandidatos }: any) {
   return (
     <View style={s.vagaCard}>
       <View style={s.vagaTop}>
@@ -1947,7 +1947,14 @@ function VagaCard({ vaga, cor, jaCandidata, onCandidatar, isOwner }: any) {
       </View>
       {vaga.salario ? <Text style={s.vagaSalario}>{vaga.salario}</Text> : null}
       {vaga.descricao ? <Text style={s.vagaDesc}>{vaga.descricao}</Text> : null}
-      {!isOwner && (
+      {isOwner ? (
+        <TouchableOpacity
+          style={[s.candidatarBtn, { backgroundColor: cor + '18', borderWidth: 1, borderColor: cor + '50' }]}
+          onPress={onVerCandidatos}
+        >
+          <Text style={[s.candidatarBtnT, { color: cor }]}>👥 Ver candidatos →</Text>
+        </TouchableOpacity>
+      ) : (
         <TouchableOpacity
           style={[s.candidatarBtn, jaCandidata ? s.candidatarBtnDone : { backgroundColor: cor }]}
           onPress={!jaCandidata ? onCandidatar : undefined}
