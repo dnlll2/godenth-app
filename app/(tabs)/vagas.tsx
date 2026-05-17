@@ -647,6 +647,17 @@ function VagaDetalheModal({ vaga, isOwner, onClose, onCandidatou }: {
       perguntas,
       vagaFull: !!vagaFull,
     })
+    if (reqObrig.length === 0 && reqDesej.length === 0 && perguntas.length === 0) {
+      Alert.alert(
+        'Confirmar candidatura',
+        'Esta vaga não possui requisitos específicos — deseja confirmar sua candidatura?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Confirmar', onPress: confirmar },
+        ]
+      )
+      return
+    }
     setRespostasObrig({})
     setRespostasDesej({})
     setRespostasTexto(new Array(perguntas.length).fill(''))
@@ -884,18 +895,6 @@ function VagaDetalheModal({ vaga, isOwner, onClose, onCandidatou }: {
                     </View>
                   ))}
                 </>
-              )}
-
-              {reqObrig.length === 0 && reqDesej.length === 0 && perguntas.length === 0 && (
-                <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-                  <Text style={{ fontSize: 36, marginBottom: 10 }}>✅</Text>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#0A1C14', textAlign: 'center' }}>
-                    Esta vaga não possui requisitos específicos.
-                  </Text>
-                  <Text style={{ fontSize: 13, color: '#7A9E8E', textAlign: 'center', marginTop: 6 }}>
-                    Confirme abaixo para enviar sua candidatura.
-                  </Text>
-                </View>
               )}
 
               {/* Barra de % calculada ao vivo */}
