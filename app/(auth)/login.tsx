@@ -62,6 +62,10 @@ export default function Login() {
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Entrar →</Text>}
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.forgotLink} onPress={() => router.push('/(auth)/esqueci-senha')}>
+            <Text style={styles.forgotText}>Esqueci minha senha</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.link} onPress={() => router.push('/(auth)/cadastro')}>
             <Text style={styles.linkText}>Não tem conta? <Text style={{ color: Colors.primary, fontWeight: '800' }}>Criar conta grátis</Text></Text>
           </TouchableOpacity>
@@ -92,6 +96,8 @@ const styles = StyleSheet.create({
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4
   },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  link: { alignItems: 'center', marginTop: 16 },
+  forgotLink: { alignItems: 'center', marginTop: 14 },
+  forgotText: { fontSize: 13, color: Colors.text3, textDecorationLine: 'underline' },
+  link: { alignItems: 'center', marginTop: 14 },
   linkText: { fontSize: 14, color: Colors.text3 },
 })
