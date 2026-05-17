@@ -884,7 +884,7 @@ export default function EditarPerfil() {
     <View style={s.root}>
 
       {/* ── HEADER ───────────────────────────────────────────────────────── */}
-      <LinearGradient colors={['#007A6E', '#004D44']} style={s.headerGrad}>
+      <LinearGradient colors={['#1c909b', '#004D44']} style={s.headerGrad}>
         <View style={s.headerBar}>
           <TouchableOpacity onPress={() => router.back()} style={s.headerSide}>
             <Text style={s.backBtn}>←</Text>

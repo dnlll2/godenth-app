@@ -85,10 +85,10 @@ export default function Sobre() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#EEF7F2' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#007A6E' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#1c909b' },
   back: { fontSize: 24, color: '#fff', fontWeight: '700' },
   logo: { fontSize: 22, fontFamily: 'Poppins-ExtraBold' },
-  progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#007A6E' },
+  progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#1c909b' },
   bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' },
   barOn: { backgroundColor: '#F5C800' },
   scroll: { padding: 20, paddingBottom: 100 },

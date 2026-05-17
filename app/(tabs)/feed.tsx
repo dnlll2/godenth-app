@@ -775,11 +775,11 @@ export default function Feed() {
 // ── styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#007A6E' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#1c909b' },
   logo: { fontSize: 26, fontFamily: 'Poppins-ExtraBold', letterSpacing: -0.5 },
   icons: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   ico: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', position: 'relative' },
-  notifBadge: { position: 'absolute', top: -3, right: -3, backgroundColor: '#E53935', borderRadius: 9, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3, borderWidth: 1.5, borderColor: '#007A6E' },
+  notifBadge: { position: 'absolute', top: -3, right: -3, backgroundColor: '#E53935', borderRadius: 9, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3, borderWidth: 1.5, borderColor: '#1c909b' },
   notifBadgeT: { color: '#fff', fontSize: 9, fontWeight: '800' },
   uav: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1A6FD4', justifyContent: 'center', alignItems: 'center' },
   uavt: { color: '#fff', fontWeight: '800', fontSize: 14 },
