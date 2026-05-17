@@ -2,83 +2,181 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, Modal,
   TextInput, Image, ActivityIndicator, RefreshControl,
-  KeyboardAvoidingView, Platform, Alert, StatusBar,
+  KeyboardAvoidingView, Platform, Alert, StatusBar, Share,
+  ScrollView, Dimensions,
 } from 'react-native'
 import { useLocalSearchParams, router } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 
-const TEAL   = '#1c909b'
-const GOLD   = '#C49800'
-const BG     = '#F4F8F6'
-const CARD   = '#FFFFFF'
-const BORDER = '#D8ECE4'
-const TEXT   = '#0a2228'
-const MUTED  = '#5a7a72'
+const { width: SCREEN_W } = Dimensions.get('window')
+const API_BASE  = 'https://godenth-api-production.up.railway.app'
+const TEAL      = '#1c909b'
+const GOLD      = '#C49800'
+const BG        = '#FAFAF8'
+const CARD      = '#FFFFFF'
+const BORDER    = '#E4EEE9'
+const TEXT      = '#0a2228'
+const MUTED     = '#5a7a72'
+const COVER_H   = 160
 
-const API_BASE = 'https://godenth-api-production.up.railway.app'
-
-interface GrupoPost {
-  id: number
-  grupo_id: number
-  texto: string | null
-  imagem_url: string | null
-  created_at: string
-  author_id: number
-  author_nome: string
-  author_tipo: string
-  author_avatar: string | null
-  author_especialidade: string | null
+const CAT_COLOR: Record<string, string> = {
+  odontologia: '#1A6FD4',
+  protese:     '#7B3FC4',
 }
+
+const CAT_LABEL: Record<string, string> = {
+  odontologia: 'Odontologia',
+  protese:     'Prótese Dentária',
+}
+
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 interface Grupo {
-  id: number
-  nome: string
-  descricao: string
-  categoria: string
-  icone: string
-  total_posts: number
+  id: number; nome: string; descricao: string
+  categoria: string; icone: string; capa_url: string | null
+  total_posts: number; total_membros: number; is_member: boolean
+  created_at: string
+  ultimos_ativos: { id: number; nome: string; avatar_url: string | null }[]
 }
 
-function timeAgo(dateStr: string) {
-  const diff = (Date.now() - new Date(dateStr).getTime()) / 1000
-  if (diff < 60) return 'agora'
-  if (diff < 3600) return `${Math.floor(diff / 60)}min`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`
-  if (diff < 604800) return `${Math.floor(diff / 86400)}d`
-  return new Date(dateStr).toLocaleDateString('pt-BR')
+interface GrupoPost {
+  id: number; grupo_id: number; texto: string | null; imagem_url: string | null
+  created_at: string; author_id: number; author_nome: string
+  author_tipo: string; author_avatar: string | null
+  author_especialidade: string | null; author_cidade: string | null; author_estado: string | null
 }
 
-function Avatar({ uri, nome, size = 40 }: { uri?: string | null; nome: string; size?: number }) {
-  const initials = nome?.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() || '?'
-  if (uri) {
-    const src = uri.startsWith('http') ? uri : API_BASE + uri
-    return <Image source={{ uri: src }} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: BORDER }} />
-  }
+interface Membro {
+  id: number; nome: string; tipo_profissional: string
+  cidade: string | null; estado: string | null
+  avatar_url: string | null; especialidade: string | null
+}
+
+type Tab = 'discussao' | 'membros' | 'sobre'
+type ImageAsset = { uri: string; name: string; type: string }
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function absUrl(url?: string | null) {
+  if (!url) return null
+  return url.startsWith('http') ? url : API_BASE + url
+}
+
+function timeAgo(d: string) {
+  const s = (Date.now() - new Date(d).getTime()) / 1000
+  if (s < 60) return 'agora'
+  if (s < 3600) return `${Math.floor(s / 60)}min`
+  if (s < 86400) return `${Math.floor(s / 3600)}h`
+  if (s < 604800) return `${Math.floor(s / 86400)}d`
+  return new Date(d).toLocaleDateString('pt-BR')
+}
+
+function Avatar({ uri, nome, size = 40, border }: { uri?: string | null; nome: string; size?: number; border?: string }) {
+  const src = absUrl(uri)
+  const initials = (nome ?? '?').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
+  const inner = src
+    ? <Image source={{ uri: src }} style={{ width: size, height: size, borderRadius: size / 2 }} />
+    : (
+      <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: TEAL + '25', alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ fontSize: size * 0.38, fontWeight: '700', color: TEAL }}>{initials}</Text>
+      </View>
+    )
+  if (!border) return inner
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: TEAL + '22', alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: size * 0.38, fontWeight: '700', color: TEAL }}>{initials}</Text>
+    <View style={{ width: size + 4, height: size + 4, borderRadius: (size + 4) / 2, backgroundColor: border, alignItems: 'center', justifyContent: 'center' }}>
+      {inner}
     </View>
   )
 }
 
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function PostCard({ post, accentColor }: { post: GrupoPost; accentColor: string }) {
+  return (
+    <View style={pc.card}>
+      <View style={pc.header}>
+        <Avatar uri={post.author_avatar} nome={post.author_nome} size={42} />
+        <View style={pc.meta}>
+          <Text style={pc.nome}>{post.author_nome}</Text>
+          <Text style={pc.sub}>
+            {post.author_especialidade || post.author_tipo}
+            {post.author_cidade ? ` · ${post.author_cidade}` : ''}
+          </Text>
+        </View>
+        <Text style={pc.time}>{timeAgo(post.created_at)}</Text>
+      </View>
+      {!!post.texto && <Text style={pc.texto}>{post.texto}</Text>}
+      {!!post.imagem_url && (
+        <Image source={{ uri: absUrl(post.imagem_url)! }} style={pc.img} resizeMode="cover" />
+      )}
+      <View style={[pc.stripe, { backgroundColor: accentColor }]} />
+    </View>
+  )
+}
+
+const pc = StyleSheet.create({
+  card:   { backgroundColor: CARD, marginBottom: 8, borderRadius: 0, overflow: 'hidden' },
+  header: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 },
+  meta:   { flex: 1 },
+  nome:   { fontSize: 14, fontWeight: '700', color: TEXT },
+  sub:    { fontSize: 11, color: MUTED, marginTop: 1 },
+  time:   { fontSize: 11, color: MUTED },
+  texto:  { fontSize: 14, color: TEXT, lineHeight: 21, paddingHorizontal: 14, paddingBottom: 12 },
+  img:    { width: '100%', height: 240 },
+  stripe: { height: 3, width: '100%', opacity: 0.5 },
+})
+
+function MemberRow({ m }: { m: Membro }) {
+  return (
+    <View style={mr.row}>
+      <Avatar uri={m.avatar_url} nome={m.nome} size={46} />
+      <View style={mr.info}>
+        <Text style={mr.nome}>{m.nome}</Text>
+        <Text style={mr.sub}>
+          {m.especialidade || m.tipo_profissional}
+          {m.cidade ? ` · ${m.cidade}/${m.estado}` : ''}
+        </Text>
+      </View>
+    </View>
+  )
+}
+
+const mr = StyleSheet.create({
+  row:  { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER },
+  info: { flex: 1 },
+  nome: { fontSize: 14, fontWeight: '700', color: TEXT },
+  sub:  { fontSize: 12, color: MUTED, marginTop: 2 },
+})
+
+// ─── Main Screen ─────────────────────────────────────────────────────────────
+
 export default function GrupoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { user } = useAuthStore()
+  const isAdmin = user?.plano === 'black'
 
-  const [grupo, setGrupo] = useState<Grupo | null>(null)
-  const [posts, setPosts] = useState<GrupoPost[]>([])
-  const [loading, setLoading] = useState(true)
+  const [grupo, setGrupo]       = useState<Grupo | null>(null)
+  const [posts, setPosts]       = useState<GrupoPost[]>([])
+  const [membros, setMembros]   = useState<Membro[]>([])
+  const [loading, setLoading]   = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [activeTab, setActiveTab]   = useState<Tab>('discussao')
+  const [membrosLoaded, setMembrosLoaded] = useState(false)
 
   // Publish modal
-  const [modalOpen, setModalOpen] = useState(false)
-  const [texto, setTexto] = useState('')
-  const [imagem, setImagem] = useState<{ uri: string; name: string; type: string } | null>(null)
+  const [modalOpen, setModalOpen]   = useState(false)
+  const [texto, setTexto]           = useState('')
+  const [imagem, setImagem]         = useState<ImageAsset | null>(null)
   const [publishing, setPublishing] = useState(false)
 
-  const fetchAll = useCallback(async () => {
+  // Cover upload
+  const [capaLoading, setCapaLoading] = useState(false)
+
+  const accent = CAT_COLOR[grupo?.categoria ?? ''] ?? TEAL
+
+  const fetchGrupo = useCallback(async () => {
     try {
       const [gRes, pRes] = await Promise.all([
         api.get(`/grupos/${id}`),
@@ -94,47 +192,50 @@ export default function GrupoScreen() {
     }
   }, [id])
 
-  useEffect(() => { fetchAll() }, [fetchAll])
+  const fetchMembros = useCallback(async () => {
+    if (membrosLoaded) return
+    try {
+      const res = await api.get(`/grupos/${id}/membros`)
+      setMembros(res.data)
+      setMembrosLoaded(true)
+    } catch (err) {
+      console.error('Erro ao carregar membros:', err)
+    }
+  }, [id, membrosLoaded])
+
+  useEffect(() => { fetchGrupo() }, [fetchGrupo])
+
+  useEffect(() => {
+    if (activeTab === 'membros') fetchMembros()
+  }, [activeTab])
 
   const onRefresh = () => {
     setRefreshing(true)
-    fetchAll()
+    setMembrosLoaded(false)
+    fetchGrupo()
   }
 
-  const pickImage = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!perm.granted) { Alert.alert('Permissão necessária', 'Permita acesso à galeria para adicionar fotos.'); return }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-      allowsEditing: true,
-    })
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0]
-      const ext = asset.uri.split('.').pop() || 'jpg'
-      setImagem({ uri: asset.uri, name: `foto.${ext}`, type: `image/${ext}` })
+  const handleEntrar = async () => {
+    try {
+      await api.post(`/grupos/${id}/entrar`)
+      setGrupo(prev => prev ? { ...prev, is_member: true, total_membros: prev.total_membros + 1 } : prev)
+    } catch (err: any) {
+      Alert.alert('Erro', err?.response?.data?.error || 'Não foi possível entrar no grupo.')
     }
   }
 
   const handlePublish = async () => {
-    if (!texto.trim() && !imagem) {
-      Alert.alert('Atenção', 'Escreva algo ou adicione uma imagem.')
-      return
-    }
+    if (!texto.trim() && !imagem) { Alert.alert('Atenção', 'Escreva algo ou adicione uma imagem.'); return }
     setPublishing(true)
     try {
       const form = new FormData()
       if (texto.trim()) form.append('texto', texto.trim())
-      if (imagem) {
-        form.append('imagem', { uri: imagem.uri, name: imagem.name, type: imagem.type } as any)
-      }
-      await api.post(`/grupos/${id}/posts`, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      setTexto('')
-      setImagem(null)
-      setModalOpen(false)
-      fetchAll()
+      if (imagem) form.append('imagem', { uri: imagem.uri, name: imagem.name, type: imagem.type } as any)
+      await api.post(`/grupos/${id}/posts`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      setTexto(''); setImagem(null); setModalOpen(false)
+      // Auto-join e refresh
+      setGrupo(prev => prev ? { ...prev, is_member: true } : prev)
+      fetchGrupo()
     } catch (err: any) {
       Alert.alert('Erro', err?.response?.data?.error || 'Não foi possível publicar.')
     } finally {
@@ -142,32 +243,215 @@ export default function GrupoScreen() {
     }
   }
 
-  const resetModal = () => {
-    setTexto('')
-    setImagem(null)
-    setModalOpen(false)
+  const handlePickImage = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!perm.granted) { Alert.alert('Permissão necessária', 'Permita acesso à galeria.'); return }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, allowsEditing: true })
+    if (!result.canceled && result.assets[0]) {
+      const a = result.assets[0]; const ext = a.uri.split('.').pop() || 'jpg'
+      setImagem({ uri: a.uri, name: `foto.${ext}`, type: `image/${ext}` })
+    }
   }
 
-  const renderPost = ({ item }: { item: GrupoPost }) => (
-    <View style={s.postCard}>
-      <View style={s.postHeader}>
-        <Avatar uri={item.author_avatar} nome={item.author_nome} />
-        <View style={s.postAuthorInfo}>
-          <Text style={s.postAuthorNome}>{item.author_nome}</Text>
-          <Text style={s.postAuthorTipo}>{item.author_especialidade || item.author_tipo}</Text>
+  const handleCapaUpload = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!perm.granted) return
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85, allowsEditing: true, aspect: [16, 6] })
+    if (result.canceled || !result.assets[0]) return
+    const a = result.assets[0]; const ext = a.uri.split('.').pop() || 'jpg'
+    setCapaLoading(true)
+    try {
+      const form = new FormData()
+      form.append('capa', { uri: a.uri, name: `capa.${ext}`, type: `image/${ext}` } as any)
+      const res = await api.put(`/grupos/${id}/capa`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      setGrupo(prev => prev ? { ...prev, capa_url: res.data.capa_url } : prev)
+    } catch (err: any) {
+      Alert.alert('Erro', err?.response?.data?.error || 'Não foi possível atualizar a capa.')
+    } finally {
+      setCapaLoading(false)
+    }
+  }
+
+  const handleMore = () => {
+    const opts = grupo?.is_member
+      ? [{ text: 'Compartilhar grupo', onPress: () => Share.share({ message: `Participe do grupo "${grupo?.nome}" no GoDenth!` }) },
+         { text: 'Cancelar', style: 'cancel' as const }]
+      : [{ text: 'Compartilhar grupo', onPress: () => Share.share({ message: `Participe do grupo "${grupo?.nome}" no GoDenth!` }) },
+         { text: 'Cancelar', style: 'cancel' as const }]
+    Alert.alert(grupo?.nome ?? 'Grupo', '', opts)
+  }
+
+  // ─── Render helpers ────────────────────────────────────────────────────────
+
+  const ListHeader = () => {
+    if (!grupo) return null
+    const capaUri = absUrl(grupo.capa_url)
+    const ultimos = grupo.ultimos_ativos ?? []
+
+    return (
+      <View>
+        {/* ── Capa ── */}
+        <View style={s.coverWrap}>
+          {capaUri
+            ? <Image source={{ uri: capaUri }} style={s.coverImg} resizeMode="cover" />
+            : <View style={[s.coverImg, { backgroundColor: accent }]}>
+                <Text style={s.coverEmoji}>{grupo.icone}</Text>
+              </View>
+          }
+          {/* Gradiente escuro no topo para os botões */}
+          <View style={s.coverTopBar}>
+            <TouchableOpacity style={s.coverBtn} onPress={() => router.back()}>
+              <Text style={s.coverBtnT}>‹</Text>
+            </TouchableOpacity>
+            {isAdmin && (
+              <TouchableOpacity style={s.coverBtn} onPress={handleCapaUpload} disabled={capaLoading}>
+                {capaLoading
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={s.coverBtnT}>📷</Text>
+                }
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-        <Text style={s.postTime}>{timeAgo(item.created_at)}</Text>
+
+        {/* ── Info do grupo ── */}
+        <View style={s.infoCard}>
+          <Text style={s.grupoNome}>{grupo.nome}</Text>
+
+          <View style={s.metaRow}>
+            <View style={[s.tipoBadge, { backgroundColor: accent + '18', borderColor: accent + '40' }]}>
+              <Text style={[s.tipoT, { color: accent }]}>🌐 Público</Text>
+            </View>
+            <Text style={s.metaSep}>·</Text>
+            <Text style={s.metaText}>👥 {grupo.total_membros} {grupo.total_membros === 1 ? 'membro' : 'membros'}</Text>
+            <Text style={s.metaSep}>·</Text>
+            <Text style={[s.metaText, { color: accent }]}>{CAT_LABEL[grupo.categoria] ?? grupo.categoria}</Text>
+          </View>
+
+          {/* Avatares sobrepostos dos últimos ativos */}
+          {ultimos.length > 0 && (
+            <View style={s.avatarsRow}>
+              <View style={[s.avatarsStack, { width: Math.min(ultimos.length, 8) * 22 + 12 }]}>
+                {ultimos.slice(0, 8).map((m, i) => (
+                  <View key={m.id} style={[s.avatarOverlap, { left: i * 22, zIndex: 8 - i }]}>
+                    <Avatar uri={m.avatar_url} nome={m.nome} size={30} border="#fff" />
+                  </View>
+                ))}
+              </View>
+              <Text style={s.avatarsLabel}>
+                {ultimos.length === 1
+                  ? `${ultimos[0].nome.split(' ')[0]} publicou recentemente`
+                  : `${ultimos[0].nome.split(' ')[0]} e outros publicaram`}
+              </Text>
+            </View>
+          )}
+
+          {/* Botões de ação */}
+          <View style={s.actionRow}>
+            {grupo.is_member
+              ? (
+                <TouchableOpacity style={[s.btnPrimary, { backgroundColor: accent }]} onPress={() => setModalOpen(true)}>
+                  <Text style={s.btnPrimaryT}>✏️  Publicar</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={[s.btnPrimary, { backgroundColor: accent }]} onPress={handleEntrar}>
+                  <Text style={s.btnPrimaryT}>+ Entrar</Text>
+                </TouchableOpacity>
+              )
+            }
+            <TouchableOpacity style={s.btnOutline} onPress={() => Share.share({ message: `Participe do grupo "${grupo.nome}" no GoDenth!` })}>
+              <Text style={[s.btnOutlineT, { color: accent }]}>Convidar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.btnIcon} onPress={handleMore}>
+              <Text style={s.btnIconT}>···</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ── Tab bar ── */}
+        <View style={s.tabBar}>
+          {(['discussao', 'membros', 'sobre'] as Tab[]).map(tab => (
+            <TouchableOpacity
+              key={tab}
+              style={[s.tab, activeTab === tab && [s.tabActive, { borderBottomColor: accent }]]}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text style={[s.tabT, activeTab === tab && { color: accent }]}>
+                {tab === 'discussao' ? 'Discussão' : tab === 'membros' ? 'Membros' : 'Sobre'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ── Write bar (só na aba Discussão) ── */}
+        {activeTab === 'discussao' && (
+          <TouchableOpacity style={s.writeBar} onPress={() => setModalOpen(true)} activeOpacity={0.8}>
+            <Avatar uri={null} nome={user?.nome ?? '?'} size={36} />
+            <View style={s.writeInput}>
+              <Text style={s.writeInputT}>Escreva algo no grupo...</Text>
+            </View>
+            <Text style={s.writeCamera}>📷</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Cabeçalho das abas Membros e Sobre */}
+        {activeTab === 'membros' && (
+          <View style={s.tabSectionHeader}>
+            <Text style={s.tabSectionT}>👥 {grupo.total_membros} membros ativos</Text>
+          </View>
+        )}
+        {activeTab === 'sobre' && (
+          <View style={s.sobreSection}>
+            {!!grupo.descricao && (
+              <>
+                <Text style={s.sobreLabel}>📝 Descrição</Text>
+                <Text style={s.sobreBody}>{grupo.descricao}</Text>
+              </>
+            )}
+            <View style={s.sobreDivider} />
+            <Text style={s.sobreLabel}>📁 Categoria</Text>
+            <Text style={s.sobreBody}>{CAT_LABEL[grupo.categoria] ?? grupo.categoria}</Text>
+            <View style={s.sobreDivider} />
+            <Text style={s.sobreLabel}>🌐 Visibilidade</Text>
+            <Text style={s.sobreBody}>Público — qualquer pessoa pode ver e entrar</Text>
+            <View style={s.sobreDivider} />
+            <Text style={s.sobreLabel}>📅 Criado em</Text>
+            <Text style={s.sobreBody}>{new Date(grupo.created_at).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+            <View style={s.sobreDivider} />
+            <Text style={s.sobreLabel}>💬 Publicações</Text>
+            <Text style={s.sobreBody}>{grupo.total_posts} {grupo.total_posts === 1 ? 'publicação' : 'publicações'}</Text>
+          </View>
+        )}
       </View>
-      {!!item.texto && <Text style={s.postTexto}>{item.texto}</Text>}
-      {!!item.imagem_url && (
-        <Image
-          source={{ uri: item.imagem_url.startsWith('http') ? item.imagem_url : API_BASE + item.imagem_url }}
-          style={s.postImagem}
-          resizeMode="cover"
-        />
-      )}
-    </View>
-  )
+    )
+  }
+
+  const getListData = (): any[] => {
+    if (activeTab === 'discussao') return posts
+    if (activeTab === 'membros') return membros
+    return []
+  }
+
+  const renderItem = ({ item }: { item: any }) => {
+    if (activeTab === 'discussao') return <PostCard post={item} accentColor={accent} />
+    if (activeTab === 'membros') return <MemberRow m={item} />
+    return null
+  }
+
+  const ListEmpty = () => {
+    if (activeTab === 'sobre') return null
+    return (
+      <View style={s.empty}>
+        <Text style={s.emptyIcon}>{activeTab === 'membros' ? '👥' : '💬'}</Text>
+        <Text style={s.emptyTitle}>{activeTab === 'membros' ? 'Nenhum membro ainda' : 'Nenhuma publicação ainda'}</Text>
+        <Text style={s.emptyBody}>
+          {activeTab === 'membros'
+            ? 'Os membros aparecerão aqui após publicarem no grupo.'
+            : 'Seja o primeiro a compartilhar algo neste grupo!'}
+        </Text>
+      </View>
+    )
+  }
 
   if (loading) {
     return (
@@ -179,89 +463,63 @@ export default function GrupoScreen() {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor={TEAL} />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backBtnT}>‹</Text>
-        </TouchableOpacity>
-        <View style={s.headerCenter}>
-          <Text style={s.headerIcon}>{grupo?.icone}</Text>
-          <View>
-            <Text style={s.headerNome} numberOfLines={1}>{grupo?.nome}</Text>
-            <Text style={s.headerMeta}>{grupo?.total_posts} publicações</Text>
-          </View>
-        </View>
-        <View style={{ width: 36 }} />
-      </View>
-
-      {/* Descrição */}
-      {!!grupo?.descricao && (
-        <View style={s.descBar}>
-          <Text style={s.descText}>{grupo.descricao}</Text>
-        </View>
-      )}
-
-      {/* Feed */}
       <FlatList
-        data={posts}
-        keyExtractor={item => String(item.id)}
-        contentContainerStyle={s.feedContent}
+        data={getListData()}
+        keyExtractor={(item: any) => String(item.id ?? 'sobre')}
+        ListHeaderComponent={ListHeader}
+        renderItem={renderItem}
+        ListEmptyComponent={ListEmpty}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[TEAL]} tintColor={TEAL} />}
-        renderItem={renderPost}
-        ListEmptyComponent={
-          <View style={s.empty}>
-            <Text style={s.emptyIcon}>💬</Text>
-            <Text style={s.emptyTitle}>Nenhuma publicação ainda</Text>
-            <Text style={s.emptyText}>Seja o primeiro a compartilhar algo neste grupo!</Text>
-          </View>
-        }
+        contentContainerStyle={s.listContent}
+        showsVerticalScrollIndicator={false}
       />
 
-      {/* FAB publicar */}
-      <TouchableOpacity style={s.fab} onPress={() => setModalOpen(true)} activeOpacity={0.85}>
-        <Text style={s.fabT}>+</Text>
-      </TouchableOpacity>
-
-      {/* Modal publicar */}
-      <Modal visible={modalOpen} animationType="slide" transparent onRequestClose={resetModal}>
+      {/* ── Modal de publicação ── */}
+      <Modal visible={modalOpen} animationType="slide" transparent onRequestClose={() => { setTexto(''); setImagem(null); setModalOpen(false) }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalOverlay}>
           <View style={s.modalSheet}>
             <View style={s.modalHandle} />
             <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>Publicar no grupo</Text>
-              <TouchableOpacity onPress={resetModal}>
+              <Avatar uri={null} nome={user?.nome ?? '?'} size={40} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.modalUserNome}>{user?.nome}</Text>
+                <Text style={s.modalGrupoNome}>{grupo?.icone} {grupo?.nome}</Text>
+              </View>
+              <TouchableOpacity onPress={() => { setTexto(''); setImagem(null); setModalOpen(false) }}>
                 <Text style={s.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <TextInput
-              style={s.input}
-              placeholder="Compartilhe algo com o grupo..."
+              style={s.modalInput}
+              placeholder={`O que você quer compartilhar, ${user?.nome?.split(' ')[0]}?`}
               placeholderTextColor={MUTED}
               multiline
               maxLength={1000}
               value={texto}
               onChangeText={setTexto}
               textAlignVertical="top"
+              autoFocus
             />
 
             {imagem && (
-              <View style={s.imagemPreviewWrap}>
-                <Image source={{ uri: imagem.uri }} style={s.imagemPreview} resizeMode="cover" />
-                <TouchableOpacity style={s.imagemRemove} onPress={() => setImagem(null)}>
-                  <Text style={s.imagemRemoveT}>✕</Text>
+              <View style={s.previewWrap}>
+                <Image source={{ uri: imagem.uri }} style={s.preview} resizeMode="cover" />
+                <TouchableOpacity style={s.previewRemove} onPress={() => setImagem(null)}>
+                  <Text style={s.previewRemoveT}>✕</Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            <View style={s.modalActions}>
-              <TouchableOpacity style={s.photoBtn} onPress={pickImage}>
-                <Text style={s.photoBtnT}>📷 {imagem ? 'Trocar foto' : 'Adicionar foto'}</Text>
+            <View style={[s.modalFooter, { borderTopColor: BORDER }]}>
+              <TouchableOpacity style={s.footerPhoto} onPress={handlePickImage}>
+                <Text style={s.footerPhotoT}>📷</Text>
+                <Text style={[s.footerPhotoLabel, { color: accent }]}>Foto</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[s.publishBtn, (publishing || (!texto.trim() && !imagem)) && s.publishBtnDisabled]}
+                style={[s.publishBtn, { backgroundColor: accent }, (!texto.trim() && !imagem) && s.publishBtnOff]}
                 onPress={handlePublish}
                 disabled={publishing || (!texto.trim() && !imagem)}
               >
@@ -278,96 +536,95 @@ export default function GrupoScreen() {
   )
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const s = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: BG },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: BG },
+  root:    { flex: 1, backgroundColor: '#EFEFEF' },
+  center:  { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: BG },
+  listContent: { paddingBottom: 40 },
 
-  header: {
-    backgroundColor: TEAL,
-    paddingTop: 48, paddingBottom: 14,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  // Cover
+  coverWrap:   { width: SCREEN_W, height: COVER_H, position: 'relative' },
+  coverImg:    { width: '100%', height: COVER_H, alignItems: 'center', justifyContent: 'center' },
+  coverEmoji:  { fontSize: 56, opacity: 0.6 },
+  coverTopBar: {
+    position: 'absolute', top: 0, left: 0, right: 0,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingTop: Platform.OS === 'ios' ? 52 : 36, paddingHorizontal: 14,
   },
-  backBtn:    { width: 36, alignItems: 'flex-start' },
-  backBtnT:   { color: '#fff', fontSize: 28, lineHeight: 30 },
-  headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4 },
-  headerIcon:   { fontSize: 28 },
-  headerNome:   { color: '#fff', fontSize: 16, fontWeight: '800', maxWidth: 200 },
-  headerMeta:   { color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 1 },
+  coverBtn:  { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.42)', alignItems: 'center', justifyContent: 'center' },
+  coverBtnT: { color: '#fff', fontSize: 20, lineHeight: 22, fontWeight: '600' },
 
-  descBar:  { backgroundColor: TEAL + '15', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: BORDER },
-  descText: { fontSize: 12, color: MUTED, lineHeight: 17 },
+  // Info card
+  infoCard: { backgroundColor: CARD, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
+  grupoNome: { fontSize: 20, fontWeight: '900', color: TEXT, marginBottom: 6 },
+  metaRow:   { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4, marginBottom: 12 },
+  tipoBadge: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 },
+  tipoT:     { fontSize: 11, fontWeight: '700' },
+  metaSep:   { color: MUTED, fontSize: 11 },
+  metaText:  { fontSize: 12, color: MUTED, fontWeight: '600' },
 
-  feedContent: { padding: 12, paddingBottom: 90 },
+  // Overlapping avatars
+  avatarsRow:   { flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 10 },
+  avatarsStack: { position: 'relative', height: 34 },
+  avatarOverlap:{ position: 'absolute', top: 0 },
+  avatarsLabel: { fontSize: 11, color: MUTED, flex: 1 },
 
-  postCard: {
-    backgroundColor: CARD,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: BORDER,
-    padding: 14,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  postHeader:     { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 },
-  postAuthorInfo: { flex: 1 },
-  postAuthorNome: { fontSize: 14, fontWeight: '700', color: TEXT },
-  postAuthorTipo: { fontSize: 11, color: MUTED, marginTop: 1 },
-  postTime:       { fontSize: 11, color: MUTED },
-  postTexto:      { fontSize: 14, color: TEXT, lineHeight: 21, marginBottom: 8 },
-  postImagem:     { width: '100%', height: 220, borderRadius: 12, marginTop: 4 },
+  // Action buttons
+  actionRow:    { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  btnPrimary:   { flex: 1, borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
+  btnPrimaryT:  { color: '#fff', fontSize: 14, fontWeight: '800' },
+  btnOutline:   { borderWidth: 1.5, borderColor: BORDER, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 },
+  btnOutlineT:  { fontSize: 13, fontWeight: '700' },
+  btnIcon:      { borderWidth: 1.5, borderColor: BORDER, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10 },
+  btnIconT:     { fontSize: 12, color: MUTED, letterSpacing: 1 },
 
-  fab: {
-    position: 'absolute', right: 20, bottom: 24,
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: TEAL,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: TEAL, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8,
-    elevation: 8,
-  },
-  fabT: { color: '#fff', fontSize: 28, lineHeight: 32, fontWeight: '400' },
+  // Tab bar
+  tabBar:   { flexDirection: 'row', backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER, marginBottom: 1 },
+  tab:      { flex: 1, paddingVertical: 13, alignItems: 'center', borderBottomWidth: 3, borderBottomColor: 'transparent' },
+  tabActive:{ borderBottomWidth: 3 },
+  tabT:     { fontSize: 13, fontWeight: '700', color: MUTED },
 
-  empty:      { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 },
-  emptyIcon:  { fontSize: 44, marginBottom: 14 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: TEXT, marginBottom: 6, textAlign: 'center' },
-  emptyText:  { fontSize: 13, color: MUTED, textAlign: 'center', lineHeight: 19 },
+  // Write bar
+  writeBar:   { flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, padding: 12, gap: 10, marginBottom: 1 },
+  writeInput: { flex: 1, borderWidth: 1.5, borderColor: BORDER, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+  writeInputT:{ fontSize: 13, color: MUTED },
+  writeCamera:{ fontSize: 22 },
 
-  // Modal
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
-  modalSheet: {
-    backgroundColor: CARD,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
-    minHeight: 320,
-  },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: BORDER, alignSelf: 'center', marginBottom: 16 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  modalTitle:  { fontSize: 17, fontWeight: '800', color: TEXT },
-  modalClose:  { fontSize: 16, color: MUTED, padding: 4 },
+  // Section headers
+  tabSectionHeader: { backgroundColor: BG, paddingHorizontal: 16, paddingVertical: 10 },
+  tabSectionT:      { fontSize: 13, fontWeight: '700', color: MUTED },
 
-  input: {
-    borderWidth: 1.5, borderColor: BORDER, borderRadius: 14,
-    padding: 14, fontSize: 14, color: TEXT,
-    minHeight: 110, marginBottom: 12,
-    backgroundColor: BG,
-  },
+  // Sobre
+  sobreSection: { backgroundColor: CARD, padding: 16, marginBottom: 1 },
+  sobreLabel:   { fontSize: 11, fontWeight: '800', color: MUTED, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
+  sobreBody:    { fontSize: 14, color: TEXT, lineHeight: 21 },
+  sobreDivider: { height: 1, backgroundColor: BORDER, marginVertical: 14 },
 
-  imagemPreviewWrap: { position: 'relative', marginBottom: 12 },
-  imagemPreview:     { width: '100%', height: 180, borderRadius: 12 },
-  imagemRemove:      { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12, width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
-  imagemRemoveT:     { color: '#fff', fontSize: 11, fontWeight: '700' },
+  // Empty
+  empty:     { alignItems: 'center', paddingTop: 48, paddingHorizontal: 32, backgroundColor: CARD, paddingBottom: 48 },
+  emptyIcon: { fontSize: 44, marginBottom: 12 },
+  emptyTitle:{ fontSize: 16, fontWeight: '700', color: TEXT, marginBottom: 6, textAlign: 'center' },
+  emptyBody: { fontSize: 13, color: MUTED, textAlign: 'center', lineHeight: 19 },
 
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  photoBtn:     { flex: 1, borderWidth: 1.5, borderColor: BORDER, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  photoBtnT:    { fontSize: 13, color: TEAL, fontWeight: '700' },
-  publishBtn:          { flex: 1, backgroundColor: TEAL, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  publishBtnDisabled:  { opacity: 0.45 },
-  publishBtnT:         { fontSize: 14, color: '#fff', fontWeight: '800' },
+  // Publish modal
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalSheet:   { backgroundColor: CARD, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: Platform.OS === 'ios' ? 34 : 20, maxHeight: '90%' },
+  modalHandle:  { width: 40, height: 4, borderRadius: 2, backgroundColor: BORDER, alignSelf: 'center', marginTop: 10, marginBottom: 14 },
+  modalHeader:  { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, marginBottom: 12 },
+  modalUserNome:{ fontSize: 15, fontWeight: '800', color: TEXT },
+  modalGrupoNome:{ fontSize: 11, color: MUTED, marginTop: 1 },
+  modalClose:   { fontSize: 16, color: MUTED, padding: 4 },
+  modalInput:   { minHeight: 100, fontSize: 15, color: TEXT, paddingHorizontal: 16, textAlignVertical: 'top', lineHeight: 22 },
+  previewWrap:  { position: 'relative', marginHorizontal: 16, marginBottom: 10 },
+  preview:      { width: '100%', height: 200, borderRadius: 12 },
+  previewRemove:{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12, width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
+  previewRemoveT:{ color: '#fff', fontSize: 11, fontWeight: '700' },
+  modalFooter:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1 },
+  footerPhoto:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  footerPhotoT: { fontSize: 22 },
+  footerPhotoLabel: { fontSize: 13, fontWeight: '700' },
+  publishBtn:   { borderRadius: 20, paddingHorizontal: 22, paddingVertical: 9 },
+  publishBtnOff:{ opacity: 0.4 },
+  publishBtnT:  { color: '#fff', fontSize: 14, fontWeight: '800' },
 })
