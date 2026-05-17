@@ -37,6 +37,11 @@ const NOTIF_META: Record<NotifTipo | string, { icon: string; cor: string; titulo
     titulo: p => `${p.solicitante_nome || 'Alguém'} solicitou ${p.servico_nome || 'um serviço'}`,
     sub: () => '',
   },
+  nova_candidatura: {
+    icon: '💼', cor: '#00A880',
+    titulo: p => `${p.candidato_nome || 'Candidato'} se candidatou à vaga de ${p.cargo || 'sua vaga'}`,
+    sub: () => 'Toque para ver os candidatos',
+  },
 }
 
 function timeAgo(dateStr: string) {
@@ -124,6 +129,8 @@ export default function Notificacoes() {
       router.push(`/usuario/${p.accepter_id}` as any)
     } else if (item.tipo === 'conexao_solicitada' && p.sender_id) {
       router.push(`/usuario/${p.sender_id}` as any)
+    } else if (item.tipo === 'nova_candidatura' && p.page_id) {
+      router.push(`/pagina/${p.page_id}` as any)
     }
   }
 
