@@ -640,7 +640,7 @@ export default function Feed() {
     : null
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#EEF7F2' }}>
+    <View style={{ flex: 1, backgroundColor: '#FAFAF8' }}>
       <View style={styles.header}>
         <Text style={styles.logo}>
           <Text style={{ color: '#F5C800' }}>Go</Text>
@@ -783,12 +783,12 @@ const styles = StyleSheet.create({
   notifBadgeT: { color: '#fff', fontSize: 9, fontWeight: '800' },
   uav: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1A6FD4', justifyContent: 'center', alignItems: 'center' },
   uavt: { color: '#fff', fontWeight: '800', fontSize: 14 },
-  filtrosRow: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#D0E8DA', paddingHorizontal: 14, paddingVertical: 10, gap: 8 },
+  filtrosRow: { flexDirection: 'row', backgroundColor: '#FAFAF8', borderBottomWidth: 1, borderBottomColor: '#D0E8DA', paddingHorizontal: 14, paddingVertical: 10, gap: 8 },
   filtro: { backgroundColor: '#EEF7F2', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 100, paddingHorizontal: 16, paddingVertical: 7 },
   filtroOn: { backgroundColor: '#00A880', borderColor: '#00A880' },
   filtroT: { fontSize: 12, fontWeight: '700', color: '#3A6550' },
   filtroTOn: { color: '#fff' },
-  card: { backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#D0E8DA', flexDirection: 'row' },
+  card: { backgroundColor: '#FAFAF8', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#D0E8DA', flexDirection: 'row' },
   stripe: { width: 4 },
   cardBody: { flex: 1, padding: 14 },
   cardRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
@@ -898,7 +898,7 @@ const pm = StyleSheet.create({
 })
 
 const vgStyles = StyleSheet.create({
-  card: { width: 200, backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA' },
+  card: { width: 200, backgroundColor: '#FAFAF8', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA' },
   logo: { width: 32, height: 32, borderRadius: 8 },
   empresa: { flex: 1, fontSize: 12, fontWeight: '700', color: '#3A6550' },
   cargo: { fontSize: 14, fontWeight: '800', color: '#0A1C14', marginBottom: 8, lineHeight: 19 },
