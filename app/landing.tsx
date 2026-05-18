@@ -239,7 +239,6 @@ export default function Landing() {
         </View>
 
         <View style={[s.mapWrap, isWide && s.mapWrapWide]}>
-          <View style={[s.mapGlow, { width: mapSize * 0.9, height: mapSize * (MAP_H / MAP_W) * 0.9 }]} />
           <BrazilMap size={mapSize} />
         </View>
       </View>
@@ -334,9 +333,8 @@ const s = StyleSheet.create({
   heroSubWide: { fontSize: 16, textAlign: 'left', maxWidth: 440, lineHeight: 26 },
   heroButtons:     { flexDirection: 'column', gap: 12, width: '100%', maxWidth: 320 },
   heroButtonsWide: { flexDirection: 'row', width: 'auto', maxWidth: undefined },
-  mapWrap:     { marginTop: 36, position: 'relative', alignItems: 'center', justifyContent: 'center' },
+  mapWrap:     { marginTop: 36, alignItems: 'center', justifyContent: 'center' },
   mapWrapWide: { marginTop: 0, flexShrink: 0 },
-  mapGlow: { position: 'absolute', borderRadius: 300, backgroundColor: TEAL, opacity: 0.08, transform: [{ scale: 1.3 }] },
 
   // Buttons
   btnPrimary:  { backgroundColor: GOLD, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 16, alignItems: 'center' },
