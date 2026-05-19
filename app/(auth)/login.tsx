@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   logo: { fontSize: 48, letterSpacing: -2 },
   go: { color: '#C49800', fontFamily: 'Poppins-ExtraBold' },
   denth: { color: '#FFFFFF', fontFamily: 'Poppins-ExtraBold' },
-  tagline: { color: 'rgba(255,255,255,0.5)', fontSize: 14, marginTop: 6 },
+  tagline: { color: 'rgba(255,255,255,0.5)', fontSize: 14, marginTop: 6, textAlign: 'center' },
   form: { backgroundColor: Colors.white, borderRadius: 20, padding: 24 },
   title: { fontSize: 22, fontWeight: '800', color: Colors.text, marginBottom: 20 },
   label: { fontSize: 13, fontWeight: '700', color: Colors.text2, marginBottom: 6 },
