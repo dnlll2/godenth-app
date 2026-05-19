@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Modal, FlatList } from 'react-native'
+import { useState, useEffect, useRef } from 'react'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Modal, FlatList, Animated } from 'react-native'
 import { router } from 'expo-router'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -63,6 +63,24 @@ export default function Academico() {
   const [modalAno, setModalAno] = useState<{ prof: string, campo: string, idx?: number } | null>(null)
   const [modalPos, setModalPos] = useState<{ prof: string, lista: string[] } | null>(null)
 
+  const titleOpacity = useRef(new Animated.Value(0)).current
+  const titleTranslateY = useRef(new Animated.Value(24)).current
+  const contentOpacity = useRef(new Animated.Value(0)).current
+  const contentTranslateY = useRef(new Animated.Value(20)).current
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(titleOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.spring(titleTranslateY, { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(contentOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.spring(contentTranslateY, { toValue: 0, tension: 55, friction: 12, useNativeDriver: true }),
+      ]),
+    ]).start()
+  }, [])
+
   const updateFormacao = (profLabel: string, campo: string, valor: any) => {
     setFormacoes(prev => ({
       ...prev,
@@ -99,7 +117,7 @@ export default function Academico() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}><Text style={styles.back}>←</Text></TouchableOpacity>
-        <Text style={styles.logo}><Text style={{ color: '#F5C800' }}>Go</Text><Text style={{ color: '#fff' }}>Denth</Text></Text>
+        <Text style={styles.logo}><Text style={{ color: '#C49800' }}>Go</Text><Text style={{ color: '#fff' }}>Denth</Text></Text>
         <View style={{ width: 32 }} />
       </View>
 
@@ -108,163 +126,168 @@ export default function Academico() {
         {[6,7].map(i => <View key={i} style={styles.bar} />)}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <Animated.View style={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, opacity: titleOpacity, transform: [{ translateY: titleTranslateY }] }}>
         <Text style={styles.step}>Passo 5 de 7</Text>
-        <Text style={styles.title}>Formação{'\n'}Acadêmica</Text>
+        <Text style={styles.title}>Formação Acadêmica</Text>
         <Text style={styles.sub}>Preencha sua formação para cada área de atuação</Text>
+      </Animated.View>
 
-        {todasProfissoes.map((prof: any) => {
-          const config = FORMACAO_POR_PROFISSAO[prof.label]
-          if (!config) return null
-          const f = formacoes[prof.label] || {}
+      <Animated.View style={[styles.content, { opacity: contentOpacity, transform: [{ translateY: contentTranslateY }] }]}>
+        <ScrollView contentContainerStyle={styles.scroll}>
 
-          return (
-            <View key={prof.label} style={styles.section}>
-              <View style={[styles.sectionHeader, { borderLeftColor: prof.cor || '#00A880' }]}>
-                <Text style={[styles.sectionTitle, { color: prof.cor || '#00A880' }]}>{prof.label}</Text>
-              </View>
+          {todasProfissoes.map((prof: any) => {
+            const config = FORMACAO_POR_PROFISSAO[prof.label]
+            if (!config) return null
+            const f = formacoes[prof.label] || {}
 
-              {config.tipo === 'superior' ? (
-                <>
-                  <Text style={styles.subLabel}>📚 Graduação</Text>
-                  {!f.temGraduacao ? (
-                    <TouchableOpacity style={styles.addBtn} onPress={() => updateFormacao(prof.label, 'temGraduacao', true)}>
-                      <Text style={styles.addBtnT}>+ Tenho {config.graduacao}</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={styles.card}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <Text style={styles.cardTitle}>{config.graduacao}</Text>
-                        <TouchableOpacity onPress={() => updateFormacao(prof.label, 'temGraduacao', false)}>
-                          <Text style={{ color: '#7A9E8E', fontSize: 16 }}>✕</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Nome da instituição"
-                        placeholderTextColor="#AECEBE"
-                        value={f.graduacaoInst || ''}
-                        onChangeText={v => updateFormacao(prof.label, 'graduacaoInst', v)}
-                      />
-                      <TouchableOpacity style={styles.select} onPress={() => setModalAno({ prof: prof.label, campo: 'graduacaoAno' })}>
-                        <Text style={[styles.selectText, !f.graduacaoAno && { color: '#AECEBE' }]}>{f.graduacaoAno || 'Ano de conclusão'}</Text>
-                        <Text style={{ color: '#7A9E8E' }}>˅</Text>
+            return (
+              <View key={prof.label} style={styles.section}>
+                <View style={[styles.sectionHeader, { borderLeftColor: prof.cor || '#00A880' }]}>
+                  <Text style={[styles.sectionTitle, { color: prof.cor || '#00A880' }]}>{prof.label}</Text>
+                </View>
+
+                {config.tipo === 'superior' ? (
+                  <>
+                    <Text style={styles.subLabel}>📚 Graduação</Text>
+                    {!f.temGraduacao ? (
+                      <TouchableOpacity style={styles.addBtn} onPress={() => updateFormacao(prof.label, 'temGraduacao', true)}>
+                        <Text style={styles.addBtnT}>+ Tenho {config.graduacao}</Text>
                       </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {config.posGraduacoes.length > 0 && (
-                    <>
-                      <Text style={styles.subLabel}>🎓 Pós-graduação</Text>
-                      {(f.posGraduacoes || []).map((pos: any, idx: number) => (
-                        <View key={idx} style={styles.card}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                            <Text style={styles.cardTitle}>{pos.titulo}</Text>
-                            <TouchableOpacity onPress={() => removePos(prof.label, idx)}>
-                              <Text style={{ color: '#7A9E8E', fontSize: 16 }}>✕</Text>
-                            </TouchableOpacity>
-                          </View>
-                          <TextInput
-                            style={styles.input}
-                            placeholder="Nome da instituição"
-                            placeholderTextColor="#AECEBE"
-                            value={pos.instituicao}
-                            onChangeText={v => {
-                              const novas = [...(f.posGraduacoes || [])]
-                              novas[idx] = { ...novas[idx], instituicao: v }
-                              updateFormacao(prof.label, 'posGraduacoes', novas)
-                            }}
-                          />
-                          <TouchableOpacity style={styles.select} onPress={() => setModalAno({ prof: prof.label, campo: 'posAno', idx })}>
-                            <Text style={[styles.selectText, !pos.ano && { color: '#AECEBE' }]}>{pos.ano || 'Ano de conclusão'}</Text>
-                            <Text style={{ color: '#7A9E8E' }}>˅</Text>
+                    ) : (
+                      <View style={styles.card}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <Text style={styles.cardTitle}>{config.graduacao}</Text>
+                          <TouchableOpacity onPress={() => updateFormacao(prof.label, 'temGraduacao', false)}>
+                            <Text style={{ color: '#7A9E8E', fontSize: 16 }}>✕</Text>
                           </TouchableOpacity>
                         </View>
-                      ))}
-                      <TouchableOpacity style={styles.addBtn} onPress={() => setModalPos({ prof: prof.label, lista: config.posGraduacoes })}>
-                        <Text style={styles.addBtnT}>+ Adicionar pós-graduação</Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  <Text style={styles.subLabel}>📋 Curso Técnico</Text>
-                  {!f.temTecnico ? (
-                    <TouchableOpacity style={styles.addBtn} onPress={() => updateFormacao(prof.label, 'temTecnico', true)}>
-                      <Text style={styles.addBtnT}>+ Tenho {config.cursoTecnico}</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={styles.card}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <Text style={styles.cardTitle}>{config.cursoTecnico}</Text>
-                        <TouchableOpacity onPress={() => updateFormacao(prof.label, 'temTecnico', false)}>
-                          <Text style={{ color: '#7A9E8E', fontSize: 16 }}>✕</Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Nome da instituição"
+                          placeholderTextColor="#AECEBE"
+                          value={f.graduacaoInst || ''}
+                          onChangeText={v => updateFormacao(prof.label, 'graduacaoInst', v)}
+                        />
+                        <TouchableOpacity style={styles.select} onPress={() => setModalAno({ prof: prof.label, campo: 'graduacaoAno' })}>
+                          <Text style={[styles.selectText, !f.graduacaoAno && { color: '#AECEBE' }]}>{f.graduacaoAno || 'Ano de conclusão'}</Text>
+                          <Text style={{ color: '#7A9E8E' }}>˅</Text>
                         </TouchableOpacity>
                       </View>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Nome da instituição"
-                        placeholderTextColor="#AECEBE"
-                        value={f.tecnicoInst || ''}
-                        onChangeText={v => updateFormacao(prof.label, 'tecnicoInst', v)}
-                      />
-                      <TouchableOpacity style={styles.select} onPress={() => setModalAno({ prof: prof.label, campo: 'tecnicoAno' })}>
-                        <Text style={[styles.selectText, !f.tecnicoAno && { color: '#AECEBE' }]}>{f.tecnicoAno || 'Ano de conclusão'}</Text>
-                        <Text style={{ color: '#7A9E8E' }}>˅</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
+                    )}
 
-                  {config.cursosExtras.length > 0 && (
-                    <>
-                      <Text style={styles.subLabel}>➕ Cursos Extras</Text>
-                      {(f.cursosExtras || []).map((curso: any, idx: number) => (
-                        <View key={idx} style={styles.card}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                            <Text style={styles.cardTitle}>{curso.titulo}</Text>
-                            <TouchableOpacity onPress={() => {
-                              const novas = (f.cursosExtras || []).filter((_: any, i: number) => i !== idx)
-                              updateFormacao(prof.label, 'cursosExtras', novas)
-                            }}>
-                              <Text style={{ color: '#7A9E8E', fontSize: 16 }}>✕</Text>
+                    {config.posGraduacoes.length > 0 && (
+                      <>
+                        <Text style={styles.subLabel}>🎓 Pós-graduação</Text>
+                        {(f.posGraduacoes || []).map((pos: any, idx: number) => (
+                          <View key={idx} style={styles.card}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              <Text style={styles.cardTitle}>{pos.titulo}</Text>
+                              <TouchableOpacity onPress={() => removePos(prof.label, idx)}>
+                                <Text style={{ color: '#7A9E8E', fontSize: 16 }}>✕</Text>
+                              </TouchableOpacity>
+                            </View>
+                            <TextInput
+                              style={styles.input}
+                              placeholder="Nome da instituição"
+                              placeholderTextColor="#AECEBE"
+                              value={pos.instituicao}
+                              onChangeText={v => {
+                                const novas = [...(f.posGraduacoes || [])]
+                                novas[idx] = { ...novas[idx], instituicao: v }
+                                updateFormacao(prof.label, 'posGraduacoes', novas)
+                              }}
+                            />
+                            <TouchableOpacity style={styles.select} onPress={() => setModalAno({ prof: prof.label, campo: 'posAno', idx })}>
+                              <Text style={[styles.selectText, !pos.ano && { color: '#AECEBE' }]}>{pos.ano || 'Ano de conclusão'}</Text>
+                              <Text style={{ color: '#7A9E8E' }}>˅</Text>
                             </TouchableOpacity>
                           </View>
-                          <TextInput
-                            style={styles.input}
-                            placeholder="Nome da instituição"
-                            placeholderTextColor="#AECEBE"
-                            value={curso.instituicao}
-                            onChangeText={v => {
-                              const novas = [...(f.cursosExtras || [])]
-                              novas[idx] = { ...novas[idx], instituicao: v }
-                              updateFormacao(prof.label, 'cursosExtras', novas)
-                            }}
-                          />
-                        </View>
-                      ))}
-                      <TouchableOpacity style={styles.addBtn} onPress={() => setModalPos({ prof: prof.label, lista: config.cursosExtras })}>
-                        <Text style={styles.addBtnT}>+ Adicionar curso extra</Text>
+                        ))}
+                        <TouchableOpacity style={styles.addBtn} onPress={() => setModalPos({ prof: prof.label, lista: config.posGraduacoes })}>
+                          <Text style={styles.addBtnT}>+ Adicionar pós-graduação</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.subLabel}>📋 Curso Técnico</Text>
+                    {!f.temTecnico ? (
+                      <TouchableOpacity style={styles.addBtn} onPress={() => updateFormacao(prof.label, 'temTecnico', true)}>
+                        <Text style={styles.addBtnT}>+ Tenho {config.cursoTecnico}</Text>
                       </TouchableOpacity>
-                    </>
-                  )}
-                </>
-              )}
-            </View>
-          )
-        })}
-      </ScrollView>
+                    ) : (
+                      <View style={styles.card}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <Text style={styles.cardTitle}>{config.cursoTecnico}</Text>
+                          <TouchableOpacity onPress={() => updateFormacao(prof.label, 'temTecnico', false)}>
+                            <Text style={{ color: '#7A9E8E', fontSize: 16 }}>✕</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Nome da instituição"
+                          placeholderTextColor="#AECEBE"
+                          value={f.tecnicoInst || ''}
+                          onChangeText={v => updateFormacao(prof.label, 'tecnicoInst', v)}
+                        />
+                        <TouchableOpacity style={styles.select} onPress={() => setModalAno({ prof: prof.label, campo: 'tecnicoAno' })}>
+                          <Text style={[styles.selectText, !f.tecnicoAno && { color: '#AECEBE' }]}>{f.tecnicoAno || 'Ano de conclusão'}</Text>
+                          <Text style={{ color: '#7A9E8E' }}>˅</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
 
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.btn} onPress={() => {
-          setCadastroData({ academico: formacoes })
-          router.push('/(auth)/habilidades')
-        }}>
-          <Text style={styles.btnT}>Continuar →</Text>
-        </TouchableOpacity>
-      </View>
+                    {config.cursosExtras.length > 0 && (
+                      <>
+                        <Text style={styles.subLabel}>➕ Cursos Extras</Text>
+                        {(f.cursosExtras || []).map((curso: any, idx: number) => (
+                          <View key={idx} style={styles.card}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              <Text style={styles.cardTitle}>{curso.titulo}</Text>
+                              <TouchableOpacity onPress={() => {
+                                const novas = (f.cursosExtras || []).filter((_: any, i: number) => i !== idx)
+                                updateFormacao(prof.label, 'cursosExtras', novas)
+                              }}>
+                                <Text style={{ color: '#7A9E8E', fontSize: 16 }}>✕</Text>
+                              </TouchableOpacity>
+                            </View>
+                            <TextInput
+                              style={styles.input}
+                              placeholder="Nome da instituição"
+                              placeholderTextColor="#AECEBE"
+                              value={curso.instituicao}
+                              onChangeText={v => {
+                                const novas = [...(f.cursosExtras || [])]
+                                novas[idx] = { ...novas[idx], instituicao: v }
+                                updateFormacao(prof.label, 'cursosExtras', novas)
+                              }}
+                            />
+                          </View>
+                        ))}
+                        <TouchableOpacity style={styles.addBtn} onPress={() => setModalPos({ prof: prof.label, lista: config.cursosExtras })}>
+                          <Text style={styles.addBtnT}>+ Adicionar curso extra</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </>
+                )}
+              </View>
+            )
+          })}
 
-      <Modal visible={!!modalAno} animationType="slide" transparent onRequestClose={() => setModalAno(null)}>
+          <View style={styles.footer}>
+            <TouchableOpacity style={styles.btn} onPress={() => {
+              setCadastroData({ academico: formacoes })
+              router.push('/(auth)/habilidades')
+            }}>
+              <Text style={styles.btnT}>Continuar →</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </Animated.View>
+
+      <Modal visible={!!modalAno} animationType="fade" transparent onRequestClose={() => setModalAno(null)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
@@ -294,7 +317,7 @@ export default function Academico() {
         </View>
       </Modal>
 
-      <Modal visible={!!modalPos} animationType="slide" transparent onRequestClose={() => setModalPos(null)}>
+      <Modal visible={!!modalPos} animationType="fade" transparent onRequestClose={() => setModalPos(null)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
@@ -328,36 +351,37 @@ export default function Academico() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#EEF7F2' },
+  container: { flex: 1, backgroundColor: '#1c909b' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#1c909b' },
   back: { fontSize: 24, color: '#fff', fontWeight: '700' },
   logo: { fontSize: 22, fontFamily: 'Poppins-ExtraBold' },
   progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#1c909b' },
   bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' },
-  barOn: { backgroundColor: '#F5C800' },
-  scroll: { padding: 20, paddingBottom: 100 },
-  step: { fontSize: 11, fontWeight: '800', color: '#00A880', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
-  title: { fontSize: 28, fontWeight: '800', color: '#0A1C14', lineHeight: 34, marginBottom: 8 },
-  sub: { fontSize: 13, color: '#7A9E8E', marginBottom: 20 },
+  barOn: { backgroundColor: '#C49800' },
+  step: { fontSize: 11, fontWeight: '800', color: '#C49800', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
+  title: { fontSize: 34, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 8 },
+  sub: { fontSize: 13, color: 'rgba(255,255,255,0.65)', textAlign: 'center', marginBottom: 4 },
+  content: { flex: 1, backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
+  scroll: { padding: 20, paddingBottom: 32 },
   section: { marginBottom: 28 },
   sectionHeader: { borderLeftWidth: 3, paddingLeft: 10, marginBottom: 14 },
   sectionTitle: { fontSize: 14, fontWeight: '800' },
   subLabel: { fontSize: 11, fontWeight: '800', color: '#3A6550', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, marginTop: 4 },
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', marginBottom: 10 },
+  card: { backgroundColor: '#EEF7F2', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', marginBottom: 10 },
   cardTitle: { fontSize: 13, fontWeight: '800', color: '#0A1C14', marginBottom: 10 },
-  input: { backgroundColor: '#EEF7F2', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 10, padding: 12, fontSize: 14, color: '#0A1C14', marginBottom: 10 },
-  select: { backgroundColor: '#EEF7F2', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  input: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 10, padding: 12, fontSize: 14, color: '#0A1C14', marginBottom: 10 },
+  select: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   selectText: { fontSize: 14, color: '#0A1C14', flex: 1 },
   addBtn: { backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 2, borderColor: '#00A880', alignItems: 'center', borderStyle: 'dashed' },
   addBtnT: { fontSize: 13, fontWeight: '700', color: '#00A880' },
-  footer: { padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#D0E8DA' },
+  footer: { paddingTop: 8, paddingBottom: 16 },
   btn: { backgroundColor: '#007A6E', borderRadius: 14, padding: 16, alignItems: 'center' },
   btnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modal: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#D0E8DA' },
-  modalTitle: { fontSize: 16, fontWeight: '800', color: '#0A1C14', flex: 1, textAlign: 'center' },
-  modalClose: { fontSize: 20, color: '#7A9E8E' },
-  modalItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#EEF7F2' },
-  modalItemLabel: { fontSize: 15, color: '#0A1C14' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center' },
+  modal: { backgroundColor: 'rgba(196,152,0,0.70)', borderRadius: 20, width: '85%', maxHeight: '70%' },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
+  modalTitle: { fontSize: 16, fontWeight: '800', color: '#fff', flex: 1, textAlign: 'center' },
+  modalClose: { fontSize: 20, color: '#fff' },
+  modalItem: { padding: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)' },
+  modalItemLabel: { fontSize: 15, color: '#fff', textAlign: 'center' },
 })

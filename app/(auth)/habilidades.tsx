@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native'
+import { useState, useEffect, useRef } from 'react'
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Animated } from 'react-native'
 import { router } from 'expo-router'
 import { useAuthStore } from '../../stores/authStore'
 import api from '../../services/api'
@@ -86,6 +86,24 @@ export default function Habilidades() {
   const [loading, setLoading] = useState(false)
   const { login } = useAuthStore()
 
+  const titleOpacity = useRef(new Animated.Value(0)).current
+  const titleTranslateY = useRef(new Animated.Value(24)).current
+  const contentOpacity = useRef(new Animated.Value(0)).current
+  const contentTranslateY = useRef(new Animated.Value(20)).current
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(titleOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.spring(titleTranslateY, { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(contentOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.spring(contentTranslateY, { toValue: 0, tension: 55, friction: 12, useNativeDriver: true }),
+      ]),
+    ]).start()
+  }, [])
+
   // Monta categorias únicas de todas as profissões
   const categorias: any = {}
   todasProfissoes.forEach((p: any) => {
@@ -116,51 +134,54 @@ export default function Habilidades() {
           <Text style={styles.back}>←</Text>
         </TouchableOpacity>
         <Text style={styles.logo}>
-          <Text style={{ color: '#F5C800' }}>Go</Text>
+          <Text style={{ color: '#C49800' }}>Go</Text>
           <Text style={{ color: '#fff' }}>Denth</Text>
         </Text>
         <View style={{ width: 32 }} />
       </View>
 
       <View style={styles.progressRow}>
-        <View style={[styles.bar, styles.barOn]} />
-        <View style={[styles.bar, styles.barOn]} />
-        <View style={[styles.bar, styles.barOn]} />
-        <View style={[styles.bar, styles.barOn]} />
-        <View style={[styles.bar, styles.barOn]} />
-        <View style={[styles.bar, styles.barOn]} />
+        {[1,2,3,4,5,6].map(i => <View key={i} style={[styles.bar, styles.barOn]} />)}
+        <View style={styles.bar} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.step}>Passo 6 de 6</Text>
-        <Text style={styles.title}>Suas habilidades{'\n'}e competências</Text>
+      <Animated.View style={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, opacity: titleOpacity, transform: [{ translateY: titleTranslateY }] }}>
+        <Text style={styles.step}>Passo 6 de 7</Text>
+        <Text style={styles.title}>Suas habilidades</Text>
         <Text style={styles.sub}>Selecione o que você domina — aparecem no seu currículo</Text>
+      </Animated.View>
 
-        {Object.entries(categorias).map(([cat, items]: any) => (
-          <View key={cat} style={styles.section}>
-            <Text style={styles.sectionTitle}>{cat}</Text>
-            <View style={styles.chips}>
-              {items.map((hab: string) => {
-                const on = selecionadas.includes(hab)
-                return (
-                  <TouchableOpacity
-                    key={hab}
-                    style={[styles.chip, on && styles.chipOn]}
-                    onPress={() => toggle(hab)}
-                  >
-                    <Text style={[styles.chipT, on && styles.chipTOn]}>{hab}</Text>
-                    {on && <Text style={styles.chipCheck}>✓</Text>}
-                  </TouchableOpacity>
-                )
-              })}
+      <Animated.View style={{ flex: 1, opacity: contentOpacity, transform: [{ translateY: contentTranslateY }] }}>
+        <ScrollView contentContainerStyle={styles.scroll}>
+          {Object.entries(categorias).map(([cat, items]: any) => (
+            <View key={cat} style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionDot} />
+                <Text style={styles.sectionTitle}>{cat}</Text>
+              </View>
+              <View style={styles.chips}>
+                {items.map((hab: string) => {
+                  const on = selecionadas.includes(hab)
+                  return (
+                    <TouchableOpacity
+                      key={hab}
+                      style={[styles.chip, on && styles.chipOn]}
+                      onPress={() => toggle(hab)}
+                    >
+                      <Text style={[styles.chipT, on && styles.chipTOn]}>{hab}</Text>
+                      {on && <Text style={styles.chipCheck}>✓</Text>}
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
             </View>
-          </View>
-        ))}
+          ))}
 
-        {selecionadas.length > 0 && (
-          <Text style={styles.count}>{selecionadas.length} habilidade{selecionadas.length > 1 ? 's' : ''} selecionada{selecionadas.length > 1 ? 's' : ''}</Text>
-        )}
-      </ScrollView>
+          {selecionadas.length > 0 && (
+            <Text style={styles.count}>{selecionadas.length} habilidade{selecionadas.length > 1 ? 's' : ''} selecionada{selecionadas.length > 1 ? 's' : ''}</Text>
+          )}
+        </ScrollView>
+      </Animated.View>
 
       <View style={styles.footer}>
         <TouchableOpacity style={styles.btn} onPress={finalizar} disabled={loading}>
@@ -175,27 +196,29 @@ export default function Habilidades() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#EEF7F2' },
+  container: { flex: 1, backgroundColor: '#1c909b' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#1c909b' },
   back: { fontSize: 24, color: '#fff', fontWeight: '700' },
   logo: { fontSize: 22, fontFamily: 'Poppins-ExtraBold' },
-  progressRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#1c909b' },
+  progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#1c909b' },
   bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' },
-  barOn: { backgroundColor: '#F5C800' },
-  scroll: { padding: 20, paddingBottom: 100 },
-  step: { fontSize: 11, fontWeight: '800', color: '#00A880', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
-  title: { fontSize: 28, fontWeight: '800', color: '#0A1C14', lineHeight: 34, marginBottom: 8 },
-  sub: { fontSize: 13, color: '#7A9E8E', marginBottom: 20, lineHeight: 20 },
+  barOn: { backgroundColor: '#C49800' },
+  scroll: { paddingHorizontal: 20, paddingBottom: 100 },
+  step: { fontSize: 11, fontWeight: '800', color: '#C49800', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
+  title: { fontSize: 34, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 8 },
+  sub: { fontSize: 13, color: 'rgba(255,255,255,0.65)', textAlign: 'center', marginBottom: 4 },
   section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 11, fontWeight: '800', color: '#00A880', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  sectionDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#C49800' },
+  sectionTitle: { fontSize: 14, fontWeight: '800', color: '#fff', flex: 1 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#D0E8DA', borderRadius: 100, paddingHorizontal: 14, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  chipOn: { backgroundColor: '#007A6E', borderColor: '#007A6E' },
-  chipT: { fontSize: 12, fontWeight: '600', color: '#3A6550' },
-  chipTOn: { color: '#fff' },
+  chip: { backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)', borderRadius: 100, paddingHorizontal: 14, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  chipOn: { backgroundColor: 'rgba(196,152,0,0.85)', borderColor: '#C49800' },
+  chipT: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.85)' },
+  chipTOn: { color: '#fff', fontWeight: '800' },
   chipCheck: { color: '#fff', fontSize: 10, fontWeight: '900' },
-  count: { marginTop: 16, fontSize: 13, color: '#00A880', fontWeight: '700', textAlign: 'center' },
-  footer: { padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#D0E8DA' },
+  count: { marginTop: 16, fontSize: 13, color: '#C49800', fontWeight: '700', textAlign: 'center' },
+  footer: { padding: 16, backgroundColor: '#1c909b' },
   btn: { backgroundColor: '#007A6E', borderRadius: 14, padding: 16, alignItems: 'center' },
   btnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
 })
