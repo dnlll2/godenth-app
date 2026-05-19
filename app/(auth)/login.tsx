@@ -29,6 +29,7 @@ export default function Login() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <View style={styles.wrap}>
         <View style={styles.header}>
           <Text style={styles.logo}><Text style={styles.go}>Go</Text><Text style={styles.denth}>Denth</Text></Text>
           <Text style={styles.tagline}>Network profissional da odontologia</Text>
@@ -70,6 +71,7 @@ export default function Login() {
             <Text style={styles.linkText}>Não tem conta? <Text style={{ color: Colors.primary, fontWeight: '800' }}>Criar conta grátis</Text></Text>
           </TouchableOpacity>
         </View>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   )
@@ -78,6 +80,7 @@ export default function Login() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#1c909b' },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+  wrap: { width: '100%', maxWidth: 420, alignSelf: 'center', ...Platform.select({ web: { marginHorizontal: 'auto' } }) },
   header: { alignItems: 'center', marginBottom: 40 },
   logo: { fontSize: 48, letterSpacing: -2 },
   go: { color: '#C49800', fontFamily: 'Poppins-ExtraBold' },
