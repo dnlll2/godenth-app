@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Animated, ScrollView, Modal, FlatList } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Animated, ScrollView, Modal, FlatList, useWindowDimensions } from 'react-native'
 import { router } from 'expo-router'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -12,8 +12,13 @@ const CATEGORIAS = [
   { key: 'formacao', label: 'Formação', cor: '#0891B2', profissoes: ['Estudante de Odontologia','Estudante de Prótese Dentária','Estudante de Administração','Estudante de Marketing'] },
 ]
 
+// Espaço ocupado pela pergunta + subtítulo na posição final (~2 linhas título + subtítulo + gap)
+const QUESTION_BLOCK_HEIGHT = 170
+
 export default function Cadastro() {
+  const { height } = useWindowDimensions()
   const { setCadastroData } = useAuthStore()
+
   const [showSplash, setShowSplash] = useState(true)
   const [profissao, setProfissao] = useState<any>(null)
   const [extras, setExtras] = useState<any[]>([])
@@ -21,7 +26,7 @@ export default function Cadastro() {
   const [catSelecionada, setCatSelecionada] = useState<any>(null)
   const [fase, setFase] = useState<'principal' | 'mais_cargos'>('principal')
 
-  // Splash
+  // ── Splash ──
   const splashFade = useRef(new Animated.Value(1)).current
   const logoScale = useRef(new Animated.Value(0.5)).current
   const logoOpacity = useRef(new Animated.Value(0)).current
@@ -29,19 +34,21 @@ export default function Cadastro() {
   const pageAnim = useRef(new Animated.Value(0)).current
   const faseAnim = useRef(new Animated.Value(1)).current
 
-  // Fase 1: overlay com pergunta centralizada
-  const overlayOpacity = useRef(new Animated.Value(1)).current
-  const overlayQuestionOpacity = useRef(new Animated.Value(0)).current
-  const overlayQuestionTranslateY = useRef(new Animated.Value(0)).current
+  // ── Pergunta: fade in único (opacity só vai 0→1, nunca desce) ──
+  const questionOpacity = useRef(new Animated.Value(0)).current
+  // Começa deslocada para o centro visual da tela, vai para 0 (posição final no topo)
+  const questionTranslateY = useRef(new Animated.Value(Math.round(height / 2 - 160))).current
+  const questionSubOpacity = useRef(new Animated.Value(0)).current
 
-  // Fase 2: header + conteúdo real + itens em cascata
+  // ── Header + footer: somem durante fase 1 ──
   const contentOpacity = useRef(new Animated.Value(0)).current
-  const realQuestionOpacity = useRef(new Animated.Value(0)).current
+
+  // ── Itens em cascata ──
   const itemAnims = useRef(
     CATEGORIAS.map(() => ({ opacity: new Animated.Value(0), translateY: new Animated.Value(30) }))
   ).current
 
-  // Mais cargos
+  // ── Mais cargos ──
   const maisQuestionOpacity = useRef(new Animated.Value(0)).current
   const maisListOpacity = useRef(new Animated.Value(0)).current
   const maisListTranslateY = useRef(new Animated.Value(60)).current
@@ -58,16 +65,15 @@ export default function Cadastro() {
     setTimeout(() => {
       Animated.timing(splashFade, { toValue: 0, duration: 700, useNativeDriver: true }).start(() => {
         setShowSplash(false)
-        // Página aparece
         Animated.timing(pageAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start(() => {
-          // Fase 1: pergunta faz fade in no centro
-          Animated.timing(overlayQuestionOpacity, { toValue: 1, duration: 900, useNativeDriver: true }).start(() => {
-            // Fase 2: overlay some enquanto conteúdo e itens aparecem
+          // Fase 1: pergunta aparece com fade in no centro (opacity 0→1, translateY não muda)
+          Animated.timing(questionOpacity, { toValue: 1, duration: 900, useNativeDriver: true }).start(() => {
+            // Fase 2: pergunta sobe (translateY→0), subtítulo + header + itens aparecem
+            // opacity da pergunta NÃO é animada aqui — fica em 1 para sempre
             Animated.parallel([
-              Animated.timing(overlayQuestionTranslateY, { toValue: -80, duration: 500, useNativeDriver: true }),
-              Animated.timing(overlayOpacity, { toValue: 0, duration: 500, useNativeDriver: true }),
+              Animated.spring(questionTranslateY, { toValue: 0, tension: 60, friction: 14, useNativeDriver: true }),
+              Animated.timing(questionSubOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
               Animated.timing(contentOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
-              Animated.timing(realQuestionOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
               Animated.stagger(150, itemAnims.map(anim =>
                 Animated.parallel([
                   Animated.timing(anim.opacity, { toValue: 1, duration: 400, useNativeDriver: true }),
@@ -139,7 +145,7 @@ export default function Cadastro() {
   return (
     <Animated.View style={[{ flex: 1, backgroundColor: '#1c909b' }, { opacity: pageAnim }]}>
 
-      {/* Header + barra de progresso (aparecem com a lista) */}
+      {/* Header + progresso — invisíveis durante fase 1 */}
       <Animated.View style={{ opacity: contentOpacity }}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => {
@@ -168,54 +174,70 @@ export default function Cadastro() {
         </View>
       </Animated.View>
 
-      {/* Conteúdo principal */}
+      {/* Conteúdo com transição entre fases */}
       <Animated.View style={{ flex: 1, opacity: faseAnim }}>
         {fase === 'principal' ? (
-          <ScrollView contentContainerStyle={styles.scrollPrincipal} keyboardShouldPersistTaps="handled">
-            <Animated.Text style={[styles.questionTitle, { opacity: realQuestionOpacity }]}>
-              Qual é a sua{'\n'}profissão principal?
-            </Animated.Text>
-            <Animated.Text style={[styles.questionSub, { opacity: realQuestionOpacity }]}>
-              Selecione a profissão que melhor te define
-            </Animated.Text>
+          <View style={{ flex: 1 }}>
 
-            {CATEGORIAS.map((cat, i) => {
-              const selected = profissao?.categoria === cat.label
-              return (
-                <Animated.View
-                  key={cat.key}
-                  style={{ opacity: itemAnims[i].opacity, transform: [{ translateY: itemAnims[i].translateY }] }}
-                >
-                  <TouchableOpacity
-                    style={[styles.catRow, selected && styles.catRowSelected]}
-                    onPress={() => { setCatSelecionada(cat); setModalVisible(true) }}
-                    activeOpacity={0.7}
+            {/* Pergunta: absolutamente posicionada, translateY leva do centro ao topo */}
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.questionAbs, {
+                opacity: questionOpacity,
+                transform: [{ translateY: questionTranslateY }],
+              }]}
+            >
+              <Text style={styles.questionTitle}>
+                Qual é a sua{'\n'}profissão principal?
+              </Text>
+              <Animated.Text style={[styles.questionSub, { opacity: questionSubOpacity }]}>
+                Selecione a profissão que melhor te define
+              </Animated.Text>
+            </Animated.View>
+
+            {/* Lista: paddingTop reserva espaço para a pergunta no topo */}
+            <ScrollView
+              contentContainerStyle={styles.scrollList}
+              keyboardShouldPersistTaps="handled"
+            >
+              {CATEGORIAS.map((cat, i) => {
+                const selected = profissao?.categoria === cat.label
+                return (
+                  <Animated.View
+                    key={cat.key}
+                    style={{ opacity: itemAnims[i].opacity, transform: [{ translateY: itemAnims[i].translateY }] }}
                   >
-                    <View style={[styles.catDotSmall, { backgroundColor: cat.cor }]} />
-                    <Text style={[styles.catRowLabel, selected && styles.catRowLabelSelected]}>
-                      {cat.label}
-                    </Text>
-                    {selected
-                      ? <Text style={styles.catRowCheck}>✓</Text>
-                      : <Text style={styles.catRowArrow}>›</Text>
-                    }
-                  </TouchableOpacity>
-                </Animated.View>
-              )
-            })}
+                    <TouchableOpacity
+                      style={[styles.catRow, selected && styles.catRowSelected]}
+                      onPress={() => { setCatSelecionada(cat); setModalVisible(true) }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.catDotSmall, { backgroundColor: cat.cor }]} />
+                      <Text style={[styles.catRowLabel, selected && styles.catRowLabelSelected]}>
+                        {cat.label}
+                      </Text>
+                      {selected
+                        ? <Text style={styles.catRowCheck}>✓</Text>
+                        : <Text style={styles.catRowArrow}>›</Text>
+                      }
+                    </TouchableOpacity>
+                  </Animated.View>
+                )
+              })}
 
-            {profissao && (
-              <View style={styles.selectedBadge}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.selectedBadgeProfissao}>{profissao.label}</Text>
-                  <Text style={styles.selectedBadgeCat}>{profissao.categoria}</Text>
+              {profissao && (
+                <View style={styles.selectedBadge}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.selectedBadgeProfissao}>{profissao.label}</Text>
+                    <Text style={styles.selectedBadgeCat}>{profissao.categoria}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setProfissao(null)}>
+                    <Text style={styles.selectedBadgeRemove}>✕</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => setProfissao(null)}>
-                  <Text style={styles.selectedBadgeRemove}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </ScrollView>
+              )}
+            </ScrollView>
+          </View>
         ) : (
           <ScrollView contentContainerStyle={styles.scrollPrincipal} keyboardShouldPersistTaps="handled">
             <Animated.Text style={[styles.questionTitle, { opacity: maisQuestionOpacity }]}>
@@ -251,23 +273,24 @@ export default function Cadastro() {
         )}
       </Animated.View>
 
+      {/* Footer — invisível durante fase 1 */}
       <Animated.View style={{ opacity: contentOpacity }}>
-      <View style={styles.footerTeal}>
-        {fase === 'principal' ? (
-          <TouchableOpacity style={[styles.btn, !profissao && styles.btnOff]} disabled={!profissao} onPress={irParaMaisCargos}>
-            <Text style={styles.btnT}>{profissao ? 'Continuar →' : 'Selecione sua profissão'}</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={{ gap: 10 }}>
-            <TouchableOpacity style={[styles.btn, { backgroundColor: '#fff', borderWidth: 2, borderColor: '#1c909b' }]} onPress={() => setModalVisible(true)}>
-              <Text style={[styles.btnT, { color: '#1c909b' }]}>+ Sim, adicionar cargo</Text>
+        <View style={styles.footerTeal}>
+          {fase === 'principal' ? (
+            <TouchableOpacity style={[styles.btn, !profissao && styles.btnOff]} disabled={!profissao} onPress={irParaMaisCargos}>
+              <Text style={styles.btnT}>{profissao ? 'Continuar →' : 'Selecione sua profissão'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.btn} onPress={continuar}>
-              <Text style={styles.btnT}>Não, continuar →</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+          ) : (
+            <View style={{ gap: 10 }}>
+              <TouchableOpacity style={[styles.btn, { backgroundColor: '#fff', borderWidth: 2, borderColor: '#1c909b' }]} onPress={() => setModalVisible(true)}>
+                <Text style={[styles.btnT, { color: '#1c909b' }]}>+ Sim, adicionar cargo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.btn} onPress={continuar}>
+                <Text style={styles.btnT}>Não, continuar →</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </Animated.View>
 
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => { setModalVisible(false); setCatSelecionada(null) }}>
@@ -305,26 +328,6 @@ export default function Cadastro() {
           </View>
         </View>
       </Modal>
-
-      {/* Overlay fase 1: último filho → renderiza acima de tudo */}
-      <Animated.View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFill, {
-          backgroundColor: '#1c909b',
-          justifyContent: 'center',
-          alignItems: 'center',
-          opacity: overlayOpacity,
-        }]}
-      >
-        <Animated.Text style={[styles.questionTitle, {
-          textAlign: 'center',
-          opacity: overlayQuestionOpacity,
-          transform: [{ translateY: overlayQuestionTranslateY }],
-        }]}>
-          Qual é a sua{'\n'}profissão principal?
-        </Animated.Text>
-      </Animated.View>
-
     </Animated.View>
   )
 }
@@ -344,10 +347,24 @@ const styles = StyleSheet.create({
   bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' },
   barOn: { backgroundColor: '#C49800' },
 
-  // ── Conteúdo ──
-  scrollPrincipal: { paddingHorizontal: 24, paddingTop: 36, paddingBottom: 120 },
+  // ── Pergunta: posição absoluta, translateY vai do centro ao topo ──
+  questionAbs: {
+    position: 'absolute',
+    top: 36,
+    left: 24,
+    right: 24,
+    zIndex: 5,
+  },
   questionTitle: { fontSize: 34, fontWeight: '800', color: '#fff', lineHeight: 42, marginBottom: 10 },
-  questionSub: { fontSize: 14, color: 'rgba(255,255,255,0.65)', marginBottom: 32 },
+  questionSub: { fontSize: 14, color: 'rgba(255,255,255,0.65)', marginBottom: 0 },
+
+  // ── Lista: paddingTop reserva espaço para a pergunta fixada no topo ──
+  scrollList: { paddingTop: QUESTION_BLOCK_HEIGHT, paddingHorizontal: 24, paddingBottom: 20 },
+
+  // ── Mais cargos ──
+  scrollPrincipal: { paddingHorizontal: 24, paddingTop: 36, paddingBottom: 120 },
+
+  // ── Itens ──
   catRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 14,
@@ -361,7 +378,7 @@ const styles = StyleSheet.create({
   catRowArrow: { fontSize: 20, color: 'rgba(255,255,255,0.4)' },
   catRowCheck: { fontSize: 16, color: '#C49800', fontWeight: '900' },
   selectedBadge: {
-    marginTop: 20, flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: 'rgba(196,152,0,0.15)', borderRadius: 14,
     padding: 16, borderWidth: 1.5, borderColor: '#C49800',
   },
