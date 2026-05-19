@@ -27,6 +27,9 @@ export default function Cadastro() {
   const taglineOpacity = useRef(new Animated.Value(0)).current
   const pageAnim = useRef(new Animated.Value(0)).current
   const faseAnim = useRef(new Animated.Value(1)).current
+  const questionOpacity = useRef(new Animated.Value(0)).current
+  const listOpacity = useRef(new Animated.Value(0)).current
+  const listTranslateY = useRef(new Animated.Value(60)).current
 
   useEffect(() => {
     Animated.sequence([
@@ -40,7 +43,15 @@ export default function Cadastro() {
     setTimeout(() => {
       Animated.timing(splashFade, { toValue: 0, duration: 700, useNativeDriver: true }).start(() => {
         setShowSplash(false)
-        Animated.timing(pageAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start()
+        Animated.timing(pageAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start(() => {
+          Animated.sequence([
+            Animated.timing(questionOpacity, { toValue: 1, duration: 900, useNativeDriver: true }),
+            Animated.parallel([
+              Animated.timing(listOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+              Animated.spring(listTranslateY, { toValue: 0, tension: 55, friction: 10, useNativeDriver: true }),
+            ]),
+          ]).start()
+        })
       })
     }, 3500)
   }, [])
@@ -117,43 +128,55 @@ export default function Cadastro() {
         {[3,4,5,6,7].map(i => <View key={i} style={styles.bar} />)}
       </View>
 
-      <View style={styles.content}>
       <Animated.View style={{ flex: 1, opacity: faseAnim }}>
-        <ScrollView contentContainerStyle={styles.scroll}>
-          <Text style={styles.step}>Passo 2 de 7</Text>
+        {fase === 'principal' ? (
+          <ScrollView contentContainerStyle={styles.scrollPrincipal} keyboardShouldPersistTaps="handled">
+            <Animated.Text style={[styles.questionTitle, { opacity: questionOpacity }]}>
+              Qual é a sua{'\n'}profissão principal?
+            </Animated.Text>
+            <Animated.Text style={[styles.questionSub, { opacity: questionOpacity }]}>
+              Selecione a profissão que melhor te define
+            </Animated.Text>
 
-          {fase === 'principal' ? (
-            <>
-              <Text style={styles.title}>Qual é a sua{'\n'}profissão principal?</Text>
-              <Text style={styles.sub}>Selecione a profissão que melhor te define</Text>
-
-              <TouchableOpacity style={styles.dropdown} onPress={() => setModalVisible(true)}>
-                {profissao ? (
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.dropdownCat, { color: profissao.cor }]}>{profissao.categoria}</Text>
-                    <Text style={styles.dropdownSelected}>{profissao.label}</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.dropdownPlaceholder}>Toque para selecionar...</Text>
-                )}
-                <Text style={styles.dropdownArrow}>˅</Text>
-              </TouchableOpacity>
-
-              {profissao && (
-                <View style={[styles.selectedCard, { borderColor: profissao.cor }]}>
-                  <View style={[styles.selectedDot, { backgroundColor: profissao.cor }]} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.selectedLabel}>{profissao.label}</Text>
-                    <Text style={[styles.selectedCat, { color: profissao.cor }]}>{profissao.categoria}</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => setProfissao(null)}>
-                    <Text style={styles.selectedRemove}>✕</Text>
+            <Animated.View style={{ opacity: listOpacity, transform: [{ translateY: listTranslateY }] }}>
+              {CATEGORIAS.map(cat => {
+                const selected = profissao?.categoria === cat.label
+                return (
+                  <TouchableOpacity
+                    key={cat.key}
+                    style={[styles.catRow, selected && styles.catRowSelected]}
+                    onPress={() => { setCatSelecionada(cat); setModalVisible(true) }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.catDotSmall, { backgroundColor: cat.cor }]} />
+                    <Text style={[styles.catRowLabel, selected && styles.catRowLabelSelected]}>
+                      {cat.label}
+                    </Text>
+                    {selected
+                      ? <Text style={styles.catRowCheck}>✓</Text>
+                      : <Text style={styles.catRowArrow}>›</Text>
+                    }
                   </TouchableOpacity>
+                )
+              })}
+            </Animated.View>
+
+            {profissao && (
+              <Animated.View style={[styles.selectedBadge, { opacity: listOpacity }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.selectedBadgeProfissao}>{profissao.label}</Text>
+                  <Text style={styles.selectedBadgeCat}>{profissao.categoria}</Text>
                 </View>
-              )}
-            </>
-          ) : (
-            <>
+                <TouchableOpacity onPress={() => setProfissao(null)}>
+                  <Text style={styles.selectedBadgeRemove}>✕</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+          </ScrollView>
+        ) : (
+          <View style={styles.content}>
+            <ScrollView contentContainerStyle={styles.scroll}>
+              <Text style={styles.step}>Passo 2 de 7</Text>
               <Text style={styles.title}>Você tem mais{'\n'}algum cargo?</Text>
               <Text style={styles.sub}>Ex: dentista e gerente, representante e social media...</Text>
 
@@ -173,12 +196,12 @@ export default function Cadastro() {
               <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
                 <Text style={styles.addBtnT}>+ Adicionar cargo</Text>
               </TouchableOpacity>
-            </>
-          )}
-        </ScrollView>
+            </ScrollView>
+          </View>
+        )}
       </Animated.View>
 
-      <View style={styles.footer}>
+      <View style={fase === 'principal' ? styles.footerTeal : styles.footer}>
         {fase === 'principal' ? (
           <TouchableOpacity style={[styles.btn, !profissao && styles.btnOff]} disabled={!profissao} onPress={irParaMaisCargos}>
             <Text style={styles.btnT}>{profissao ? 'Continuar →' : 'Selecione sua profissão'}</Text>
@@ -193,7 +216,6 @@ export default function Cadastro() {
             </TouchableOpacity>
           </View>
         )}
-      </View>
       </View>
 
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => { setModalVisible(false); setCatSelecionada(null) }}>
@@ -236,25 +258,51 @@ export default function Cadastro() {
 }
 
 const styles = StyleSheet.create({
+  // ── Splash ──
   splash: { flex: 1, backgroundColor: '#1c909b', justifyContent: 'center', alignItems: 'center' },
   splashLogo: { fontSize: 64, fontFamily: 'Poppins-ExtraBold', letterSpacing: 4 },
   splashLine: { width: 50, height: 2, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 1, marginVertical: 12 },
   splashTagline: { fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '600', letterSpacing: 4 },
+
+  // ── Header / barra ──
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#1c909b' },
   back: { fontSize: 24, color: '#fff', fontWeight: '700' },
   logo: { fontSize: 22, fontFamily: 'Poppins-ExtraBold' },
   progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#1c909b' },
   bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' },
   barOn: { backgroundColor: '#C49800' },
+
+  // ── Pergunta principal (fade in + slide up) ──
+  scrollPrincipal: { paddingHorizontal: 24, paddingTop: 36, paddingBottom: 120 },
+  questionTitle: { fontSize: 34, fontWeight: '800', color: '#fff', lineHeight: 42, marginBottom: 10 },
+  questionSub: { fontSize: 14, color: 'rgba(255,255,255,0.65)', marginBottom: 32 },
+  catRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 14,
+    padding: 16, marginBottom: 10,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)',
+  },
+  catRowSelected: { borderColor: '#C49800', backgroundColor: 'rgba(196,152,0,0.12)' },
+  catDotSmall: { width: 11, height: 11, borderRadius: 6 },
+  catRowLabel: { flex: 1, fontSize: 15, color: '#fff', fontWeight: '600' },
+  catRowLabelSelected: { color: '#C49800', fontWeight: '800' },
+  catRowArrow: { fontSize: 20, color: 'rgba(255,255,255,0.4)' },
+  catRowCheck: { fontSize: 16, color: '#C49800', fontWeight: '900' },
+  selectedBadge: {
+    marginTop: 20, flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: 'rgba(196,152,0,0.15)', borderRadius: 14,
+    padding: 16, borderWidth: 1.5, borderColor: '#C49800',
+  },
+  selectedBadgeProfissao: { fontSize: 15, fontWeight: '800', color: '#C49800' },
+  selectedBadgeCat: { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  selectedBadgeRemove: { fontSize: 18, color: 'rgba(255,255,255,0.5)', padding: 4 },
+
+  // ── Mais cargos (card branco) ──
+  content: { flex: 1, backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
   scroll: { padding: 20, paddingBottom: 100 },
   step: { fontSize: 11, fontWeight: '800', color: '#00A880', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '800', color: '#0A1C14', lineHeight: 34, marginBottom: 8 },
   sub: { fontSize: 13, color: '#7A9E8E', marginBottom: 24 },
-  dropdown: { backgroundColor: '#fff', borderRadius: 14, padding: 16, borderWidth: 2, borderColor: '#D0E8DA', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  dropdownPlaceholder: { fontSize: 15, color: '#AECEBE', flex: 1 },
-  dropdownSelected: { fontSize: 16, fontWeight: '800', color: '#0A1C14' },
-  dropdownCat: { fontSize: 11, fontWeight: '700', marginBottom: 2 },
-  dropdownArrow: { fontSize: 22, color: '#7A9E8E' },
   selectedCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 2, flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 },
   selectedDot: { width: 10, height: 10, borderRadius: 5 },
   selectedLabel: { fontSize: 14, fontWeight: '800', color: '#0A1C14' },
@@ -262,11 +310,15 @@ const styles = StyleSheet.create({
   selectedRemove: { fontSize: 16, color: '#7A9E8E', padding: 4 },
   addBtn: { backgroundColor: '#fff', borderRadius: 14, padding: 16, borderWidth: 2, borderColor: '#D0E8DA', borderStyle: 'dashed', alignItems: 'center', marginTop: 12 },
   addBtnT: { fontSize: 14, fontWeight: '700', color: '#00A880' },
-  content: { flex: 1, backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
-  footer: { padding: 16, borderTopWidth: 1, borderTopColor: '#D0E8DA' },
+
+  // ── Footer ──
+  footerTeal: { padding: 16 },
+  footer: { padding: 16, borderTopWidth: 1, borderTopColor: '#D0E8DA', backgroundColor: '#fff' },
   btn: { backgroundColor: '#007A6E', borderRadius: 14, padding: 16, alignItems: 'center' },
-  btnOff: { backgroundColor: '#AECEBE' },
+  btnOff: { backgroundColor: 'rgba(255,255,255,0.25)' },
   btnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
+
+  // ── Modal ──
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modal: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#D0E8DA' },
