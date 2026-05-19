@@ -97,13 +97,13 @@ export default function EsqueciSenha() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A1C14' },
+  container: { flex: 1, backgroundColor: '#1c909b' },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
 
   logoWrap: { alignItems: 'center', marginBottom: 32 },
-  logo: { fontSize: 42, fontFamily: 'Poppins-ExtraBold', letterSpacing: -2 },
-  go: { color: Colors.gold },
-  denth: { color: Colors.primary },
+  logo: { fontSize: 42, letterSpacing: -2 },
+  go: { color: '#C49800', fontFamily: 'Poppins-ExtraBold' },
+  denth: { color: '#FFFFFF', fontFamily: 'Poppins-ExtraBold' },
 
   card: { backgroundColor: Colors.white, borderRadius: 20, padding: 24 },
 
