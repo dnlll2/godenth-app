@@ -355,8 +355,8 @@ const styles = StyleSheet.create({
     right: 24,
     zIndex: 5,
   },
-  questionTitle: { fontSize: 34, fontWeight: '800', color: '#fff', lineHeight: 42, marginBottom: 10 },
-  questionSub: { fontSize: 14, color: 'rgba(255,255,255,0.65)', marginBottom: 0 },
+  questionTitle: { fontSize: 34, fontWeight: '800', color: '#fff', lineHeight: 42, marginBottom: 10, textAlign: 'center' },
+  questionSub: { fontSize: 14, color: 'rgba(255,255,255,0.65)', marginBottom: 0, textAlign: 'center' },
 
   // ── Lista: paddingTop reserva espaço para a pergunta fixada no topo ──
   scrollList: { paddingTop: QUESTION_BLOCK_HEIGHT, paddingHorizontal: 24, paddingBottom: 20 },
