@@ -216,10 +216,7 @@ export default function Cadastro() {
                       <Text style={[styles.catRowLabel, selected && styles.catRowLabelSelected]}>
                         {cat.label}
                       </Text>
-                      {selected
-                        ? <Text style={styles.catRowCheck}>✓</Text>
-                        : <Text style={styles.catRowArrow}>›</Text>
-                      }
+                      {selected && <Text style={styles.catRowCheck}>✓</Text>}
                     </TouchableOpacity>
                   </Animated.View>
                 )
@@ -366,16 +363,15 @@ const styles = StyleSheet.create({
 
   // ── Itens ──
   catRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14,
     backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 14,
     padding: 16, marginBottom: 10,
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)',
   },
   catRowSelected: { borderColor: '#C49800', backgroundColor: 'rgba(196,152,0,0.12)' },
   catDotSmall: { width: 11, height: 11, borderRadius: 6 },
-  catRowLabel: { flex: 1, fontSize: 15, color: '#fff', fontWeight: '600' },
+  catRowLabel: { fontSize: 15, color: '#fff', fontWeight: '600', textAlign: 'center' },
   catRowLabelSelected: { color: '#C49800', fontWeight: '800' },
-  catRowArrow: { fontSize: 20, color: 'rgba(255,255,255,0.4)' },
   catRowCheck: { fontSize: 16, color: '#C49800', fontWeight: '900' },
   selectedBadge: {
     marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 12,
