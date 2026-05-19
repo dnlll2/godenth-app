@@ -139,26 +139,6 @@ export default function Cadastro() {
   return (
     <Animated.View style={[{ flex: 1, backgroundColor: '#1c909b' }, { opacity: pageAnim }]}>
 
-      {/* Overlay fase 1: pergunta centralizada na tela inteira */}
-      <Animated.View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFill, {
-          backgroundColor: '#1c909b',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 10,
-          opacity: overlayOpacity,
-        }]}
-      >
-        <Animated.Text style={[styles.questionTitle, {
-          textAlign: 'center',
-          opacity: overlayQuestionOpacity,
-          transform: [{ translateY: overlayQuestionTranslateY }],
-        }]}>
-          Qual é a sua{'\n'}profissão principal?
-        </Animated.Text>
-      </Animated.View>
-
       {/* Header + barra de progresso (aparecem com a lista) */}
       <Animated.View style={{ opacity: contentOpacity }}>
         <View style={styles.header}>
@@ -271,6 +251,7 @@ export default function Cadastro() {
         )}
       </Animated.View>
 
+      <Animated.View style={{ opacity: contentOpacity }}>
       <View style={styles.footerTeal}>
         {fase === 'principal' ? (
           <TouchableOpacity style={[styles.btn, !profissao && styles.btnOff]} disabled={!profissao} onPress={irParaMaisCargos}>
@@ -287,6 +268,7 @@ export default function Cadastro() {
           </View>
         )}
       </View>
+      </Animated.View>
 
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => { setModalVisible(false); setCatSelecionada(null) }}>
         <View style={styles.modalOverlay}>
@@ -323,6 +305,26 @@ export default function Cadastro() {
           </View>
         </View>
       </Modal>
+
+      {/* Overlay fase 1: último filho → renderiza acima de tudo */}
+      <Animated.View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, {
+          backgroundColor: '#1c909b',
+          justifyContent: 'center',
+          alignItems: 'center',
+          opacity: overlayOpacity,
+        }]}
+      >
+        <Animated.Text style={[styles.questionTitle, {
+          textAlign: 'center',
+          opacity: overlayQuestionOpacity,
+          transform: [{ translateY: overlayQuestionTranslateY }],
+        }]}>
+          Qual é a sua{'\n'}profissão principal?
+        </Animated.Text>
+      </Animated.View>
+
     </Animated.View>
   )
 }
