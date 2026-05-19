@@ -76,7 +76,7 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A1C14' },
+  container: { flex: 1, backgroundColor: '#1c909b' },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   header: { alignItems: 'center', marginBottom: 40 },
   logo: { fontSize: 48, fontFamily: 'Poppins-ExtraBold', letterSpacing: -2 },
