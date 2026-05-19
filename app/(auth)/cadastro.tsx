@@ -21,15 +21,27 @@ export default function Cadastro() {
   const [catSelecionada, setCatSelecionada] = useState<any>(null)
   const [fase, setFase] = useState<'principal' | 'mais_cargos'>('principal')
 
+  // Splash
   const splashFade = useRef(new Animated.Value(1)).current
   const logoScale = useRef(new Animated.Value(0.5)).current
   const logoOpacity = useRef(new Animated.Value(0)).current
   const taglineOpacity = useRef(new Animated.Value(0)).current
   const pageAnim = useRef(new Animated.Value(0)).current
   const faseAnim = useRef(new Animated.Value(1)).current
-  const questionOpacity = useRef(new Animated.Value(0)).current
-  const listOpacity = useRef(new Animated.Value(0)).current
-  const listTranslateY = useRef(new Animated.Value(60)).current
+
+  // Fase 1: overlay com pergunta centralizada
+  const overlayOpacity = useRef(new Animated.Value(1)).current
+  const overlayQuestionOpacity = useRef(new Animated.Value(0)).current
+  const overlayQuestionTranslateY = useRef(new Animated.Value(0)).current
+
+  // Fase 2: header + conteúdo real + itens em cascata
+  const contentOpacity = useRef(new Animated.Value(0)).current
+  const realQuestionOpacity = useRef(new Animated.Value(0)).current
+  const itemAnims = useRef(
+    CATEGORIAS.map(() => ({ opacity: new Animated.Value(0), translateY: new Animated.Value(30) }))
+  ).current
+
+  // Mais cargos
   const maisQuestionOpacity = useRef(new Animated.Value(0)).current
   const maisListOpacity = useRef(new Animated.Value(0)).current
   const maisListTranslateY = useRef(new Animated.Value(60)).current
@@ -46,14 +58,24 @@ export default function Cadastro() {
     setTimeout(() => {
       Animated.timing(splashFade, { toValue: 0, duration: 700, useNativeDriver: true }).start(() => {
         setShowSplash(false)
+        // Página aparece
         Animated.timing(pageAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start(() => {
-          Animated.sequence([
-            Animated.timing(questionOpacity, { toValue: 1, duration: 900, useNativeDriver: true }),
+          // Fase 1: pergunta faz fade in no centro
+          Animated.timing(overlayQuestionOpacity, { toValue: 1, duration: 900, useNativeDriver: true }).start(() => {
+            // Fase 2: overlay some enquanto conteúdo e itens aparecem
             Animated.parallel([
-              Animated.timing(listOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
-              Animated.spring(listTranslateY, { toValue: 0, tension: 55, friction: 10, useNativeDriver: true }),
-            ]),
-          ]).start()
+              Animated.timing(overlayQuestionTranslateY, { toValue: -80, duration: 500, useNativeDriver: true }),
+              Animated.timing(overlayOpacity, { toValue: 0, duration: 500, useNativeDriver: true }),
+              Animated.timing(contentOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+              Animated.timing(realQuestionOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+              Animated.stagger(150, itemAnims.map(anim =>
+                Animated.parallel([
+                  Animated.timing(anim.opacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+                  Animated.spring(anim.translateY, { toValue: 0, tension: 80, friction: 12, useNativeDriver: true }),
+                ])
+              )),
+            ]).start()
+          })
         })
       })
     }, 3500)
@@ -116,48 +138,75 @@ export default function Cadastro() {
 
   return (
     <Animated.View style={[{ flex: 1, backgroundColor: '#1c909b' }, { opacity: pageAnim }]}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => {
-          if (fase === 'mais_cargos') {
-            Animated.timing(faseAnim, { toValue: 0, duration: 350, useNativeDriver: true }).start(() => {
-              setFase('principal')
-              Animated.timing(faseAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start()
-            })
-          } else {
-            router.back()
-          }
-        }}>
-          <Text style={styles.back}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.logo}>
-          <Text style={{ color: '#C49800' }}>Go</Text>
-          <Text style={{ color: '#fff' }}>Denth</Text>
-        </Text>
-        <View style={{ width: 32 }} />
-      </View>
 
-      <View style={styles.progressRow}>
-        <View style={[styles.bar, styles.barOn]} />
-        <View style={[styles.bar, styles.barOn]} />
-        {[3,4,5,6,7].map(i => <View key={i} style={styles.bar} />)}
-      </View>
+      {/* Overlay fase 1: pergunta centralizada na tela inteira */}
+      <Animated.View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, {
+          backgroundColor: '#1c909b',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 10,
+          opacity: overlayOpacity,
+        }]}
+      >
+        <Animated.Text style={[styles.questionTitle, {
+          textAlign: 'center',
+          opacity: overlayQuestionOpacity,
+          transform: [{ translateY: overlayQuestionTranslateY }],
+        }]}>
+          Qual é a sua{'\n'}profissão principal?
+        </Animated.Text>
+      </Animated.View>
 
+      {/* Header + barra de progresso (aparecem com a lista) */}
+      <Animated.View style={{ opacity: contentOpacity }}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => {
+            if (fase === 'mais_cargos') {
+              Animated.timing(faseAnim, { toValue: 0, duration: 350, useNativeDriver: true }).start(() => {
+                setFase('principal')
+                Animated.timing(faseAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start()
+              })
+            } else {
+              router.back()
+            }
+          }}>
+            <Text style={styles.back}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.logo}>
+            <Text style={{ color: '#C49800' }}>Go</Text>
+            <Text style={{ color: '#fff' }}>Denth</Text>
+          </Text>
+          <View style={{ width: 32 }} />
+        </View>
+
+        <View style={styles.progressRow}>
+          <View style={[styles.bar, styles.barOn]} />
+          <View style={[styles.bar, styles.barOn]} />
+          {[3,4,5,6,7].map(i => <View key={i} style={styles.bar} />)}
+        </View>
+      </Animated.View>
+
+      {/* Conteúdo principal */}
       <Animated.View style={{ flex: 1, opacity: faseAnim }}>
         {fase === 'principal' ? (
           <ScrollView contentContainerStyle={styles.scrollPrincipal} keyboardShouldPersistTaps="handled">
-            <Animated.Text style={[styles.questionTitle, { opacity: questionOpacity }]}>
+            <Animated.Text style={[styles.questionTitle, { opacity: realQuestionOpacity }]}>
               Qual é a sua{'\n'}profissão principal?
             </Animated.Text>
-            <Animated.Text style={[styles.questionSub, { opacity: questionOpacity }]}>
+            <Animated.Text style={[styles.questionSub, { opacity: realQuestionOpacity }]}>
               Selecione a profissão que melhor te define
             </Animated.Text>
 
-            <Animated.View style={{ opacity: listOpacity, transform: [{ translateY: listTranslateY }] }}>
-              {CATEGORIAS.map(cat => {
-                const selected = profissao?.categoria === cat.label
-                return (
+            {CATEGORIAS.map((cat, i) => {
+              const selected = profissao?.categoria === cat.label
+              return (
+                <Animated.View
+                  key={cat.key}
+                  style={{ opacity: itemAnims[i].opacity, transform: [{ translateY: itemAnims[i].translateY }] }}
+                >
                   <TouchableOpacity
-                    key={cat.key}
                     style={[styles.catRow, selected && styles.catRowSelected]}
                     onPress={() => { setCatSelecionada(cat); setModalVisible(true) }}
                     activeOpacity={0.7}
@@ -171,12 +220,12 @@ export default function Cadastro() {
                       : <Text style={styles.catRowArrow}>›</Text>
                     }
                   </TouchableOpacity>
-                )
-              })}
-            </Animated.View>
+                </Animated.View>
+              )
+            })}
 
             {profissao && (
-              <Animated.View style={[styles.selectedBadge, { opacity: listOpacity }]}>
+              <View style={styles.selectedBadge}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.selectedBadgeProfissao}>{profissao.label}</Text>
                   <Text style={styles.selectedBadgeCat}>{profissao.categoria}</Text>
@@ -184,7 +233,7 @@ export default function Cadastro() {
                 <TouchableOpacity onPress={() => setProfissao(null)}>
                   <Text style={styles.selectedBadgeRemove}>✕</Text>
                 </TouchableOpacity>
-              </Animated.View>
+              </View>
             )}
           </ScrollView>
         ) : (
@@ -285,7 +334,7 @@ const styles = StyleSheet.create({
   splashLine: { width: 50, height: 2, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 1, marginVertical: 12 },
   splashTagline: { fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '600', letterSpacing: 4 },
 
-  // ── Header / barra ──
+  // ── Header / progresso ──
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#1c909b' },
   back: { fontSize: 24, color: '#fff', fontWeight: '700' },
   logo: { fontSize: 22, fontFamily: 'Poppins-ExtraBold' },
@@ -293,7 +342,7 @@ const styles = StyleSheet.create({
   bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' },
   barOn: { backgroundColor: '#C49800' },
 
-  // ── Pergunta principal (fade in + slide up) ──
+  // ── Conteúdo ──
   scrollPrincipal: { paddingHorizontal: 24, paddingTop: 36, paddingBottom: 120 },
   questionTitle: { fontSize: 34, fontWeight: '800', color: '#fff', lineHeight: 42, marginBottom: 10 },
   questionSub: { fontSize: 14, color: 'rgba(255,255,255,0.65)', marginBottom: 32 },
@@ -318,23 +367,8 @@ const styles = StyleSheet.create({
   selectedBadgeCat: { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
   selectedBadgeRemove: { fontSize: 18, color: 'rgba(255,255,255,0.5)', padding: 4 },
 
-  // ── Mais cargos (card branco) ──
-  content: { flex: 1, backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
-  scroll: { padding: 20, paddingBottom: 100 },
-  step: { fontSize: 11, fontWeight: '800', color: '#00A880', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
-  title: { fontSize: 28, fontWeight: '800', color: '#0A1C14', lineHeight: 34, marginBottom: 8 },
-  sub: { fontSize: 13, color: '#7A9E8E', marginBottom: 24 },
-  selectedCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 2, flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 },
-  selectedDot: { width: 10, height: 10, borderRadius: 5 },
-  selectedLabel: { fontSize: 14, fontWeight: '800', color: '#0A1C14' },
-  selectedCat: { fontSize: 11, marginTop: 2, fontWeight: '700' },
-  selectedRemove: { fontSize: 16, color: '#7A9E8E', padding: 4 },
-  addBtn: { backgroundColor: '#fff', borderRadius: 14, padding: 16, borderWidth: 2, borderColor: '#D0E8DA', borderStyle: 'dashed', alignItems: 'center', marginTop: 12 },
-  addBtnT: { fontSize: 14, fontWeight: '700', color: '#00A880' },
-
   // ── Footer ──
   footerTeal: { padding: 16 },
-  footer: { padding: 16, borderTopWidth: 1, borderTopColor: '#D0E8DA', backgroundColor: '#fff' },
   btn: { backgroundColor: '#007A6E', borderRadius: 14, padding: 16, alignItems: 'center' },
   btnOff: { backgroundColor: 'rgba(255,255,255,0.25)' },
   btnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
