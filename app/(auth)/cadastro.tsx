@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
   // ── Modal ──
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center' },
   modal: {
-    backgroundColor: 'rgba(196,152,0,0.92)', borderRadius: 20,
+    backgroundColor: 'rgba(196,152,0,0.70)', borderRadius: 20,
     width: '85%', maxHeight: '70%', overflow: 'hidden',
   },
   modalHeader: {
