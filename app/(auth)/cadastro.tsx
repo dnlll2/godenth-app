@@ -290,36 +290,49 @@ export default function Cadastro() {
         </View>
       </Animated.View>
 
-      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => { setModalVisible(false); setCatSelecionada(null) }}>
+      <Modal visible={modalVisible} animationType="fade" transparent onRequestClose={() => { setModalVisible(false); setCatSelecionada(null) }}>
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
             {!catSelecionada ? (
               <>
                 <View style={styles.modalHeader}>
+                  <View style={{ width: 32 }} />
                   <Text style={styles.modalTitle}>Selecione a área</Text>
-                  <TouchableOpacity onPress={() => setModalVisible(false)}><Text style={styles.modalClose}>✕</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
+                    <Text style={styles.modalClose}>✕</Text>
+                  </TouchableOpacity>
                 </View>
                 <FlatList data={CATEGORIAS} keyExtractor={item => item.key} renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.catItem} onPress={() => abrirCategoria(item)}>
+                  <TouchableOpacity style={styles.catItem} onPress={() => abrirCategoria(item)} activeOpacity={0.7}>
                     <View style={[styles.catDot, { backgroundColor: item.cor }]} />
                     <Text style={styles.catLabel}>{item.label}</Text>
-                    <Text style={styles.catArrow}>›</Text>
                   </TouchableOpacity>
                 )} />
               </>
             ) : (
               <>
                 <View style={styles.modalHeader}>
-                  <TouchableOpacity onPress={voltarNivel1}><Text style={[styles.modalBackText, { color: catSelecionada.cor }]}>← Voltar</Text></TouchableOpacity>
-                  <Text style={styles.modalTitle}>{catSelecionada.label}</Text>
-                  <TouchableOpacity onPress={() => { setModalVisible(false); setCatSelecionada(null) }}><Text style={styles.modalClose}>✕</Text></TouchableOpacity>
-                </View>
-                <FlatList data={catSelecionada.profissoes} keyExtractor={item => item} renderItem={({ item }) => (
-                  <TouchableOpacity style={[styles.profItem, profissao?.label === item && { backgroundColor: catSelecionada.cor + '10' }]} onPress={() => selecionarProfissao(item)}>
-                    <Text style={[styles.profLabel, profissao?.label === item && { color: catSelecionada.cor, fontWeight: '800' }]}>{item}</Text>
-                    {profissao?.label === item && <Text style={{ color: catSelecionada.cor, fontWeight: '900' }}>✓</Text>}
+                  <TouchableOpacity onPress={voltarNivel1} style={styles.modalCloseBtn}>
+                    <Text style={styles.modalClose}>←</Text>
                   </TouchableOpacity>
-                )} />
+                  <Text style={styles.modalTitle}>{catSelecionada.label}</Text>
+                  <TouchableOpacity onPress={() => { setModalVisible(false); setCatSelecionada(null) }} style={styles.modalCloseBtn}>
+                    <Text style={styles.modalClose}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                <FlatList data={catSelecionada.profissoes} keyExtractor={item => item} renderItem={({ item }) => {
+                  const sel = fase === 'principal' ? profissao?.label === item : extras.some(e => e.label === item)
+                  return (
+                    <TouchableOpacity
+                      style={[styles.profItem, sel && styles.profItemSelected]}
+                      onPress={() => selecionarProfissao(item)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.profLabel, sel && styles.profLabelSelected]}>{item}</Text>
+                      {sel && <Text style={styles.profCheck}>✓</Text>}
+                    </TouchableOpacity>
+                  )
+                }} />
               </>
             )}
           </View>
@@ -389,16 +402,33 @@ const styles = StyleSheet.create({
   btnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
 
   // ── Modal ──
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modal: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#D0E8DA' },
-  modalTitle: { fontSize: 15, fontWeight: '800', color: '#0A1C14', flex: 1, textAlign: 'center' },
-  modalClose: { fontSize: 20, color: '#7A9E8E', padding: 4 },
-  modalBackText: { fontSize: 14, fontWeight: '700' },
-  catItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderBottomWidth: 1, borderBottomColor: '#EEF7F2' },
-  catDot: { width: 12, height: 12, borderRadius: 6 },
-  catLabel: { fontSize: 15, fontWeight: '600', color: '#0A1C14', flex: 1 },
-  catArrow: { fontSize: 20, color: '#7A9E8E' },
-  profItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#EEF7F2' },
-  profLabel: { fontSize: 15, color: '#0A1C14', flex: 1 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center' },
+  modal: {
+    backgroundColor: 'rgba(196,152,0,0.92)', borderRadius: 20,
+    width: '85%', maxHeight: '70%', overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.25)',
+  },
+  modalTitle: { fontSize: 15, fontWeight: '800', color: '#fff', flex: 1, textAlign: 'center' },
+  modalCloseBtn: { width: 32, alignItems: 'center' },
+  modalClose: { fontSize: 20, color: 'rgba(255,255,255,0.85)', fontWeight: '700' },
+  catItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    paddingVertical: 15, paddingHorizontal: 20,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.2)',
+  },
+  catDot: { width: 10, height: 10, borderRadius: 5 },
+  catLabel: { fontSize: 15, fontWeight: '600', color: '#fff', textAlign: 'center' },
+  profItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 15, paddingHorizontal: 20,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.2)',
+  },
+  profItemSelected: { backgroundColor: 'rgba(255,255,255,0.18)' },
+  profLabel: { fontSize: 15, color: '#fff', textAlign: 'center', fontWeight: '600' },
+  profLabelSelected: { fontWeight: '800' },
+  profCheck: { position: 'absolute', right: 16, fontSize: 16, color: '#fff', fontWeight: '900' },
 })
