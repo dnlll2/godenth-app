@@ -59,7 +59,7 @@ export default function Cadastro3() {
           <Text style={styles.back}>←</Text>
         </TouchableOpacity>
         <Text style={styles.logo}>
-          <Text style={{ color: '#F5C800' }}>Go</Text>
+          <Text style={{ color: '#C49800' }}>Go</Text>
           <Text style={{ color: '#fff' }}>Denth</Text>
         </Text>
         <View style={{ width: 32 }} />
@@ -75,6 +75,7 @@ export default function Cadastro3() {
         <View style={styles.bar} />
       </View>
 
+      <View style={styles.content}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.step}>Passo 3 de 7</Text>
         <Text style={styles.title}>Seus dados{'\n'}pessoais</Text>
@@ -108,6 +109,7 @@ export default function Cadastro3() {
         <TouchableOpacity style={[styles.btn, (!nome || !email || !senha || senha.length < 6) && styles.btnOff]} disabled={!nome || !email || !senha || senha.length < 6} onPress={handleContinuar}>
           <Text style={styles.btnT}>Continuar →</Text>
         </TouchableOpacity>
+      </View>
       </View>
 
       <Modal visible={modalEstado} animationType="slide" transparent onRequestClose={() => setModalEstado(false)}>
@@ -149,13 +151,13 @@ export default function Cadastro3() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#EEF7F2' },
+  container: { flex: 1, backgroundColor: '#1c909b' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#1c909b' },
   back: { fontSize: 24, color: '#fff', fontWeight: '700' },
   logo: { fontSize: 22, fontFamily: 'Poppins-ExtraBold' },
   progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#1c909b' },
   bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' },
-  barOn: { backgroundColor: '#F5C800' },
+  barOn: { backgroundColor: '#C49800' },
   scroll: { padding: 20, paddingBottom: 100 },
   step: { fontSize: 11, fontWeight: '800', color: '#00A880', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '800', color: '#0A1C14', lineHeight: 34, marginBottom: 8 },
@@ -164,7 +166,8 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 14, fontSize: 15, color: '#0A1C14', marginBottom: 14 },
   select: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   selectText: { fontSize: 15, color: '#0A1C14', flex: 1 },
-  footer: { padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#D0E8DA' },
+  content: { flex: 1, backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
+  footer: { padding: 16, borderTopWidth: 1, borderTopColor: '#D0E8DA' },
   btn: { backgroundColor: '#007A6E', borderRadius: 14, padding: 16, alignItems: 'center' },
   btnOff: { backgroundColor: '#AECEBE' },
   btnT: { color: '#fff', fontSize: 15, fontWeight: '800' },

@@ -76,7 +76,7 @@ export default function Cadastro() {
       <Animated.View style={[styles.splash, { opacity: splashFade }]}>
         <Animated.View style={{ alignItems: 'center', opacity: logoOpacity, transform: [{ scale: logoScale }] }}>
           <Text style={styles.splashLogo}>
-            <Text style={{ color: '#F5C800' }}>Go</Text>
+            <Text style={{ color: '#C49800' }}>Go</Text>
             <Text style={{ color: '#fff' }}>Denth</Text>
           </Text>
         </Animated.View>
@@ -90,7 +90,7 @@ export default function Cadastro() {
   }
 
   return (
-    <Animated.View style={[{ flex: 1, backgroundColor: '#EEF7F2' }, { opacity: pageAnim }]}>
+    <Animated.View style={[{ flex: 1, backgroundColor: '#1c909b' }, { opacity: pageAnim }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => {
           if (fase === 'mais_cargos') {
@@ -105,7 +105,7 @@ export default function Cadastro() {
           <Text style={styles.back}>←</Text>
         </TouchableOpacity>
         <Text style={styles.logo}>
-          <Text style={{ color: '#F5C800' }}>Go</Text>
+          <Text style={{ color: '#C49800' }}>Go</Text>
           <Text style={{ color: '#fff' }}>Denth</Text>
         </Text>
         <View style={{ width: 32 }} />
@@ -117,6 +117,7 @@ export default function Cadastro() {
         {[3,4,5,6,7].map(i => <View key={i} style={styles.bar} />)}
       </View>
 
+      <View style={styles.content}>
       <Animated.View style={{ flex: 1, opacity: faseAnim }}>
         <ScrollView contentContainerStyle={styles.scroll}>
           <Text style={styles.step}>Passo 2 de 7</Text>
@@ -184,14 +185,15 @@ export default function Cadastro() {
           </TouchableOpacity>
         ) : (
           <View style={{ gap: 10 }}>
-            <TouchableOpacity style={[styles.btn, { backgroundColor: '#EEF7F2', borderWidth: 2, borderColor: '#007A6E' }]} onPress={() => setModalVisible(true)}>
-              <Text style={[styles.btnT, { color: '#007A6E' }]}>+ Sim, adicionar cargo</Text>
+            <TouchableOpacity style={[styles.btn, { backgroundColor: '#fff', borderWidth: 2, borderColor: '#1c909b' }]} onPress={() => setModalVisible(true)}>
+              <Text style={[styles.btnT, { color: '#1c909b' }]}>+ Sim, adicionar cargo</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.btn} onPress={continuar}>
               <Text style={styles.btnT}>Não, continuar →</Text>
             </TouchableOpacity>
           </View>
         )}
+      </View>
       </View>
 
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => { setModalVisible(false); setCatSelecionada(null) }}>
@@ -234,8 +236,8 @@ export default function Cadastro() {
 }
 
 const styles = StyleSheet.create({
-  splash: { flex: 1, backgroundColor: '#007A6E', justifyContent: 'center', alignItems: 'center' },
-  splashLogo: { fontSize: 64, fontFamily: 'Poppins-Black', letterSpacing: 4 },
+  splash: { flex: 1, backgroundColor: '#1c909b', justifyContent: 'center', alignItems: 'center' },
+  splashLogo: { fontSize: 64, fontFamily: 'Poppins-ExtraBold', letterSpacing: 4 },
   splashLine: { width: 50, height: 2, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 1, marginVertical: 12 },
   splashTagline: { fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '600', letterSpacing: 4 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#1c909b' },
@@ -243,7 +245,7 @@ const styles = StyleSheet.create({
   logo: { fontSize: 22, fontFamily: 'Poppins-ExtraBold' },
   progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#1c909b' },
   bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' },
-  barOn: { backgroundColor: '#F5C800' },
+  barOn: { backgroundColor: '#C49800' },
   scroll: { padding: 20, paddingBottom: 100 },
   step: { fontSize: 11, fontWeight: '800', color: '#00A880', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '800', color: '#0A1C14', lineHeight: 34, marginBottom: 8 },
@@ -260,7 +262,8 @@ const styles = StyleSheet.create({
   selectedRemove: { fontSize: 16, color: '#7A9E8E', padding: 4 },
   addBtn: { backgroundColor: '#fff', borderRadius: 14, padding: 16, borderWidth: 2, borderColor: '#D0E8DA', borderStyle: 'dashed', alignItems: 'center', marginTop: 12 },
   addBtnT: { fontSize: 14, fontWeight: '700', color: '#00A880' },
-  footer: { padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#D0E8DA' },
+  content: { flex: 1, backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
+  footer: { padding: 16, borderTopWidth: 1, borderTopColor: '#D0E8DA' },
   btn: { backgroundColor: '#007A6E', borderRadius: 14, padding: 16, alignItems: 'center' },
   btnOff: { backgroundColor: '#AECEBE' },
   btnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
