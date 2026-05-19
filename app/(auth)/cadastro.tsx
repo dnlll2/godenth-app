@@ -30,6 +30,9 @@ export default function Cadastro() {
   const questionOpacity = useRef(new Animated.Value(0)).current
   const listOpacity = useRef(new Animated.Value(0)).current
   const listTranslateY = useRef(new Animated.Value(60)).current
+  const maisQuestionOpacity = useRef(new Animated.Value(0)).current
+  const maisListOpacity = useRef(new Animated.Value(0)).current
+  const maisListTranslateY = useRef(new Animated.Value(60)).current
 
   useEffect(() => {
     Animated.sequence([
@@ -73,7 +76,18 @@ export default function Cadastro() {
   const irParaMaisCargos = () => {
     Animated.timing(faseAnim, { toValue: 0, duration: 350, useNativeDriver: true }).start(() => {
       setFase('mais_cargos')
-      Animated.timing(faseAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start()
+      maisQuestionOpacity.setValue(0)
+      maisListOpacity.setValue(0)
+      maisListTranslateY.setValue(60)
+      Animated.timing(faseAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start(() => {
+        Animated.sequence([
+          Animated.timing(maisQuestionOpacity, { toValue: 1, duration: 900, useNativeDriver: true }),
+          Animated.parallel([
+            Animated.timing(maisListOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+            Animated.spring(maisListTranslateY, { toValue: 0, tension: 55, friction: 10, useNativeDriver: true }),
+          ]),
+        ]).start()
+      })
     })
   }
 
@@ -174,34 +188,41 @@ export default function Cadastro() {
             )}
           </ScrollView>
         ) : (
-          <View style={styles.content}>
-            <ScrollView contentContainerStyle={styles.scroll}>
-              <Text style={styles.step}>Passo 2 de 7</Text>
-              <Text style={styles.title}>Você tem mais{'\n'}algum cargo?</Text>
-              <Text style={styles.sub}>Ex: dentista e gerente, representante e social media...</Text>
+          <ScrollView contentContainerStyle={styles.scrollPrincipal} keyboardShouldPersistTaps="handled">
+            <Animated.Text style={[styles.questionTitle, { opacity: maisQuestionOpacity }]}>
+              Você tem mais{'\n'}algum cargo?
+            </Animated.Text>
+            <Animated.Text style={[styles.questionSub, { opacity: maisQuestionOpacity }]}>
+              Ex: dentista e gerente, representante e social media...
+            </Animated.Text>
 
+            <Animated.View style={{ opacity: maisListOpacity, transform: [{ translateY: maisListTranslateY }] }}>
               {extras.map((e, i) => (
-                <View key={i} style={[styles.selectedCard, { borderColor: e.cor, marginBottom: 10 }]}>
-                  <View style={[styles.selectedDot, { backgroundColor: e.cor }]} />
+                <View key={i} style={[styles.catRow, { borderColor: e.cor, backgroundColor: e.cor + '22', marginBottom: 10 }]}>
+                  <View style={[styles.catDotSmall, { backgroundColor: e.cor }]} />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.selectedLabel}>{e.label}</Text>
-                    <Text style={[styles.selectedCat, { color: e.cor }]}>{e.categoria}</Text>
+                    <Text style={styles.catRowLabel}>{e.label}</Text>
+                    <Text style={styles.selectedBadgeCat}>{e.categoria}</Text>
                   </View>
                   <TouchableOpacity onPress={() => setExtras(prev => prev.filter((_, j) => j !== i))}>
-                    <Text style={styles.selectedRemove}>✕</Text>
+                    <Text style={styles.selectedBadgeRemove}>✕</Text>
                   </TouchableOpacity>
                 </View>
               ))}
 
-              <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
-                <Text style={styles.addBtnT}>+ Adicionar cargo</Text>
+              <TouchableOpacity
+                style={[styles.catRow, { borderColor: 'rgba(255,255,255,0.3)', borderStyle: 'dashed' }]}
+                onPress={() => setModalVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.catRowLabel, { color: 'rgba(255,255,255,0.75)' }]}>+ Adicionar cargo</Text>
               </TouchableOpacity>
-            </ScrollView>
-          </View>
+            </Animated.View>
+          </ScrollView>
         )}
       </Animated.View>
 
-      <View style={fase === 'principal' ? styles.footerTeal : styles.footer}>
+      <View style={styles.footerTeal}>
         {fase === 'principal' ? (
           <TouchableOpacity style={[styles.btn, !profissao && styles.btnOff]} disabled={!profissao} onPress={irParaMaisCargos}>
             <Text style={styles.btnT}>{profissao ? 'Continuar →' : 'Selecione sua profissão'}</Text>
