@@ -337,7 +337,7 @@ export default function Cadastro() {
                         activeOpacity={0.7}
                       >
                         <Text style={[styles.profLabel, sel && !isFirst && styles.profLabelSelected, isFirst && styles.profLabelFirst]}>{item}</Text>
-                        {sel && <Text style={[styles.profCheck, isFirst && { color: '#C49800' }]}>✓</Text>}
+                        {sel && <Text style={styles.profCheck}>✓</Text>}
                       </TouchableOpacity>
                     )
                   }}
@@ -438,12 +438,12 @@ const styles = StyleSheet.create({
   },
   profItemSelected: { backgroundColor: 'rgba(255,255,255,0.18)' },
   profItemFirst: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: '#1c909b',
     borderBottomWidth: 1.5,
     borderBottomColor: 'rgba(255,255,255,0.45)',
   },
   profLabel: { fontSize: 15, color: '#fff', textAlign: 'center', fontWeight: 'normal' },
   profLabelSelected: { fontWeight: '800' },
-  profLabelFirst: { color: '#C49800', fontWeight: 'bold' },
+  profLabelFirst: { color: '#fff', fontWeight: 'bold' },
   profCheck: { position: 'absolute', right: 16, fontSize: 16, color: '#fff', fontWeight: '900' },
 })
