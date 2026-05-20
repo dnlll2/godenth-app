@@ -130,8 +130,9 @@ export default function Cadastro3() {
   const canContinue = !!nome && !!email && !!confirmarEmail && emailMatch && senhaForca === 'forte' && !!confirmarSenha && senhaMatch && !checkingEmail
 
   const handleContinuar = async () => {
-    if (!emailMatch) return
+    if (!emailMatch || !senhaMatch) return
     setCheckingEmail(true)
+    let checkPassed = false
     try {
       const res = await api.post('/auth/check-email', { email })
       if (res.data?.exists) {
@@ -139,9 +140,13 @@ export default function Cadastro3() {
         setCheckingEmail(false)
         return
       }
+      checkPassed = true
     } catch {
-      // proceed on network/server error
+      setEmailCadastradoError('Não foi possível verificar o e-mail. Tente novamente.')
+      setCheckingEmail(false)
+      return
     }
+    if (!checkPassed) return
     setCheckingEmail(false)
     setCadastroData({ nome, email, senha, cidade: cidade?.nome || '', estado: estado?.sigla || '' })
     router.push('/(auth)/especialidades')
