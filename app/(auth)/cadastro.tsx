@@ -328,7 +328,7 @@ export default function Cadastro() {
                   })()}
                   keyExtractor={item => item}
                   renderItem={({ item, index }) => {
-                    const isMainProf = index === 0 && profissao && profissao.categoria === catSelecionada.label
+                    const isMainProf = item === profissao?.label
                     const sel = fase === 'principal' ? profissao?.label === item : extras.some(e => e.label === item)
                     return (
                       <TouchableOpacity
@@ -444,6 +444,6 @@ const styles = StyleSheet.create({
   },
   profLabel: { fontSize: 15, color: '#fff', textAlign: 'center', fontWeight: '600' },
   profLabelSelected: { fontWeight: '800' },
-  profLabelFirst: { color: '#C49800', fontWeight: '800' },
+  profLabelFirst: { color: '#C49800', fontWeight: 'bold' },
   profCheck: { position: 'absolute', right: 16, fontSize: 16, color: '#fff', fontWeight: '900' },
 })
