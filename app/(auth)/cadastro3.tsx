@@ -1,22 +1,39 @@
 import { useState, useEffect, useRef } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, FlatList, Animated } from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Modal, FlatList, Animated } from 'react-native'
+import { router } from 'expo-router'
 import { useAuthStore } from '../../stores/authStore'
+import api from '../../services/api'
+
+const CAPITAIS: Record<string, string> = {
+  AC: 'Rio Branco', AL: 'Maceió', AM: 'Manaus', AP: 'Macapá',
+  BA: 'Salvador', CE: 'Fortaleza', DF: 'Brasília', ES: 'Vitória',
+  GO: 'Goiânia', MA: 'São Luís', MG: 'Belo Horizonte', MS: 'Campo Grande',
+  MT: 'Cuiabá', PA: 'Belém', PB: 'João Pessoa', PE: 'Recife',
+  PI: 'Teresina', PR: 'Curitiba', RJ: 'Rio de Janeiro', RN: 'Natal',
+  RO: 'Porto Velho', RR: 'Boa Vista', RS: 'Porto Alegre', SC: 'Florianópolis',
+  SE: 'Aracaju', SP: 'São Paulo', TO: 'Palmas',
+}
+
+const normalize = (str: string) =>
+  str.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 export default function Cadastro3() {
-  const { setCadastroData, cadastroData } = useAuthStore()
+  const { setCadastroData } = useAuthStore()
 
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
+  const [confirmarEmail, setConfirmarEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [cidade, setCidade] = useState<any>(null)
   const [estado, setEstado] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
   const [estados, setEstados] = useState<any[]>([])
   const [cidades, setCidades] = useState<any[]>([])
   const [modalEstado, setModalEstado] = useState(false)
   const [modalCidade, setModalCidade] = useState(false)
   const [loadingCidades, setLoadingCidades] = useState(false)
+  const [emailCadastradoError, setEmailCadastradoError] = useState('')
+  const [buscaCidade, setBuscaCidade] = useState('')
+  const [checkingEmail, setCheckingEmail] = useState(false)
 
   const titleOpacity = useRef(new Animated.Value(0)).current
   const titleTranslateY = useRef(new Animated.Value(24)).current
@@ -24,7 +41,7 @@ export default function Cadastro3() {
   const contentTranslateY = useRef(new Animated.Value(20)).current
 
   const fieldAnims = useRef(
-    Array.from({ length: 5 }, () => ({
+    Array.from({ length: 6 }, () => ({
       opacity: new Animated.Value(0),
       translateY: new Animated.Value(16),
     }))
@@ -59,91 +76,74 @@ export default function Cadastro3() {
   const carregarCidades = async (uf: any) => {
     setEstado(uf)
     setCidade(null)
+    setBuscaCidade('')
     setLoadingCidades(true)
     try {
       const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados/' + uf.id + '/municipios?orderBy=nome')
       const data = await res.json()
-      setCidades(data)
+      const capital = CAPITAIS[uf.sigla]
+      if (capital) {
+        const capitalItem = data.find((c: any) => c.nome === capital)
+        const rest = data.filter((c: any) => c.nome !== capital)
+        setCidades(capitalItem ? [capitalItem, ...rest] : data)
+      } else {
+        setCidades(data)
+      }
     } catch {}
     setLoadingCidades(false)
   }
 
-  const handleContinuar = () => {
-    if (!nome || !email || !senha) return Alert.alert('Atenção', 'Preencha nome, email e senha')
-    if (senha.length < 6) return Alert.alert('Atenção', 'Senha deve ter pelo menos 6 caracteres')
+  const emailMatch = !confirmarEmail || email === confirmarEmail
 
-    setCadastroData({
-      nome,
-      email,
-      senha,
-      cidade: cidade?.nome || '',
-      estado: estado?.sigla || '',
-    })
+  const senhaForca = (() => {
+    if (!senha) return null
+    const score = [
+      senha.length >= 8,
+      /[A-Z]/.test(senha),
+      /[a-z]/.test(senha),
+      /[0-9]/.test(senha),
+    ].filter(Boolean).length
+    if (score <= 2) return 'fraca'
+    if (score === 3) return 'média'
+    return 'forte'
+  })()
 
+  const senhaHint = (() => {
+    if (!senha) return ''
+    const missing: string[] = []
+    if (senha.length < 8) missing.push('mínimo 8 caracteres')
+    if (!/[A-Z]/.test(senha)) missing.push('uma letra maiúscula')
+    if (!/[a-z]/.test(senha)) missing.push('uma letra minúscula')
+    if (!/[0-9]/.test(senha)) missing.push('um número')
+    return missing.length ? 'Falta: ' + missing.join(', ') : ''
+  })()
+
+  const forcaCor = senhaForca === 'forte' ? '#38A169' : senhaForca === 'média' ? '#DD6B20' : '#E53E3E'
+  const forcaNivel = senhaForca === 'forte' ? 3 : senhaForca === 'média' ? 2 : senhaForca ? 1 : 0
+
+  const cidadesFiltradas = buscaCidade
+    ? cidades.filter(c => normalize(c.nome).includes(normalize(buscaCidade)))
+    : cidades
+
+  const canContinue = !!nome && !!email && !!confirmarEmail && emailMatch && senhaForca === 'forte' && !checkingEmail
+
+  const handleContinuar = async () => {
+    if (!emailMatch) return
+    setCheckingEmail(true)
+    try {
+      const res = await api.get('/auth/check-email', { params: { email } })
+      if (res.data?.exists) {
+        setEmailCadastradoError('Este e-mail já está cadastrado. Faça login ou use outro e-mail')
+        setCheckingEmail(false)
+        return
+      }
+    } catch {
+      // proceed on network/server error
+    }
+    setCheckingEmail(false)
+    setCadastroData({ nome, email, senha, cidade: cidade?.nome || '', estado: estado?.sigla || '' })
     router.push('/(auth)/especialidades')
   }
-
-  const fields = [
-    {
-      label: 'Nome completo *',
-      node: (
-        <TextInput
-          style={styles.input}
-          placeholder="Seu nome completo"
-          placeholderTextColor="#AECEBE"
-          value={nome}
-          onChangeText={setNome}
-        />
-      ),
-    },
-    {
-      label: 'E-mail *',
-      node: (
-        <TextInput
-          style={styles.input}
-          placeholder="seu@email.com.br"
-          placeholderTextColor="#AECEBE"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-      ),
-    },
-    {
-      label: 'Senha *',
-      node: (
-        <TextInput
-          style={styles.input}
-          placeholder="Mínimo 6 caracteres"
-          placeholderTextColor="#AECEBE"
-          value={senha}
-          onChangeText={setSenha}
-          secureTextEntry
-        />
-      ),
-    },
-    {
-      label: 'Estado',
-      node: (
-        <TouchableOpacity style={styles.select} onPress={() => setModalEstado(true)}>
-          <Text style={[styles.selectText, !estado && { color: '#AECEBE' }]}>{estado ? estado.sigla + ' — ' + estado.nome : 'Selecione o estado...'}</Text>
-          <Text style={{ color: '#7A9E8E', fontSize: 18 }}>˅</Text>
-        </TouchableOpacity>
-      ),
-    },
-    {
-      label: 'Cidade',
-      node: (
-        <TouchableOpacity style={[styles.select, !estado && { opacity: 0.5 }]} onPress={() => estado && setModalCidade(true)} disabled={!estado}>
-          {loadingCidades ? <ActivityIndicator size="small" color="#00A880" /> : (
-            <Text style={[styles.selectText, !cidade && { color: '#AECEBE' }]}>{cidade ? cidade.nome : estado ? 'Selecione a cidade...' : 'Selecione o estado primeiro'}</Text>
-          )}
-          <Text style={{ color: '#7A9E8E', fontSize: 18 }}>˅</Text>
-        </TouchableOpacity>
-      ),
-    },
-  ]
 
   return (
     <View style={styles.container}>
@@ -171,34 +171,131 @@ export default function Cadastro3() {
 
       <Animated.View style={[styles.content, { opacity: contentOpacity, transform: [{ translateY: contentTranslateY }] }]}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          {fields.map((field, idx) => (
-            <Animated.View
-              key={idx}
-              style={{ opacity: fieldAnims[idx].opacity, transform: [{ translateY: fieldAnims[idx].translateY }] }}
+
+          {/* Nome */}
+          <Animated.View style={{ opacity: fieldAnims[0].opacity, transform: [{ translateY: fieldAnims[0].translateY }] }}>
+            <Text style={styles.label}>Nome completo *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Seu nome completo"
+              placeholderTextColor="#AECEBE"
+              value={nome}
+              onChangeText={setNome}
+            />
+          </Animated.View>
+
+          {/* Email */}
+          <Animated.View style={{ opacity: fieldAnims[1].opacity, transform: [{ translateY: fieldAnims[1].translateY }] }}>
+            <Text style={styles.label}>E-mail *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="seu@email.com.br"
+              placeholderTextColor="#AECEBE"
+              value={email}
+              onChangeText={v => { setEmail(v); setEmailCadastradoError('') }}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </Animated.View>
+
+          {/* Confirmar email */}
+          <Animated.View style={{ opacity: fieldAnims[2].opacity, transform: [{ translateY: fieldAnims[2].translateY }] }}>
+            <Text style={styles.label}>Confirmar e-mail *</Text>
+            <TextInput
+              style={[styles.input, confirmarEmail.length > 0 && !emailMatch && styles.inputError]}
+              placeholder="Repita seu e-mail"
+              placeholderTextColor="#AECEBE"
+              value={confirmarEmail}
+              onChangeText={v => { setConfirmarEmail(v); setEmailCadastradoError('') }}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            {confirmarEmail.length > 0 && !emailMatch && (
+              <Text style={styles.errorText}>Os e-mails não coincidem</Text>
+            )}
+            {!!emailCadastradoError && (
+              <Text style={styles.errorText}>{emailCadastradoError}</Text>
+            )}
+          </Animated.View>
+
+          {/* Senha */}
+          <Animated.View style={{ opacity: fieldAnims[3].opacity, transform: [{ translateY: fieldAnims[3].translateY }] }}>
+            <Text style={styles.label}>Senha *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Mínimo 8 caracteres"
+              placeholderTextColor="#AECEBE"
+              value={senha}
+              onChangeText={setSenha}
+              secureTextEntry
+            />
+            {senha.length > 0 && (
+              <View style={{ marginTop: -8, marginBottom: 10 }}>
+                <View style={styles.strengthRow}>
+                  {[1, 2, 3].map(n => (
+                    <View key={n} style={[styles.strengthBar, n <= forcaNivel && { backgroundColor: forcaCor }]} />
+                  ))}
+                  <Text style={[styles.strengthLabel, { color: forcaCor }]}>{senhaForca}</Text>
+                </View>
+                {!!senhaHint && <Text style={styles.senhaHint}>{senhaHint}</Text>}
+              </View>
+            )}
+          </Animated.View>
+
+          {/* Estado */}
+          <Animated.View style={{ opacity: fieldAnims[4].opacity, transform: [{ translateY: fieldAnims[4].translateY }] }}>
+            <Text style={styles.label}>Estado</Text>
+            <TouchableOpacity style={styles.select} onPress={() => setModalEstado(true)}>
+              <Text style={[styles.selectText, !estado && { color: '#AECEBE' }]}>
+                {estado ? estado.sigla + ' — ' + estado.nome : 'Selecione o estado...'}
+              </Text>
+              <Text style={{ color: '#7A9E8E', fontSize: 18 }}>˅</Text>
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Cidade */}
+          <Animated.View style={{ opacity: fieldAnims[5].opacity, transform: [{ translateY: fieldAnims[5].translateY }] }}>
+            <Text style={styles.label}>Cidade</Text>
+            <TouchableOpacity
+              style={[styles.select, !estado && { opacity: 0.5 }]}
+              onPress={() => estado && setModalCidade(true)}
+              disabled={!estado}
             >
-              <Text style={styles.label}>{field.label}</Text>
-              {field.node}
-            </Animated.View>
-          ))}
+              {loadingCidades
+                ? <ActivityIndicator size="small" color="#00A880" />
+                : <Text style={[styles.selectText, !cidade && { color: '#AECEBE' }]}>
+                    {cidade ? cidade.nome : estado ? 'Selecione a cidade...' : 'Selecione o estado primeiro'}
+                  </Text>
+              }
+              <Text style={{ color: '#7A9E8E', fontSize: 18 }}>˅</Text>
+            </TouchableOpacity>
+          </Animated.View>
+
         </ScrollView>
 
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.btn, (!nome || !email || !senha || senha.length < 6) && styles.btnOff]}
-            disabled={!nome || !email || !senha || senha.length < 6}
+            style={[styles.btn, !canContinue && styles.btnOff]}
+            disabled={!canContinue}
             onPress={handleContinuar}
           >
-            <Text style={styles.btnT}>Continuar →</Text>
+            {checkingEmail
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Text style={styles.btnT}>Continuar →</Text>
+            }
           </TouchableOpacity>
         </View>
       </Animated.View>
 
+      {/* Modal Estado */}
       <Modal visible={modalEstado} animationType="fade" transparent onRequestClose={() => setModalEstado(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Selecione o Estado</Text>
-              <TouchableOpacity onPress={() => setModalEstado(false)}><Text style={styles.modalClose}>✕</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => setModalEstado(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
             </View>
             <FlatList
               data={estados}
@@ -218,20 +315,38 @@ export default function Cadastro3() {
         </View>
       </Modal>
 
-      <Modal visible={modalCidade} animationType="fade" transparent onRequestClose={() => setModalCidade(false)}>
+      {/* Modal Cidade */}
+      <Modal
+        visible={modalCidade}
+        animationType="fade"
+        transparent
+        onRequestClose={() => { setModalCidade(false); setBuscaCidade('') }}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Selecione a Cidade</Text>
-              <TouchableOpacity onPress={() => setModalCidade(false)}><Text style={styles.modalClose}>✕</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => { setModalCidade(false); setBuscaCidade('') }}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
             </View>
             <FlatList
-              data={cidades}
+              data={cidadesFiltradas}
               keyExtractor={item => item.id.toString()}
+              ListHeaderComponent={
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Buscar cidade..."
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                  value={buscaCidade}
+                  onChangeText={setBuscaCidade}
+                  autoCapitalize="none"
+                />
+              }
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.modalItem}
-                  onPress={() => { setCidade(item); setModalCidade(false) }}
+                  onPress={() => { setCidade(item); setModalCidade(false); setBuscaCidade('') }}
                 >
                   <Text style={[styles.modalItemLabel, cidade?.id === item.id && { color: '#fff', fontWeight: '800' }]}>{item.nome}</Text>
                   {cidade?.id === item.id && <Text style={{ color: '#fff' }}>✓</Text>}
@@ -260,8 +375,14 @@ const styles = StyleSheet.create({
   scroll: { padding: 20, paddingBottom: 16 },
   label: { fontSize: 12, fontWeight: '700', color: '#3A6550', marginBottom: 6, marginTop: 4 },
   input: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 14, fontSize: 15, color: '#0A1C14', marginBottom: 14 },
+  inputError: { borderColor: '#E53E3E', marginBottom: 4 },
+  errorText: { fontSize: 11, color: '#E53E3E', fontWeight: '600', marginBottom: 12, marginTop: 0 },
   select: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   selectText: { fontSize: 15, color: '#0A1C14', flex: 1 },
+  strengthRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
+  strengthBar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: '#D0E8DA' },
+  strengthLabel: { fontSize: 11, fontWeight: '700', width: 38, textAlign: 'right' },
+  senhaHint: { fontSize: 11, color: '#DD6B20', fontWeight: '500' },
   footer: { padding: 16, borderTopWidth: 1, borderTopColor: '#D0E8DA' },
   btn: { backgroundColor: '#007A6E', borderRadius: 14, padding: 16, alignItems: 'center' },
   btnOff: { backgroundColor: '#AECEBE' },
@@ -274,4 +395,10 @@ const styles = StyleSheet.create({
   modalItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)' },
   modalItemSigla: { fontSize: 13, fontWeight: '800', color: '#fff', width: 30 },
   modalItemLabel: { fontSize: 15, color: '#fff', flex: 1, textAlign: 'center' },
+  searchInput: {
+    margin: 10, padding: 10, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    color: '#fff', fontSize: 14,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+  },
 })
