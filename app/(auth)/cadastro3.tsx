@@ -24,6 +24,7 @@ export default function Cadastro3() {
   const [email, setEmail] = useState('')
   const [confirmarEmail, setConfirmarEmail] = useState('')
   const [senha, setSenha] = useState('')
+  const [confirmarSenha, setConfirmarSenha] = useState('')
   const [cidade, setCidade] = useState<any>(null)
   const [estado, setEstado] = useState<any>(null)
   const [estados, setEstados] = useState<any[]>([])
@@ -41,7 +42,7 @@ export default function Cadastro3() {
   const contentTranslateY = useRef(new Animated.Value(20)).current
 
   const fieldAnims = useRef(
-    Array.from({ length: 6 }, () => ({
+    Array.from({ length: 7 }, () => ({
       opacity: new Animated.Value(0),
       translateY: new Animated.Value(16),
     }))
@@ -94,6 +95,7 @@ export default function Cadastro3() {
   }
 
   const emailMatch = !confirmarEmail || email === confirmarEmail
+  const senhaMatch = !confirmarSenha || senha === confirmarSenha
 
   const senhaForca = (() => {
     if (!senha) return null
@@ -125,13 +127,13 @@ export default function Cadastro3() {
     ? cidades.filter(c => normalize(c.nome).includes(normalize(buscaCidade)))
     : cidades
 
-  const canContinue = !!nome && !!email && !!confirmarEmail && emailMatch && senhaForca === 'forte' && !checkingEmail
+  const canContinue = !!nome && !!email && !!confirmarEmail && emailMatch && senhaForca === 'forte' && !!confirmarSenha && senhaMatch && !checkingEmail
 
   const handleContinuar = async () => {
     if (!emailMatch) return
     setCheckingEmail(true)
     try {
-      const res = await api.get('/auth/check-email', { params: { email } })
+      const res = await api.post('/auth/check-email', { email })
       if (res.data?.exists) {
         setEmailCadastradoError('Este e-mail já está cadastrado. Faça login ou use outro e-mail')
         setCheckingEmail(false)
@@ -188,7 +190,7 @@ export default function Cadastro3() {
           <Animated.View style={{ opacity: fieldAnims[1].opacity, transform: [{ translateY: fieldAnims[1].translateY }] }}>
             <Text style={styles.label}>E-mail *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, !!emailCadastradoError && styles.inputError]}
               placeholder="seu@email.com.br"
               placeholderTextColor="#AECEBE"
               value={email}
@@ -196,6 +198,9 @@ export default function Cadastro3() {
               keyboardType="email-address"
               autoCapitalize="none"
             />
+            {!!emailCadastradoError && (
+              <Text style={styles.errorText}>{emailCadastradoError}</Text>
+            )}
           </Animated.View>
 
           {/* Confirmar email */}
@@ -212,9 +217,6 @@ export default function Cadastro3() {
             />
             {confirmarEmail.length > 0 && !emailMatch && (
               <Text style={styles.errorText}>Os e-mails não coincidem</Text>
-            )}
-            {!!emailCadastradoError && (
-              <Text style={styles.errorText}>{emailCadastradoError}</Text>
             )}
           </Animated.View>
 
@@ -242,8 +244,24 @@ export default function Cadastro3() {
             )}
           </Animated.View>
 
-          {/* Estado */}
+          {/* Confirmar senha */}
           <Animated.View style={{ opacity: fieldAnims[4].opacity, transform: [{ translateY: fieldAnims[4].translateY }] }}>
+            <Text style={styles.label}>Confirmar senha *</Text>
+            <TextInput
+              style={[styles.input, confirmarSenha.length > 0 && !senhaMatch && styles.inputError]}
+              placeholder="Repita sua senha"
+              placeholderTextColor="#AECEBE"
+              value={confirmarSenha}
+              onChangeText={setConfirmarSenha}
+              secureTextEntry
+            />
+            {confirmarSenha.length > 0 && !senhaMatch && (
+              <Text style={styles.errorText}>As senhas não coincidem</Text>
+            )}
+          </Animated.View>
+
+          {/* Estado */}
+          <Animated.View style={{ opacity: fieldAnims[5].opacity, transform: [{ translateY: fieldAnims[5].translateY }] }}>
             <Text style={styles.label}>Estado</Text>
             <TouchableOpacity style={styles.select} onPress={() => setModalEstado(true)}>
               <Text style={[styles.selectText, !estado && { color: '#AECEBE' }]}>
@@ -254,7 +272,7 @@ export default function Cadastro3() {
           </Animated.View>
 
           {/* Cidade */}
-          <Animated.View style={{ opacity: fieldAnims[5].opacity, transform: [{ translateY: fieldAnims[5].translateY }] }}>
+          <Animated.View style={{ opacity: fieldAnims[6].opacity, transform: [{ translateY: fieldAnims[6].translateY }] }}>
             <Text style={styles.label}>Cidade</Text>
             <TouchableOpacity
               style={[styles.select, !estado && { opacity: 0.5 }]}
