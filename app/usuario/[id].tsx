@@ -8,7 +8,7 @@ import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 
 
-const API_BASE = 'https://godenth-api-production.up.railway.app'
+const API_BASE = 'https://godenth-api.onrender.com'
 
 const TIPO_CORES: Record<string, string> = {
   'Cirurgião-Dentista': '#1A6FD4',
@@ -326,7 +326,7 @@ export default function PerfilPublico() {
                     <Text style={{ fontSize: 32 }}>📄</Text>
                   </View>
                 ) : (
-                  <Image source={{ uri: 'https://godenth-api-production.up.railway.app' + item.url }} style={s.portImg} resizeMode="cover" />
+                  <Image source={{ uri: 'https://godenth-api.onrender.com' + item.url }} style={s.portImg} resizeMode="cover" />
                 )}
                 <View style={{ padding: 8 }}>
                   <Text style={s.portTitulo} numberOfLines={1}>{item.titulo}</Text>

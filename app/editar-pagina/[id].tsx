@@ -8,7 +8,7 @@ import * as ImagePicker from 'expo-image-picker'
 import api from '../../services/api'
 import { Colors } from '../../constants/colors'
 
-const API_BASE = 'https://godenth-api-production.up.railway.app'
+const API_BASE = 'https://godenth-api.onrender.com'
 
 const CATEGORIAS = [
   { key: 'clinica', label: '🦷 Clínica Odontológica', cor: Colors.clinica },

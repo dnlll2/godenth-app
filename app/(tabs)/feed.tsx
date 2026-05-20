@@ -31,7 +31,7 @@ function HeaderBell() {
   )
 }
 
-const API_BASE = 'https://godenth-api-production.up.railway.app'
+const API_BASE = 'https://godenth-api.onrender.com'
 
 const FILTROS = [
   { key: 'todos',    label: 'Todos'     },

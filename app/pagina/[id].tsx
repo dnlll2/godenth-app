@@ -10,7 +10,7 @@ import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 import { Colors } from '../../constants/colors'
 
-const API_BASE = 'https://godenth-api-production.up.railway.app'
+const API_BASE = 'https://godenth-api.onrender.com'
 const SCREEN_W = Dimensions.get('window').width
 const PORTFOLIO_SIZE = Math.floor((SCREEN_W - 32 - 8) / 3)
 

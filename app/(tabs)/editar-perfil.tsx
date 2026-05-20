@@ -11,7 +11,7 @@ import Svg, { Path, Circle, Rect, Line } from 'react-native-svg'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 
-const API_BASE = 'https://godenth-api-production.up.railway.app'
+const API_BASE = 'https://godenth-api.onrender.com'
 
 const ABAS = [
   { key: 'pessoal',      label: 'Pessoal'      },

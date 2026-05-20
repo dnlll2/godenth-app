@@ -7,7 +7,7 @@ import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 import { PlanColors } from '../../constants/colors'
 
-const API_BASE = 'https://godenth-api-production.up.railway.app'
+const API_BASE = 'https://godenth-api.onrender.com'
 
 const ABAS = ['Sobre', 'Experiência', 'Formação', 'Habilidades', 'Portfólio']
 

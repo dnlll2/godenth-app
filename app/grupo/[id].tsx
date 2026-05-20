@@ -11,7 +11,7 @@ import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 
 const { width: SCREEN_W } = Dimensions.get('window')
-const API_BASE  = 'https://godenth-api-production.up.railway.app'
+const API_BASE  = 'https://godenth-api.onrender.com'
 const TEAL      = '#1c909b'
 const GOLD      = '#C49800'
 const BG        = '#FAFAF8'
