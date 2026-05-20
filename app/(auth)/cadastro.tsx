@@ -312,27 +312,36 @@ export default function Cadastro() {
             ) : (
               <>
                 <View style={styles.modalHeader}>
-                  <TouchableOpacity onPress={voltarNivel1} style={styles.modalCloseBtn}>
-                    <Text style={styles.modalClose}>←</Text>
-                  </TouchableOpacity>
+                  <View style={{ width: 32 }} />
                   <Text style={styles.modalTitle}>{catSelecionada.label}</Text>
                   <TouchableOpacity onPress={() => { setModalVisible(false); setCatSelecionada(null) }} style={styles.modalCloseBtn}>
                     <Text style={styles.modalClose}>✕</Text>
                   </TouchableOpacity>
                 </View>
-                <FlatList data={catSelecionada.profissoes} keyExtractor={item => item} renderItem={({ item }) => {
-                  const sel = fase === 'principal' ? profissao?.label === item : extras.some(e => e.label === item)
-                  return (
-                    <TouchableOpacity
-                      style={[styles.profItem, sel && styles.profItemSelected]}
-                      onPress={() => selecionarProfissao(item)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.profLabel, sel && styles.profLabelSelected]}>{item}</Text>
-                      {sel && <Text style={styles.profCheck}>✓</Text>}
-                    </TouchableOpacity>
-                  )
-                }} />
+                <FlatList
+                  data={(() => {
+                    const profs = catSelecionada.profissoes as string[]
+                    if (profissao && profissao.categoria === catSelecionada.label) {
+                      return [profissao.label, ...profs.filter(p => p !== profissao.label)]
+                    }
+                    return profs
+                  })()}
+                  keyExtractor={item => item}
+                  renderItem={({ item, index }) => {
+                    const isMainProf = index === 0 && profissao && profissao.categoria === catSelecionada.label
+                    const sel = fase === 'principal' ? profissao?.label === item : extras.some(e => e.label === item)
+                    return (
+                      <TouchableOpacity
+                        style={[styles.profItem, sel && !isMainProf && styles.profItemSelected, isMainProf && styles.profItemFirst]}
+                        onPress={() => selecionarProfissao(item)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.profLabel, sel && !isMainProf && styles.profLabelSelected, isMainProf && styles.profLabelFirst]}>{item}</Text>
+                        {sel && <Text style={[styles.profCheck, isMainProf && { color: '#C49800' }]}>✓</Text>}
+                      </TouchableOpacity>
+                    )
+                  }}
+                />
               </>
             )}
           </View>
@@ -404,7 +413,7 @@ const styles = StyleSheet.create({
   // ── Modal ──
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center' },
   modal: {
-    backgroundColor: 'rgba(196,152,0,0.70)', borderRadius: 20,
+    backgroundColor: 'rgba(196,152,0,0.70)', borderRadius: 12,
     width: '85%', maxHeight: '70%', overflow: 'hidden',
   },
   modalHeader: {
@@ -428,7 +437,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.2)',
   },
   profItemSelected: { backgroundColor: 'rgba(255,255,255,0.18)' },
+  profItemFirst: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'rgba(255,255,255,0.45)',
+  },
   profLabel: { fontSize: 15, color: '#fff', textAlign: 'center', fontWeight: '600' },
   profLabelSelected: { fontWeight: '800' },
+  profLabelFirst: { color: '#C49800', fontWeight: '800' },
   profCheck: { position: 'absolute', right: 16, fontSize: 16, color: '#fff', fontWeight: '900' },
 })
