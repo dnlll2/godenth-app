@@ -311,7 +311,7 @@ export default function Cadastro() {
               </>
             ) : (
               <>
-                <View style={styles.modalHeader}>
+                <View style={[styles.modalHeader, { backgroundColor: '#1c909b' }]}>
                   <View style={{ width: 32 }} />
                   <Text style={styles.modalTitle}>{catSelecionada.label}</Text>
                   <TouchableOpacity onPress={() => { setModalVisible(false); setCatSelecionada(null) }} style={styles.modalCloseBtn}>
@@ -319,24 +319,17 @@ export default function Cadastro() {
                   </TouchableOpacity>
                 </View>
                 <FlatList
-                  data={(() => {
-                    const profs = catSelecionada.profissoes as string[]
-                    if (profissao && profissao.categoria === catSelecionada.label) {
-                      return [profissao.label, ...profs.filter(p => p !== profissao.label)]
-                    }
-                    return profs
-                  })()}
+                  data={catSelecionada.profissoes}
                   keyExtractor={item => item}
-                  renderItem={({ item, index }) => {
-                    const isFirst = index === 0
+                  renderItem={({ item }) => {
                     const sel = fase === 'principal' ? profissao?.label === item : extras.some(e => e.label === item)
                     return (
                       <TouchableOpacity
-                        style={[styles.profItem, sel && !isFirst && styles.profItemSelected, isFirst && styles.profItemFirst]}
+                        style={[styles.profItem, sel && styles.profItemSelected]}
                         onPress={() => selecionarProfissao(item)}
                         activeOpacity={0.7}
                       >
-                        <Text style={[styles.profLabel, sel && !isFirst && styles.profLabelSelected, isFirst && styles.profLabelFirst]}>{item}</Text>
+                        <Text style={[styles.profLabel, sel && styles.profLabelSelected]}>{item}</Text>
                         {sel && <Text style={styles.profCheck}>✓</Text>}
                       </TouchableOpacity>
                     )
@@ -437,13 +430,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.2)',
   },
   profItemSelected: { backgroundColor: 'rgba(255,255,255,0.18)' },
-  profItemFirst: {
-    backgroundColor: '#1c909b',
-    borderBottomWidth: 1.5,
-    borderBottomColor: 'rgba(255,255,255,0.45)',
-  },
   profLabel: { fontSize: 15, color: '#fff', textAlign: 'center', fontWeight: 'normal' },
   profLabelSelected: { fontWeight: '800' },
-  profLabelFirst: { color: '#fff', fontWeight: 'bold' },
   profCheck: { position: 'absolute', right: 16, fontSize: 16, color: '#fff', fontWeight: '900' },
 })
