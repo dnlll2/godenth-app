@@ -328,16 +328,16 @@ export default function Cadastro() {
                   })()}
                   keyExtractor={item => item}
                   renderItem={({ item, index }) => {
-                    const isMainProf = item === profissao?.label
+                    const isFirst = index === 0
                     const sel = fase === 'principal' ? profissao?.label === item : extras.some(e => e.label === item)
                     return (
                       <TouchableOpacity
-                        style={[styles.profItem, sel && !isMainProf && styles.profItemSelected, isMainProf && styles.profItemFirst]}
+                        style={[styles.profItem, sel && !isFirst && styles.profItemSelected, isFirst && styles.profItemFirst]}
                         onPress={() => selecionarProfissao(item)}
                         activeOpacity={0.7}
                       >
-                        <Text style={[styles.profLabel, sel && !isMainProf && styles.profLabelSelected, isMainProf && styles.profLabelFirst]}>{item}</Text>
-                        {sel && <Text style={[styles.profCheck, isMainProf && { color: '#C49800' }]}>✓</Text>}
+                        <Text style={[styles.profLabel, sel && !isFirst && styles.profLabelSelected, isFirst && styles.profLabelFirst]}>{item}</Text>
+                        {sel && <Text style={[styles.profCheck, isFirst && { color: '#C49800' }]}>✓</Text>}
                       </TouchableOpacity>
                     )
                   }}
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   // ── Modal ──
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center' },
   modal: {
-    backgroundColor: 'rgba(196,152,0,0.70)', borderRadius: 12,
+    backgroundColor: 'rgba(196,152,0,0.65)', borderRadius: 12,
     width: '85%', maxHeight: '70%', overflow: 'hidden',
   },
   modalHeader: {
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.25)',
   },
-  modalTitle: { fontSize: 15, fontWeight: '800', color: '#fff', flex: 1, textAlign: 'center' },
+  modalTitle: { fontSize: 15, fontWeight: 'bold', color: '#fff', flex: 1, textAlign: 'center' },
   modalCloseBtn: { width: 32, alignItems: 'center' },
   modalClose: { fontSize: 20, color: 'rgba(255,255,255,0.85)', fontWeight: '700' },
   catItem: {
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1.5,
     borderBottomColor: 'rgba(255,255,255,0.45)',
   },
-  profLabel: { fontSize: 15, color: '#fff', textAlign: 'center', fontWeight: '600' },
+  profLabel: { fontSize: 15, color: '#fff', textAlign: 'center', fontWeight: 'normal' },
   profLabelSelected: { fontWeight: '800' },
   profLabelFirst: { color: '#C49800', fontWeight: 'bold' },
   profCheck: { position: 'absolute', right: 16, fontSize: 16, color: '#fff', fontWeight: '900' },
