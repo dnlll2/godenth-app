@@ -231,7 +231,10 @@ export default function GrupoScreen() {
       const form = new FormData()
       if (texto.trim()) form.append('texto', texto.trim())
       if (imagem) form.append('imagem', { uri: imagem.uri, name: imagem.name, type: imagem.type } as any)
-      await api.post(`/grupos/${id}/posts`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      await api.post(`/grupos/${id}/posts`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        transformRequest: (data: any) => data,
+      })
       setTexto(''); setImagem(null); setModalOpen(false)
       // Auto-join e refresh
       setGrupo(prev => prev ? { ...prev, is_member: true } : prev)
@@ -255,15 +258,25 @@ export default function GrupoScreen() {
 
   const handleCapaUpload = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!perm.granted) return
+    if (!perm.granted) {
+      Alert.alert('Permissão necessária', 'Permita acesso à galeria para alterar a capa.')
+      return
+    }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85, allowsEditing: true, aspect: [16, 6] })
     if (result.canceled || !result.assets[0]) return
-    const a = result.assets[0]; const ext = a.uri.split('.').pop() || 'jpg'
+    const a = result.assets[0]
+    const mimeType = a.mimeType || 'image/jpeg'
+    const ext = mimeType.split('/')[1] || 'jpg'
     setCapaLoading(true)
     try {
       const form = new FormData()
-      form.append('capa', { uri: a.uri, name: `capa.${ext}`, type: `image/${ext}` } as any)
-      const res = await api.put(`/grupos/${id}/capa`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      form.append('capa', { uri: a.uri, name: `capa.${ext}`, type: mimeType } as any)
+      // transformRequest preserva o FormData intacto para que o XHR do React Native
+      // adicione o boundary correto ao Content-Type em vez de o axios serializar o body
+      const res = await api.put(`/grupos/${id}/capa`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        transformRequest: (data: any) => data,
+      })
       setGrupo(prev => prev ? { ...prev, capa_url: res.data.capa_url } : prev)
     } catch (err: any) {
       Alert.alert('Erro', err?.response?.data?.error || 'Não foi possível atualizar a capa.')
