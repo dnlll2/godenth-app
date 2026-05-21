@@ -81,7 +81,7 @@ export default function Sobre() {
               placeholder="Ex: Cirurgião-Dentista com 8 anos de experiência em Implantodontia e Estética. Apaixonado por resultados naturais e atendimento humanizado. Atuo em São Paulo - SP."
               placeholderTextColor="#AECEBE"
               value={bio}
-              onChangeText={t => t.length <= MAX_CHARS && setBio(t)}
+              onChangeText={t => setBio(t.slice(0, MAX_CHARS))}
               multiline
               numberOfLines={8}
               textAlignVertical="top"
