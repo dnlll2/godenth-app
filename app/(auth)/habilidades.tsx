@@ -6,51 +6,65 @@ import api from '../../services/api'
 
 const HABILIDADES: any = {
   'Cirurgião-Dentista': {
-    'Operacional': ['Gestão de Agenda','Scanner 3D Intraoral','Moldagem (Alginato/Silicone)','Avaliação e Diagnóstico','Planejamento de Casos','Fotografia Clínica'],
-    'Gestão': ['Gerência Clínica','Liderança de Equipe','Reuniões de Alinhamento','Controle de Estoque','Auditoria de Prontuários'],
-    'Vendas': ['Conversão de Orçamentos','Explicação de Planos de Tratamento','Pós-atendimento (Fidelização)'],
+    'Operacional': ['Clareamento dental','Facetas e lentes de contato','Invisalign e alinhadores','Laser dental','Microscopia endodôntica','Cirurgia guiada','Enxerto ósseo','Carga imediata em implantes','Levantamento de seio maxilar','Scanner intraoral','Fotografia clínica'],
+    'Gestão': ['Gestão de clínica','Precificação de procedimentos','Fidelização de pacientes','Gestão de equipe','Compliance e vigilância sanitária'],
+    'Vendas': ['Apresentação de planos de tratamento','Negociação com convênios','Captação de pacientes','Atendimento humanizado'],
   },
   'Técnico em Prótese Dentária': {
-    'Prática': ['Vazamento e Troquelagem de Gesso','Montagem em Articulador','Enceramento Diagnóstico','Estratificação de Cerâmica','Maquiagem e Glaze'],
-    'Digital': ['Desenho em Exocad (CAD)','Operação de Fresadoras (CAM)','Calibração de Impressora 3D','Sinterização de Zircônia'],
-    'Relacionamento': ['Discussão de Casos com Dentistas','Logística de Entrega','Conferência de O.S'],
+    'Prática': ['Cerâmica feldspática','Cerâmica prensada (e.max)','Escultura em cera','Gesso tipo IV','Soldagem','Maquiagem dental','Moldagem e vazamento','Eletroerosão','Polimento e acabamento'],
+    'Digital': ['Exocad','3Shape','Ceramill','Fresadora CNC','Impressora 3D','Scanner de bancada','PMMA fresado','Zircônia fresada'],
+    'Relacionamento': ['Comunicação com dentista','Leitura de prescrição','Controle de qualidade','Prazos e entregas'],
   },
   'Técnico em Saúde Bucal (TSB)': {
-    'Clínico': ['Instrumentação Cirúrgica','Manipulação de Materiais','Esterilização (Autoclave)','Organização de Bancada','Auxílio em Quatro Mãos'],
-    'Paciente': ['Acolhimento','Triagem Inicial','Instrução de Higiene Bucal','Suporte em Emergências'],
-    'Suporte': ['Limpeza e Desinfecção','Reposição de Descartáveis'],
+    'Clínico': ['Radiografia intraoral e extraoral','Revelação de imagens','Polimento coronário','Aplicação de flúor e selante','Instrumentação cirúrgica'],
+    'Paciente': ['Educação em saúde bucal','Triagem','Atendimento humanizado','Primeiros socorros'],
+    'Suporte': ['Biossegurança avançada','Gestão de resíduos','Esterilização','Organização de consultório'],
   },
   'Auxiliar em Saúde Bucal (ASB)': {
-    'Clínico': ['Instrumentação Cirúrgica','Manipulação de Materiais','Esterilização (Autoclave)','Organização de Bancada','Auxílio em Quatro Mãos'],
-    'Paciente': ['Acolhimento','Triagem Inicial','Instrução de Higiene Bucal','Suporte em Emergências'],
-    'Suporte': ['Limpeza e Desinfecção','Reposição de Descartáveis'],
+    'Clínico': ['Instrumentação cirúrgica','Processamento de artigos críticos','Assepsia e antissepsia','Revelação de radiografias','Manipulação de materiais'],
+    'Paciente': ['Atendimento ao paciente','Primeiros socorros','Recepção e acolhimento'],
+    'Suporte': ['Moldagem e vazamento em gesso','Controle de estoque','Limpeza e organização','Preparo de bandejas'],
   },
   'Auxiliar de Prótese Dentária': {
-    'Clínico': ['Instrumentação Cirúrgica','Manipulação de Materiais','Esterilização (Autoclave)','Organização de Bancada'],
-    'Suporte': ['Limpeza e Desinfecção','Reposição de Descartáveis'],
+    'Clínico': ['Acabamento e polimento','Gesso tipo II e III','Moldagem auxiliar','Vazamento de modelos'],
+    'Suporte': ['Organização de bancada','Controle de materiais','CAD/CAM básico','Limpeza de equipamentos'],
   },
   'Gerente Comercial': {
-    'Estratégico': ['Análise de Metas','Relatórios de Vendas','Participação em Congressos/Eventos'],
-    'Interno': ['Atendimento via WhatsApp','Negociação de Prazos e Descontos','Recuperação de Clientes Inativos'],
+    'Estratégico': ['Planejamento comercial','Análise de mercado','Gestão de funil','CRM avançado','Business Intelligence','Definição de metas'],
+    'Interno': ['Treinamento de equipe','Gestão de metas','Feedback e coaching','Reuniões de resultado','Onboarding de vendedores'],
   },
   'Representante Comercial': {
-    'Externo': ['Visitação a Clínicas','Prospecção de Novos Clientes','Demonstração de Equipamentos (Hand-on)'],
-    'Interno': ['Atendimento via WhatsApp','Negociação de Prazos e Descontos','Recuperação de Clientes Inativos'],
-    'Estratégico': ['Análise de Metas','Relatórios de Vendas','Participação em Congressos/Eventos'],
+    'Externo': ['Visita técnica a clínicas','Demonstração de equipamentos','Gestão de território','Prospecção presencial'],
+    'Interno': ['CRM (Salesforce/RD Station/Pipedrive)','Relatórios de visita','Follow-up de propostas'],
+    'Estratégico': ['Conhecimento em produtos odontológicos','Conhecimento em equipamentos','Análise de concorrência','Técnicas de negociação'],
   },
   'Consultor de Vendas': {
-    'Externo': ['Visitação a Clínicas','Prospecção de Novos Clientes','Demonstração de Equipamentos'],
-    'Interno': ['Atendimento via WhatsApp','Negociação','Recuperação de Clientes Inativos'],
+    'Externo': ['Prospecção ativa','Apresentação de soluções','Fechamento de vendas','Pós-venda básico'],
+    'Interno': ['CRM','Scripts de vendas','E-mail de prospecção','WhatsApp Business comercial'],
+  },
+  'CRC / Call Center': {
+    'Front': ['Atendimento telefônico','WhatsApp Business','Agendamento','Confirmação e lembretes'],
+    'Processos': ['Scripts de atendimento','Retenção de pacientes','CRM básico','Registro de ocorrências','Pesquisa de satisfação'],
   },
   'Recepcionista / Secretária': {
-    'Front': ['Recepção de Pacientes','Confirmação de Consultas','Atendimento Telefônico','Gestão de Conflitos na Espera'],
-    'Financeiro': ['Emissão de Notas Fiscais','Cobrança de Inadimplentes','Fechamento de Caixa','Faturamento de Convênios'],
-    'Processos': ['Cadastro de Pacientes','Organização de Arquivos','Check-list de Manutenção'],
+    'Front': ['Atendimento presencial e telefônico','WhatsApp Business','Confirmação de consultas','Triagem','Gestão de filas'],
+    'Financeiro': ['Emissão de notas fiscais','Controle de caixa','Cobrança','Convênios odontológicos','Conciliação de pagamentos'],
+    'Processos': ['Software odontológico (Dental Office/iMedicina)','Prontuário eletrônico','Excel','Google Agenda','Arquivamento'],
   },
   'Gerente Administrativo': {
-    'Front': ['Recepção de Pacientes','Confirmação de Consultas','Gestão de Conflitos'],
-    'Financeiro': ['Emissão de Notas Fiscais','Cobrança de Inadimplentes','Fechamento de Caixa','Faturamento de Convênios'],
-    'Processos': ['Cadastro de Pacientes','Organização de Arquivos','Check-list de Manutenção'],
+    'Front': ['Comunicação com equipe','Gestão de conflitos','Liderança situacional','Clima organizacional'],
+    'Financeiro': ['DRE','Fluxo de caixa','Orçamentos','Relatórios gerenciais','Controle de custos'],
+    'Processos': ['Mapeamento de processos','KPIs','Compliance em saúde','Vigilância sanitária','Gestão de contratos'],
+  },
+  'Auxiliar Administrativo': {
+    'Front': ['Atendimento telefônico básico','Recebimento de documentos','Suporte à recepção'],
+    'Processos': ['Excel básico e intermediário','Arquivo físico e digital','Rotinas administrativas','Controle de estoque','Emissão de notas','Lançamentos no sistema'],
+  },
+  'Financeiro': {
+    'Financeiro': ['Fluxo de caixa','Contas a pagar/receber','Conciliação bancária','DRE','Excel Avançado','ERP (TOTVS/Omie/Conta Azul/SAP)','Faturamento de convênios'],
+  },
+  'RH / Recursos Humanos': {
+    'Processos': ['Recrutamento e seleção','Folha de pagamento','eSocial','Avaliação de desempenho','Onboarding','Treinamento e desenvolvimento','Coaching','Gestão de benefícios'],
   },
   'Marketing Digital': {
     'Digital': ['Gestão de Redes Sociais','Criação de Conteúdo (Posts/Stories)','Resposta a Comentários/Directs'],
