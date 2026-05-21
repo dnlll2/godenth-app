@@ -149,7 +149,7 @@ export default function Cadastro3() {
     if (!checkPassed) return
     setCheckingEmail(false)
     setCadastroData({ nome, email, senha, cidade: cidade?.nome || '', estado: estado?.sigla || '' })
-    router.push('/(auth)/especialidades')
+    router.push('/(auth)/sobre')
   }
 
   return (
@@ -166,12 +166,12 @@ export default function Cadastro3() {
       </View>
 
       <View style={styles.progressRow}>
-        {[1,2,3].map(i => <View key={i} style={[styles.bar, styles.barOn]} />)}
-        {[4,5,6,7].map(i => <View key={i} style={styles.bar} />)}
+        {[1,2,3,4,5].map(i => <View key={i} style={[styles.bar, styles.barOn]} />)}
+        {[6,7].map(i => <View key={i} style={styles.bar} />)}
       </View>
 
       <Animated.View style={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, opacity: titleOpacity, transform: [{ translateY: titleTranslateY }] }}>
-        <Text style={styles.step}>Passo 3 de 7</Text>
+        <Text style={styles.step}>Passo 5 de 7</Text>
         <Text style={styles.title}>Seus dados pessoais</Text>
         <Text style={styles.sub}>Essas informações formam seu currículo profissional</Text>
       </Animated.View>

@@ -121,7 +121,7 @@ export default function Cadastro() {
 
   const continuar = () => {
     setCadastroData({ profissao, extras })
-    router.push('/(auth)/cadastro3')
+    router.push('/(auth)/especialidades')
   }
 
   if (showSplash) {

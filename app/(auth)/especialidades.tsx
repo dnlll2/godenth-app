@@ -78,12 +78,12 @@ export default function Especialidades() {
       </View>
 
       <View style={styles.progressRow}>
-        {[1,2,3,4].map(i => <View key={i} style={[styles.bar, styles.barOn]} />)}
-        {[5,6,7].map(i => <View key={i} style={styles.bar} />)}
+        {[1,2].map(i => <View key={i} style={[styles.bar, styles.barOn]} />)}
+        {[3,4,5,6,7].map(i => <View key={i} style={styles.bar} />)}
       </View>
 
       <Animated.View style={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, opacity: titleOpacity, transform: [{ translateY: titleTranslateY }] }}>
-        <Text style={styles.step}>Passo 4 de 7</Text>
+        <Text style={styles.step}>Passo 2 de 7</Text>
         <Text style={styles.title}>Suas especialidades</Text>
         <Text style={styles.sub}>Selecione o que você domina em cada área</Text>
       </Animated.View>
@@ -143,7 +143,7 @@ export default function Especialidades() {
       <View style={styles.footer}>
         <TouchableOpacity style={styles.btn} onPress={() => {
           setCadastroData({ especialidades: Object.values(selecionadas).flat() })
-          router.push('/(auth)/academico')
+          router.push('/(auth)/habilidades')
         }}>
           <Text style={styles.btnT}>{totalSelecionadas > 0 ? 'Continuar →' : 'Pular →'}</Text>
         </TouchableOpacity>

@@ -138,7 +138,7 @@ export default function Habilidades() {
 
   const finalizar = () => {
     setCadastroData({ habilidades: selecionadas })
-    router.push('/(auth)/sobre')
+    router.push('/(auth)/academico')
   }
 
   return (
@@ -155,12 +155,12 @@ export default function Habilidades() {
       </View>
 
       <View style={styles.progressRow}>
-        {[1,2,3,4,5,6].map(i => <View key={i} style={[styles.bar, styles.barOn]} />)}
-        <View style={styles.bar} />
+        {[1,2,3].map(i => <View key={i} style={[styles.bar, styles.barOn]} />)}
+        {[4,5,6,7].map(i => <View key={i} style={styles.bar} />)}
       </View>
 
       <Animated.View style={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, opacity: titleOpacity, transform: [{ translateY: titleTranslateY }] }}>
-        <Text style={styles.step}>Passo 6 de 7</Text>
+        <Text style={styles.step}>Passo 3 de 7</Text>
         <Text style={styles.title}>Suas habilidades</Text>
         <Text style={styles.sub}>Selecione o que você domina — aparecem no seu currículo</Text>
       </Animated.View>
@@ -201,7 +201,7 @@ export default function Habilidades() {
         <TouchableOpacity style={styles.btn} onPress={finalizar} disabled={loading}>
           {loading
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.btnT}>{selecionadas.length > 0 ? '🚀 Criar minha conta' : 'Pular e criar conta →'}</Text>
+            : <Text style={styles.btnT}>{selecionadas.length > 0 ? 'Continuar →' : 'Pular →'}</Text>
           }
         </TouchableOpacity>
       </View>

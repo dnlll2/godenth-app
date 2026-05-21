@@ -122,12 +122,12 @@ export default function Academico() {
       </View>
 
       <View style={styles.progressRow}>
-        {[1,2,3,4,5].map(i => <View key={i} style={[styles.bar, styles.barOn]} />)}
-        {[6,7].map(i => <View key={i} style={styles.bar} />)}
+        {[1,2,3,4].map(i => <View key={i} style={[styles.bar, styles.barOn]} />)}
+        {[5,6,7].map(i => <View key={i} style={styles.bar} />)}
       </View>
 
       <Animated.View style={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, opacity: titleOpacity, transform: [{ translateY: titleTranslateY }] }}>
-        <Text style={styles.step}>Passo 5 de 7</Text>
+        <Text style={styles.step}>Passo 4 de 7</Text>
         <Text style={styles.title}>Formação Acadêmica</Text>
         <Text style={styles.sub}>Preencha sua formação para cada área de atuação</Text>
       </Animated.View>
@@ -279,7 +279,7 @@ export default function Academico() {
           <View style={styles.footer}>
             <TouchableOpacity style={styles.btn} onPress={() => {
               setCadastroData({ academico: formacoes })
-              router.push('/(auth)/habilidades')
+              router.push('/(auth)/cadastro3')
             }}>
               <Text style={styles.btnT}>Continuar →</Text>
             </TouchableOpacity>
