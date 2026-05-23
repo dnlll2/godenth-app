@@ -824,7 +824,7 @@ function EmptyState({ icon, title, sub }: { icon: string; title: string; sub: st
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-type Aba = 'vagas' | 'interesse' | 'recentes' | 'marketplace' | 'cursos' | 'feed_geral' | 'paginas'
+type Aba = 'vagas' | 'interesse' | 'recentes' | 'marketplace' | 'cursos' | 'feed_geral' | 'paginas' | 'grupos'
 
 const ABAS: { key: Aba; label: string }[] = [
   { key: 'vagas',       label: 'Vagas para mim'     },
@@ -834,10 +834,11 @@ const ABAS: { key: Aba; label: string }[] = [
   { key: 'cursos',      label: 'Cursos e Eventos'    },
   { key: 'feed_geral',  label: 'Feed geral'          },
   { key: 'paginas',     label: 'Páginas'             },
+  { key: 'grupos',      label: 'Grupos'              },
 ]
 
 const EMPTY_DATA: Record<Aba, any[]> = {
-  vagas: [], interesse: [], recentes: [], marketplace: [], cursos: [], feed_geral: [], paginas: [],
+  vagas: [], interesse: [], recentes: [], marketplace: [], cursos: [], feed_geral: [], paginas: [], grupos: [],
 }
 
 const SETE_DIAS = 7 * 24 * 60 * 60 * 1000
@@ -850,6 +851,7 @@ const EMPTY_META: Record<Aba, { icon: string; title: string; sub: string }> = {
   cursos:      { icon: '🎓', title: 'Nenhum curso ou evento',          sub: 'Cursos, treinamentos e eventos das empresas aparecerão aqui' },
   feed_geral:  { icon: '📰', title: 'Nenhuma publicação ainda',        sub: 'O feed da comunidade aparecerá aqui' },
   paginas:     { icon: '🏢', title: 'Nenhuma página encontrada',       sub: 'Páginas de clínicas e empresas do setor aparecerão aqui' },
+  grupos:      { icon: '💬', title: 'Nenhum grupo encontrado',          sub: 'Grupos de discussão aparecerão aqui' },
 }
 
 export default function Painel() {
@@ -1157,6 +1159,12 @@ export default function Painel() {
                 />
               ))}
             </View>
+          ) : aba === 'grupos' ? (
+            <View style={s.emBreve}>
+              <Text style={s.emBreveIcon}>💬</Text>
+              <Text style={s.emBreveTitle}>Grupos</Text>
+              <Text style={s.emBreveSub}>Em breve você poderá criar e participar de grupos de discussão da comunidade odontológica.</Text>
+            </View>
           ) : null}
         </View>
       </ScrollView>
@@ -1330,6 +1338,11 @@ const s = StyleSheet.create({
   emptyIcon: { fontSize: 52, marginBottom: 14 },
   emptyTitle: { fontSize: 17, fontWeight: '800', color: '#0A1C14', marginBottom: 8, textAlign: 'center' },
   emptySub: { fontSize: 13, color: '#7A9E8E', textAlign: 'center', lineHeight: 19 },
+
+  emBreve: { alignItems: 'center', paddingTop: 56, paddingBottom: 40, paddingHorizontal: 32 },
+  emBreveIcon: { fontSize: 60, marginBottom: 18 },
+  emBreveTitle: { fontSize: 22, fontWeight: '900', color: '#0A1C14', marginBottom: 10 },
+  emBreveSub: { fontSize: 14, color: '#7A9E8E', textAlign: 'center', lineHeight: 21 },
 })
 
 // ── Styles: FeedVagaModal ─────────────────────────────────────────────────────
