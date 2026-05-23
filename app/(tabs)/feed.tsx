@@ -876,10 +876,8 @@ export default function Painel() {
       let items: any[] = []
 
       if (tab === 'vagas') {
-        const res = await api.get('/vagas')
-        items = (res.data.vagas || [])
-          .map((v: any) => ({ ...v, _pct: calcCompatPerfil(user, v) ?? 0 }))
-          .sort((a: any, b: any) => b._pct - a._pct)
+        const res = await api.get('/vagas/para-mim')
+        items = res.data.vagas || []
 
       } else if (tab === 'interesse') {
         const res = await api.get('/vagas')
