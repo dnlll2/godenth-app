@@ -99,15 +99,15 @@ export default function TabsLayout() {
         fontWeight: '700',
       },
     }}>
-      <Tabs.Screen name="feed"         options={{ title: 'Início',    tabBarIcon: ({ color }) => <HomeIcon   color={color} /> }} />
-      <Tabs.Screen name="grupos"       options={{ title: 'Grupos',    tabBarIcon: ({ color }) => <GroupsIcon color={color} /> }} />
-      <Tabs.Screen name="notificacoes" options={{ title: 'Alertas',   tabBarIcon: ({ color }) => <BellIcon   color={color} /> }} />
-      <Tabs.Screen name="mensagens"    options={{ title: 'Chat',      tabBarIcon: ({ color }) => <ChatIcon   color={color} /> }} />
-      <Tabs.Screen name="perfil"       options={{ title: 'Perfil',    tabBarIcon: ({ color }) => <PersonIcon color={color} /> }} />
+      <Tabs.Screen name="feed"         options={{ title: 'Painel',  tabBarIcon: ({ color }) => <HomeIcon   color={color} /> }} />
+      <Tabs.Screen name="buscar"       options={{ title: 'Buscar',  tabBarIcon: ({ color }) => <SearchIcon color={color} /> }} />
+      <Tabs.Screen name="grupos"       options={{ title: 'Grupos',  tabBarIcon: ({ color }) => <GroupsIcon color={color} /> }} />
+      <Tabs.Screen name="mensagens"    options={{ title: 'Chat',    tabBarIcon: ({ color }) => <ChatIcon   color={color} /> }} />
+      <Tabs.Screen name="perfil"       options={{ title: 'Perfil',  tabBarIcon: ({ color }) => <PersonIcon color={color} /> }} />
+      <Tabs.Screen name="notificacoes" options={{ href: null }} />
       <Tabs.Screen name="publicar"     options={{ href: null }} />
       <Tabs.Screen name="editar-perfil" options={{ href: null }} />
       <Tabs.Screen name="vagas"        options={{ href: null }} />
-      <Tabs.Screen name="buscar"       options={{ href: null }} />
     </Tabs>
   )
 }
