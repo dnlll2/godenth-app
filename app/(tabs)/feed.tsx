@@ -904,20 +904,12 @@ export default function Painel() {
           .sort((a: any, b: any) => new Date(b.post.created_at).getTime() - new Date(a.post.created_at).getTime())
 
       } else if (tab === 'cursos') {
-        const pagesRes = await api.get('/pages').catch(() => ({ data: { pages: [] } }))
-        const pages: any[] = (pagesRes.data.pages || pagesRes.data || []).slice(0, 8)
-        const pubsArr = await Promise.all(
-          pages.map((p: any) =>
-            api.get(`/pages/${p.id}/publicacoes`)
-              .then(r => (r.data || []).map((pub: any) => ({
-                ...pub, _pageNome: p.nome, _pageLogo: p.logo_url,
-              })))
-              .catch(() => [] as any[])
-          )
-        )
-        items = pubsArr.flat()
-          .filter((pub: any) => ['curso', 'treinamento', 'palestra', 'evento'].includes(pub.tipo))
-          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        const res = await api.get('/publicacoes/cursos-eventos')
+        items = (res.data.publicacoes || []).map((pub: any) => ({
+          ...pub,
+          _pageNome: pub.page_nome,
+          _pageLogo: pub.page_logo,
+        }))
 
       } else if (tab === 'feed_geral') {
         const res = await api.get('/posts')
