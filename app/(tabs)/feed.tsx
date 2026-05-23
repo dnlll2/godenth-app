@@ -348,7 +348,7 @@ export default function Painel() {
   const items = allData[aba]
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F4F8F6' }}>
+    <View style={{ flex: 1, backgroundColor: '#E0E0E0' }}>
 
       {/* ── App Header ── */}
       <View style={s.header}>
@@ -563,7 +563,7 @@ const s = StyleSheet.create({
   abaBtnTOn: { color: '#fff' },
 
   // Vaga card
-  vagaCard: { backgroundColor: '#E8E8E8', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', gap: 10 },
+  vagaCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', gap: 10 },
   vagaTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   vagaLogo: { width: 40, height: 40, borderRadius: 10, flexShrink: 0 },
   vagaLogoFb: { backgroundColor: '#D0E8DA', justifyContent: 'center', alignItems: 'center' },
@@ -581,7 +581,7 @@ const s = StyleSheet.create({
   actionBtnT: { color: '#fff', fontSize: 14, fontWeight: '800' },
 
   // Parceria card
-  parcCard: { backgroundColor: '#E8E8E8', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', borderLeftWidth: 4, gap: 8 },
+  parcCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', borderLeftWidth: 4, gap: 8 },
   parcTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   parcAv: { width: 42, height: 42, borderRadius: 21, flexShrink: 0 },
   parcNome: { fontSize: 14, fontWeight: '800', color: '#0A1C14' },
