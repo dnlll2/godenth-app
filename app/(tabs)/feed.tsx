@@ -575,7 +575,7 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
 
 // ── Card: Vaga de interesse (por data) ────────────────────────────────────────
 
-function VagaInteresseCard({ vaga, user }: { vaga: any; user: any }) {
+function VagaInteresseCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?: () => void }) {
   const pct    = vaga._pct ?? calcularCompatAvancado(user, vaga)
   const barCor = pct >= 60 ? '#00A880' : pct >= 30 ? GOLD : '#EF4444'
   const cCor   = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
@@ -618,7 +618,7 @@ function VagaInteresseCard({ vaga, user }: { vaga: any; user: any }) {
       </View>
       <TouchableOpacity
         style={[s.actionBtn, { backgroundColor: '#475569' }]}
-        onPress={() => router.push('/(tabs)/vagas' as any)}
+        onPress={() => onVerVaga ? onVerVaga() : router.push('/(tabs)/vagas' as any)}
         activeOpacity={0.8}
       >
         <Text style={s.actionBtnT}>Ver vaga →</Text>
@@ -1115,11 +1115,31 @@ export default function Painel() {
             <EmptyState icon={emptyMeta.icon} title={emptyMeta.title} sub={emptyMeta.sub} />
           ) : aba === 'vagas' ? (
             <View style={{ gap: 12 }}>
-              {items.map(v => <VagaCard key={v.id} vaga={v} user={user} />)}
+              {items.map(v => (
+                <VagaCard
+                  key={v.id}
+                  vaga={v}
+                  user={user}
+                  onVerVaga={() => {
+                    setFeedVagaIsOwner(false)
+                    setFeedVagaId(v.id)
+                  }}
+                />
+              ))}
             </View>
           ) : aba === 'interesse' ? (
             <View style={{ gap: 12 }}>
-              {items.map(v => <VagaInteresseCard key={v.id} vaga={v} user={user} />)}
+              {items.map(v => (
+                <VagaInteresseCard
+                  key={v.id}
+                  vaga={v}
+                  user={user}
+                  onVerVaga={() => {
+                    setFeedVagaIsOwner(false)
+                    setFeedVagaId(v.id)
+                  }}
+                />
+              ))}
             </View>
           ) : aba === 'recentes' || aba === 'feed_geral' ? (
             <View style={{ gap: 12 }}>
