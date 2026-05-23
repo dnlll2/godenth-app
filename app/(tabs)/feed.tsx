@@ -118,16 +118,23 @@ function VagaCard({ vaga, user }: { vaga: any; user: any }) {
   return (
     <View style={s.vagaCard}>
       <View style={s.vagaTop}>
-        {logoUrl
-          ? <Image source={{ uri: logoUrl }} style={s.vagaLogo} />
-          : <View style={[s.vagaLogo, s.vagaLogoFb]}>
-              <Text style={s.vagaLogoFbT}>{(vaga.empresa_nome || '?').charAt(0)}</Text>
-            </View>
-        }
-        <View style={{ flex: 1 }}>
-          <Text style={s.vagaEmpresa} numberOfLines={1}>{vaga.empresa_nome}</Text>
-          <Text style={s.vagaCargo}   numberOfLines={2}>{vaga.cargo}</Text>
-        </View>
+        <TouchableOpacity
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}
+          onPress={() => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)}
+          activeOpacity={vaga.page_id ? 0.72 : 1}
+          disabled={!vaga.page_id}
+        >
+          {logoUrl
+            ? <Image source={{ uri: logoUrl }} style={s.vagaLogo} />
+            : <View style={[s.vagaLogo, s.vagaLogoFb]}>
+                <Text style={s.vagaLogoFbT}>{(vaga.empresa_nome || '?').charAt(0)}</Text>
+              </View>
+          }
+          <View style={{ flex: 1 }}>
+            <Text style={s.vagaEmpresa} numberOfLines={1}>{vaga.empresa_nome}</Text>
+            <Text style={s.vagaCargo}   numberOfLines={2}>{vaga.cargo}</Text>
+          </View>
+        </TouchableOpacity>
         <View style={[s.pctCircle, { borderColor: barCor }]}>
           <Text style={[s.pctT, { color: barCor }]}>{pct}%</Text>
         </View>
@@ -171,17 +178,23 @@ function ParceriaCard({ post }: { post: any }) {
   return (
     <View style={[s.parcCard, { borderLeftColor: meta.cor }]}>
       <View style={s.parcTop}>
-        {avatarUrl
-          ? <Image source={{ uri: avatarUrl }} style={s.parcAv} />
-          : <View style={[s.parcAv, { backgroundColor: meta.cor + '28', justifyContent: 'center', alignItems: 'center' }]}>
-              <Text style={{ color: meta.cor, fontWeight: '800', fontSize: 15 }}>{nome.charAt(0)}</Text>
-            </View>
-        }
-        <View style={{ flex: 1 }}>
-          <Text style={s.parcNome}  numberOfLines={1}>{nome}</Text>
-          {post.tipo_profissional ? <Text style={s.parcCargo} numberOfLines={1}>{post.tipo_profissional}</Text> : null}
-          {loc ? <Text style={s.parcLoc}>{loc}</Text> : null}
-        </View>
+        <TouchableOpacity
+          style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, flex: 1 }}
+          onPress={() => post.author_id && router.push(`/usuario/${post.author_id}` as any)}
+          activeOpacity={0.75}
+        >
+          {avatarUrl
+            ? <Image source={{ uri: avatarUrl }} style={s.parcAv} />
+            : <View style={[s.parcAv, { backgroundColor: meta.cor + '28', justifyContent: 'center', alignItems: 'center' }]}>
+                <Text style={{ color: meta.cor, fontWeight: '800', fontSize: 15 }}>{nome.charAt(0)}</Text>
+              </View>
+          }
+          <View style={{ flex: 1 }}>
+            <Text style={s.parcNome}  numberOfLines={1}>{nome}</Text>
+            {post.tipo_profissional ? <Text style={s.parcCargo} numberOfLines={1}>{post.tipo_profissional}</Text> : null}
+            {loc ? <Text style={s.parcLoc}>{loc}</Text> : null}
+          </View>
+        </TouchableOpacity>
         <View style={[s.parcTag, { backgroundColor: meta.cor + '18', borderColor: meta.cor + '60' }]}>
           <Text style={[s.parcTagT, { color: meta.cor }]}>{meta.emoji} {meta.label}</Text>
         </View>
