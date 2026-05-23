@@ -787,6 +787,9 @@ function PaginaCard({ page, curtido, curtindo, onCurtir }: {
           <View style={[s.catBadge, { backgroundColor: cat.cor + '18', borderColor: cat.cor + '50' }]}>
             <Text style={[s.catBadgeT, { color: cat.cor }]}>{cat.label}</Text>
           </View>
+          {page.descricao ? (
+            <Text style={s.paginaDesc} numberOfLines={2} ellipsizeMode="tail">{page.descricao}</Text>
+          ) : null}
           {count > 0 ? <Text style={s.paginaCurtidas}>{count} {count === 1 ? 'curtida' : 'curtidas'}</Text> : null}
         </View>
       </TouchableOpacity>
@@ -1319,6 +1322,7 @@ const s = StyleSheet.create({
   paginaNome: { fontSize: 15, fontWeight: '800', color: '#0A1C14', marginBottom: 6, lineHeight: 20 },
   catBadge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 4 },
   catBadgeT: { fontSize: 10, fontWeight: '800' },
+  paginaDesc: { fontSize: 12, color: '#4A7060', lineHeight: 17, marginTop: 4 },
   paginaCurtidas: { fontSize: 11, color: '#7A9E8E', fontWeight: '600' },
   curtirBtn: { backgroundColor: PRIMARY, borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
   curtirBtnOn: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA' },
