@@ -10,9 +10,8 @@ const api = axios.create({
 // Token em memória — atualizado pelo authStore após login/logout/loadUser
 let _token: string | null = null
 
-export const setAuthToken = (token: string | null) => {
-  _token = token
-}
+export const setAuthToken = (token: string | null) => { _token = token }
+export const getAuthToken = () => _token
 
 // Interceptor — usa token em memória (síncrono, confiável no web)
 api.interceptors.request.use((config) => {

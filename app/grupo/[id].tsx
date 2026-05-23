@@ -7,7 +7,7 @@ import {
 } from 'react-native'
 import { useLocalSearchParams, router } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
-import api from '../../services/api'
+import api, { getAuthToken } from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 
 const { width: SCREEN_W } = Dimensions.get('window')
@@ -235,16 +235,23 @@ export default function GrupoScreen() {
       const form = new FormData()
       if (texto.trim()) form.append('texto', texto.trim())
       if (imagem) form.append('imagem', { uri: imagem.uri, name: imagem.name, type: imagem.type } as any)
-      await api.post(`/grupos/${id}/posts`, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        transformRequest: [(data: any) => data],
+      // fetch nativo: o XHR do RN seta Content-Type: multipart/form-data; boundary=<uuid>
+      // automaticamente ao detectar FormData — Axios interfere nessa geração do boundary
+      const token = getAuthToken()
+      const res = await fetch(`${API_BASE}/grupos/${id}/posts`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token ?? ''}` },
+        body: form as any,
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Não foi possível publicar.')
+      }
       setTexto(''); setImagem(null); setModalOpen(false)
-      // Auto-join e refresh
       setGrupo(prev => prev ? { ...prev, is_member: true } : prev)
       fetchGrupo()
     } catch (err: any) {
-      Alert.alert('Erro', err?.response?.data?.error || 'Não foi possível publicar.')
+      Alert.alert('Erro', err.message || 'Não foi possível publicar.')
     } finally {
       setPublishing(false)
     }
@@ -277,15 +284,20 @@ export default function GrupoScreen() {
     try {
       const form = new FormData()
       form.append('capa', { uri: a.uri, name: `capa.${ext}`, type: mimeType } as any)
-      // transformRequest preserva o FormData intacto para que o XHR do React Native
-      // adicione o boundary correto ao Content-Type em vez de o axios serializar o body
-      const res = await api.put(`/grupos/${id}/capa`, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        transformRequest: [(data: any) => data],
+      const token = getAuthToken()
+      const res = await fetch(`${API_BASE}/grupos/${id}/capa`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token ?? ''}` },
+        body: form as any,
       })
-      setGrupo(prev => prev ? { ...prev, capa_url: res.data.capa_url } : prev)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Não foi possível atualizar a capa.')
+      }
+      const data = await res.json()
+      setGrupo(prev => prev ? { ...prev, capa_url: data.capa_url } : prev)
     } catch (err: any) {
-      Alert.alert('Erro', err?.response?.data?.error || 'Não foi possível atualizar a capa.')
+      Alert.alert('Erro', err.message || 'Não foi possível atualizar a capa.')
     } finally {
       setCapaLoading(false)
     }
