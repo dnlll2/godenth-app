@@ -815,7 +815,19 @@ function PaginaCard({ page, curtido, curtindo, onCurtir }: {
 const GRUPO_CAT: Record<string, { label: string; cor: string }> = {
   protese:      { label: 'Prótese Dentária', cor: '#7B3FC4' },
   odontologia:  { label: 'Odontologia',      cor: '#00A880' },
+  clinica:      { label: 'Clínica',          cor: '#1A6FD4' },
+  laboratorio:  { label: 'Laboratório',      cor: '#D4600A' },
+  educacao:     { label: 'Educação',         cor: '#C49800' },
 }
+
+const GRUPO_FILTROS: { key: string; label: string }[] = [
+  { key: 'todos',       label: 'Todos'       },
+  { key: 'protese',     label: 'Prótese'     },
+  { key: 'odontologia', label: 'Odontologia' },
+  { key: 'clinica',     label: 'Clínica'     },
+  { key: 'laboratorio', label: 'Laboratório' },
+  { key: 'educacao',    label: 'Educação'    },
+]
 
 function GrupoCard({ grupo }: { grupo: any }) {
   const cat = GRUPO_CAT[grupo.categoria] || { label: grupo.categoria || 'Geral', cor: PRIMARY }
@@ -912,6 +924,7 @@ export default function Painel() {
   const [curtindo, setCurtindo]     = useState<Record<number, boolean>>({})
   const [feedVagaId, setFeedVagaId]         = useState<number | null>(null)
   const [feedVagaIsOwner, setFeedVagaIsOwner] = useState(false)
+  const [grupoFiltro, setGrupoFiltro]       = useState('todos')
   const abaRef = useRef<Aba>('vagas')
 
   const avatarUrl = user?.avatar_url
@@ -1140,7 +1153,33 @@ export default function Painel() {
         <View style={{ paddingHorizontal: 14, paddingTop: 14 }}>
           {loading ? (
             <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 40 }} />
-          ) : items.length === 0 ? (
+          ) : aba === 'grupos' ? (() => {
+            const filtrados = grupoFiltro === 'todos'
+              ? items
+              : items.filter((g: any) => g.categoria === grupoFiltro)
+            return (
+              <View style={{ gap: 12 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 8, paddingBottom: 2 }}>
+                  {GRUPO_FILTROS.map(f => (
+                    <TouchableOpacity
+                      key={f.key}
+                      style={[s.grupoChip, grupoFiltro === f.key && s.grupoChipOn]}
+                      onPress={() => setGrupoFiltro(f.key)}
+                      activeOpacity={0.78}
+                    >
+                      <Text style={[s.grupoChipT, grupoFiltro === f.key && s.grupoChipTOn]}>{f.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                {filtrados.length === 0 ? (
+                  <EmptyState icon="💬" title="Nenhum grupo nessa categoria" sub="Tente outro filtro" />
+                ) : (
+                  filtrados.map((grupo: any) => <GrupoCard key={grupo.id} grupo={grupo} />)
+                )}
+              </View>
+            )
+          })() : items.length === 0 ? (
             <EmptyState icon={emptyMeta.icon} title={emptyMeta.title} sub={emptyMeta.sub} />
           ) : aba === 'vagas' ? (
             <View style={{ gap: 12 }}>
@@ -1208,12 +1247,6 @@ export default function Painel() {
                   curtindo={!!curtindo[page.id]}
                   onCurtir={() => handleCurtir(page.id)}
                 />
-              ))}
-            </View>
-          ) : aba === 'grupos' ? (
-            <View style={{ gap: 12 }}>
-              {items.map((grupo: any) => (
-                <GrupoCard key={grupo.id} grupo={grupo} />
               ))}
             </View>
           ) : null}
@@ -1389,6 +1422,12 @@ const s = StyleSheet.create({
   emptyIcon: { fontSize: 52, marginBottom: 14 },
   emptyTitle: { fontSize: 17, fontWeight: '800', color: '#0A1C14', marginBottom: 8, textAlign: 'center' },
   emptySub: { fontSize: 13, color: '#7A9E8E', textAlign: 'center', lineHeight: 19 },
+
+  // Grupo filter chips
+  grupoChip:   { backgroundColor: '#EEF7F2', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 100, paddingHorizontal: 16, paddingVertical: 8 },
+  grupoChipOn: { backgroundColor: PRIMARY, borderColor: PRIMARY },
+  grupoChipT:  { fontSize: 13, fontWeight: '700', color: '#3A6550' },
+  grupoChipTOn:{ color: '#fff' },
 
   // Grupo card
   grupoCard:        { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', gap: 10 },
