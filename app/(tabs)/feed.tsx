@@ -13,6 +13,14 @@ const API_BASE = 'https://godenth-api.onrender.com'
 const PRIMARY  = '#1c909b'
 const GOLD     = '#C49800'
 
+function absUrl(url?: string | null) {
+  if (!url) return null
+  if (url.startsWith('https://')) return url
+  if (url.startsWith('http://'))  return url.replace('http://', 'https://')
+  if (url.startsWith('/'))        return API_BASE + url
+  return `${API_BASE}/uploads/${url}`
+}
+
 // ── SVG icons ─────────────────────────────────────────────────────────────────
 
 const IB = { stroke: '#fff', strokeWidth: 1.7, fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
@@ -514,7 +522,7 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
   const cCor     = CONTRATO_COR[contrato] || '#7A9E8E'
   const loc      = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
   const logoUrl  = vaga.logo_url
-    ? (vaga.logo_url.startsWith('http') ? vaga.logo_url : API_BASE + vaga.logo_url)
+    ? (absUrl(vaga.logo_url)!)
     : null
   const salMin   = vaga.salario_min ?? vaga.data_json?.salario_min
   const salMax   = vaga.salario_max ?? vaga.data_json?.salario_max
@@ -569,7 +577,7 @@ function VagaInteresseCard({ vaga, user, onVerVaga }: { vaga: any; user: any; on
   const cCor    = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
   const loc     = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
   const logoUrl = vaga.logo_url
-    ? (vaga.logo_url.startsWith('http') ? vaga.logo_url : API_BASE + vaga.logo_url)
+    ? (absUrl(vaga.logo_url)!)
     : null
 
   return (
@@ -617,7 +625,7 @@ function VagaInteresseCard({ vaga, user, onVerVaga }: { vaga: any; user: any; on
 function RecentPostCard({ post }: { post: any }) {
   const meta      = TIPOS_META[post.tipo_post] || { emoji: '📋', label: post.tipo_post, cor: PRIMARY }
   const avatarUrl = post.author_avatar
-    ? (post.author_avatar.startsWith('http') ? post.author_avatar : API_BASE + post.author_avatar)
+    ? (absUrl(post.author_avatar)!)
     : null
   const nome  = post.page_nome || post.author_nome || 'Usuário'
   const texto = post.data_json?.texto || post.data_json?.descricao
@@ -663,11 +671,9 @@ function RecentPostCard({ post }: { post: any }) {
 // ── Card: Produto (marketplace) ───────────────────────────────────────────────
 
 function ProdutoCard({ post, grupoNome }: { post: any; grupoNome: string }) {
-  const imgUrl = post.imagem_url
-    ? (post.imagem_url.startsWith('http') ? post.imagem_url : API_BASE + post.imagem_url)
-    : null
+  const imgUrl = absUrl(post.imagem_url)
   const avatarUrl = post.author_avatar
-    ? (post.author_avatar.startsWith('http') ? post.author_avatar : API_BASE + post.author_avatar)
+    ? (absUrl(post.author_avatar)!)
     : null
 
   return (
@@ -716,9 +722,7 @@ function ProdutoCard({ post, grupoNome }: { post: any; grupoNome: string }) {
 function CursoCard({ pub, pageNome, pageLogo }: { pub: any; pageNome: string; pageLogo: string | null }) {
   const meta    = TIPO_CURSO_META[pub.tipo] || { emoji: '📋', cor: PRIMARY }
   const dados   = pub.dados || {}
-  const logoUrl = pageLogo
-    ? (pageLogo.startsWith('http') ? pageLogo : API_BASE + pageLogo)
-    : null
+  const logoUrl = absUrl(pageLogo)
 
   return (
     <View style={s.cursoCard}>
@@ -763,9 +767,7 @@ function CursoCard({ pub, pageNome, pageLogo }: { pub: any; pageNome: string; pa
 function PaginaCard({ page, curtido, curtindo, onCurtir }: {
   page: any; curtido: boolean; curtindo: boolean; onCurtir: () => void
 }) {
-  const logoUrl = page.logo_url
-    ? (page.logo_url.startsWith('http') ? page.logo_url : API_BASE + page.logo_url)
-    : null
+  const logoUrl = absUrl(page.logo_url)
   const cat   = CAT_META[page.categoria] || { label: page.categoria || 'Empresa', cor: PRIMARY }
   const count = page.curtidas ?? page.followers_count ?? 0
 
@@ -927,9 +929,7 @@ export default function Painel() {
   const [grupoFiltro, setGrupoFiltro]       = useState('todos')
   const abaRef = useRef<Aba>('vagas')
 
-  const avatarUrl = user?.avatar_url
-    ? (user.avatar_url.startsWith('http') ? user.avatar_url : API_BASE + user.avatar_url)
-    : null
+  const avatarUrl = absUrl(user?.avatar_url)
   const perfilPct = calcularPerfilPct(user)
 
   const loadData = useCallback(async (tab: Aba, isRefresh = false) => {

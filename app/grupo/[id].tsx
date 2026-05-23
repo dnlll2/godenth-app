@@ -61,11 +61,11 @@ type ImageAsset = { uri: string; name: string; type: string; base64?: string | n
 
 function absUrl(url?: string | null) {
   if (!url) return null
-  if (url.startsWith('http')) {
-    // Upgrade http → https; Android bloqueia cleartext traffic
-    return url.replace(/^http:\/\//, 'https://')
-  }
-  return API_BASE + url
+  if (url.startsWith('https://')) return url
+  if (url.startsWith('http://'))  return url.replace('http://', 'https://')
+  if (url.startsWith('/'))        return API_BASE + url
+  // bare filename sem path prefix (ex: "avatar_7_123.jpeg") → /uploads/
+  return `${API_BASE}/uploads/${url}`
 }
 
 function timeAgo(d: string) {
