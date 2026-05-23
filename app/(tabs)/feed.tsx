@@ -146,6 +146,34 @@ const STATUS_LABEL: Record<string, string> = {
   em_analise: 'Em análise', aprovado: '✓ Aprovado', reprovado: '✗ Reprovado',
 }
 
+// Calcula compatibilidade real: requisitos da vaga vs perfil do usuário.
+// Retorna null quando o perfil não tem dados suficientes.
+function calcCompatPerfil(user: any, vaga: any): number | null {
+  const userCaps = [
+    ...(user?.especialidades || []),
+    ...(user?.habilidades    || []),
+    ...((user?.cargos_extras || []).map((c: any) => typeof c === 'string' ? c : c.cargo || '')),
+    user?.tipo_profissional || '',
+  ].map((c: string) => c.toLowerCase().trim()).filter(Boolean)
+
+  if (userCaps.length === 0) return null
+
+  const reqObrig: string[] = Array.isArray(vaga?.requisitos_obrigatorios) ? vaga.requisitos_obrigatorios : []
+  const reqDesej: string[] = Array.isArray(vaga?.requisitos_desejaveis)   ? vaga.requisitos_desejaveis   : []
+  const n = (s: string) => s.toLowerCase().trim()
+
+  if (reqObrig.length === 0 && reqDesej.length === 0) return 100
+
+  const obrigScore = reqObrig.length > 0
+    ? (reqObrig.filter(r => userCaps.includes(n(r))).length / reqObrig.length) * 70
+    : 70
+  const desejScore = reqDesej.length > 0
+    ? (reqDesej.filter(r => userCaps.includes(n(r))).length / reqDesej.length) * 30
+    : 30
+
+  return Math.round(obrigScore + desejScore)
+}
+
 // ── CompatBar (feed modal) ────────────────────────────────────────────────────
 
 function CompatBarFeed({ pct }: { pct: number }) {
@@ -165,8 +193,8 @@ function CompatBarFeed({ pct }: { pct: number }) {
 
 // ── Modal de detalhe/candidatura de vaga (feed local) ─────────────────────────
 
-function FeedVagaModal({ vagaId, isOwner, onClose }: {
-  vagaId: number | null; isOwner: boolean; onClose: () => void
+function FeedVagaModal({ vagaId, isOwner, user, onClose }: {
+  vagaId: number | null; isOwner: boolean; user: any; onClose: () => void
 }) {
   const [vagaFull, setVagaFull]           = useState<any>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
@@ -267,6 +295,36 @@ function FeedVagaModal({ vagaId, isOwner, onClose }: {
               {(vagaFull.cidade || vagaFull.estado) ? (
                 <Text style={fm.loc}>📍 {[vagaFull.cidade, vagaFull.estado].filter(Boolean).join(', ')}</Text>
               ) : null}
+
+              {/* Compatibilidade com perfil */}
+              {(() => {
+                const compat = calcCompatPerfil(user, vagaFull)
+                if (compat != null) {
+                  const barCor = compat >= 70 ? '#00A880' : compat >= 40 ? '#C49800' : '#EF4444'
+                  return (
+                    <View style={fm.compatCard}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#3A6550', textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                          Compatibilidade com seu perfil
+                        </Text>
+                        <Text style={{ fontSize: 20, fontWeight: '900', color: barCor }}>{compat}%</Text>
+                      </View>
+                      <CompatBarFeed pct={compat} />
+                    </View>
+                  )
+                }
+                return (
+                  <TouchableOpacity
+                    style={[fm.compatCard, { alignItems: 'center' }]}
+                    onPress={() => { onClose(); router.push('/(tabs)/editar-perfil' as any) }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={{ fontSize: 12, color: '#7A9E8E', fontWeight: '600', textAlign: 'center' }}>
+                      Complete seu perfil para ver compatibilidade →
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })()}
 
               {(jaCandidatou || candidatou) && (
                 <View style={[fm.statusCard, { borderColor: STATUS_COR[statusAtual || 'em_analise'] + '40' }]}>
@@ -451,8 +509,8 @@ function FeedVagaModal({ vagaId, isOwner, onClose }: {
 // ── Card: Vaga (compatibilidade) ──────────────────────────────────────────────
 
 function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?: () => void }) {
-  const pct    = vaga._pct ?? calcularCompatAvancado(user, vaga)
-  const barCor = pct >= 80 ? '#00A880' : pct >= 50 ? GOLD : '#EF4444'
+  const pct: number | null = vaga._pct != null ? vaga._pct : calcCompatPerfil(user, vaga)
+  const barCor = pct != null ? (pct >= 80 ? '#00A880' : pct >= 50 ? GOLD : '#EF4444') : '#D0E8DA'
   const cCor   = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
   const loc    = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
   const logoUrl = vaga.logo_url
@@ -484,9 +542,11 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
             <Text style={s.vagaCargo}   numberOfLines={2}>{vaga.cargo}</Text>
           </View>
         </TouchableOpacity>
-        <View style={[s.pctCircle, { borderColor: barCor }]}>
-          <Text style={[s.pctT, { color: barCor }]}>{pct}%</Text>
-        </View>
+        {pct != null ? (
+          <View style={[s.pctCircle, { borderColor: barCor }]}>
+            <Text style={[s.pctT, { color: barCor }]}>{pct}%</Text>
+          </View>
+        ) : null}
       </View>
       <View style={s.chips}>
         {vaga.contrato ? (
@@ -497,9 +557,11 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
         {loc     ? <View style={s.chip}><Text style={s.chipT}>📍 {loc}</Text></View>     : null}
         {salario ? <View style={s.chip}><Text style={s.chipT}>{salario}</Text></View> : null}
       </View>
-      <View style={s.compatBar}>
-        <View style={[s.compatFill, { width: `${Math.min(100, pct)}%` as any, backgroundColor: barCor }]} />
-      </View>
+      {pct != null ? (
+        <View style={s.compatBar}>
+          <View style={[s.compatFill, { width: `${Math.min(100, pct)}%` as any, backgroundColor: barCor }]} />
+        </View>
+      ) : null}
       <TouchableOpacity
         style={[s.actionBtn, { backgroundColor: PRIMARY }]}
         onPress={() => onVerVaga ? onVerVaga() : router.push('/(tabs)/vagas' as any)}
@@ -1107,6 +1169,7 @@ export default function Painel() {
       <FeedVagaModal
         vagaId={feedVagaId}
         isOwner={feedVagaIsOwner}
+        user={user}
         onClose={() => setFeedVagaId(null)}
       />
 
