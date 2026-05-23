@@ -53,10 +53,23 @@ function calcularPerfilPct(user: any): number {
   return Math.round(checks.filter(Boolean).length / checks.length * 100)
 }
 
-function calcularCompatClient(user: any, vaga: any): number {
+// Algoritmo preciso: localização + habilidades + formação + experiência
+function calcularCompatAvancado(user: any, vaga: any): number {
+  let score = 0
+
+  // Localização (20 pts)
+  const vagaEstado = (vaga.estado || vaga.empresa_estado || '').toLowerCase().trim()
+  const vagaCidade = (vaga.cidade || vaga.empresa_cidade || '').toLowerCase().trim()
+  if (!vagaEstado) {
+    score += 20 // remoto / nacional
+  } else if (user?.estado && user.estado.toLowerCase().trim() === vagaEstado) {
+    score += 10
+    if (vagaCidade && user?.cidade && user.cidade.toLowerCase().trim() === vagaCidade) score += 10
+  }
+
+  // Habilidades obrigatórias (40 pts)
   const reqObrig: string[] = vaga.requisitos_obrigatorios || []
   const reqDesej: string[] = vaga.requisitos_desejaveis  || []
-  if (!reqObrig.length && !reqDesej.length) return 100
   const userCaps = [
     ...(user?.especialidades || []),
     ...(user?.habilidades    || []),
@@ -64,13 +77,27 @@ function calcularCompatClient(user: any, vaga: any): number {
     user?.tipo_profissional || '',
   ].map((c: string) => c.toLowerCase().trim()).filter(Boolean)
   const n = (s: string) => s.toLowerCase().trim()
-  let score = reqObrig.length
-    ? reqObrig.filter(r => userCaps.includes(n(r))).length / reqObrig.length * 70
-    : 70
-  score += reqDesej.length
-    ? reqDesej.filter(r => userCaps.includes(n(r))).length / reqDesej.length * 30
-    : 30
-  return Math.round(score)
+
+  if (reqObrig.length) {
+    score += (reqObrig.filter(r => userCaps.includes(n(r))).length / reqObrig.length) * 40
+  } else {
+    score += 40
+  }
+
+  // Habilidades desejáveis (20 pts)
+  if (reqDesej.length) {
+    score += (reqDesej.filter(r => userCaps.includes(n(r))).length / reqDesej.length) * 20
+  } else {
+    score += 20
+  }
+
+  // Formação acadêmica (10 pts)
+  if (user?.formacao?.length) score += 10
+
+  // Experiência profissional (10 pts)
+  if (user?.experiencia?.length) score += 10
+
+  return Math.min(100, Math.round(score))
 }
 
 function tempoRelativo(dateStr: string): string {
@@ -88,30 +115,37 @@ const CONTRATO_COR: Record<string, string> = {
 }
 
 const STATUS_META: Record<string, { label: string; cor: string }> = {
-  pendente:   { label: 'Pendente',   cor: GOLD       },
-  em_analise: { label: 'Em Análise', cor: '#1A6FD4'  },
-  aprovado:   { label: 'Aprovado',   cor: '#00A880'  },
-  reprovado:  { label: 'Reprovado',  cor: '#E53935'  },
+  pendente:   { label: 'Pendente',   cor: GOLD      },
+  em_analise: { label: 'Em Análise', cor: '#1A6FD4' },
+  aprovado:   { label: 'Aprovado',   cor: '#00A880' },
+  reprovado:  { label: 'Reprovado',  cor: '#E53935' },
 }
 
-const PARC_META: Record<string, { emoji: string; label: string; cor: string }> = {
-  parceria: { emoji: '🤝', label: 'Busco Parceria',   cor: '#7B3FC4' },
-  ajuda:    { emoji: '🆘', label: 'Preciso de Ajuda', cor: '#E53935' },
+const TIPOS_META: Record<string, { emoji: string; label: string; cor: string }> = {
+  parceria:     { emoji: '🤝', label: 'Parceria',      cor: '#7B3FC4' },
+  vaga:         { emoji: '💼', label: 'Vaga',           cor: GOLD      },
+  ajuda:        { emoji: '🆘', label: 'Ajuda',          cor: '#E53935' },
+  dica_clinica: { emoji: '💡', label: 'Dica Clínica',   cor: '#00A880' },
+  caso_clinico: { emoji: '🦷', label: 'Caso Clínico',   cor: '#1A6FD4' },
+  oportunidade: { emoji: '🚀', label: 'Oportunidade',   cor: GOLD      },
+  pergunta:     { emoji: '❓', label: 'Pergunta',        cor: '#7B3FC4' },
+  noticia:      { emoji: '📰', label: 'Notícia',         cor: '#D4600A' },
+  humor:        { emoji: '😄', label: 'Humor',           cor: '#D4186A' },
 }
 
 // ── Card: Vaga ────────────────────────────────────────────────────────────────
 
 function VagaCard({ vaga, user }: { vaga: any; user: any }) {
-  const pct      = vaga._pct ?? calcularCompatClient(user, vaga)
+  const pct      = vaga._pct ?? calcularCompatAvancado(user, vaga)
   const barCor   = pct >= 80 ? '#00A880' : pct >= 50 ? GOLD : '#EF4444'
   const cCor     = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
   const loc      = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
   const logoUrl  = vaga.logo_url
     ? (vaga.logo_url.startsWith('http') ? vaga.logo_url : API_BASE + vaga.logo_url)
     : null
-  const salMin   = vaga.salario_min
-  const salMax   = vaga.salario_max
-  const salario  = salMin
+  const salMin = vaga.salario_min
+  const salMax = vaga.salario_max
+  const salario = salMin
     ? `R$ ${Number(salMin).toLocaleString('pt-BR')}${salMax ? ` – ${Number(salMax).toLocaleString('pt-BR')}` : ''}`
     : null
 
@@ -165,74 +199,48 @@ function VagaCard({ vaga, user }: { vaga: any; user: any }) {
   )
 }
 
-// ── Card: Parceria / Ajuda ────────────────────────────────────────────────────
+// ── Card: Post Recente ────────────────────────────────────────────────────────
 
-function ParceriaCard({ post }: { post: any }) {
-  const meta      = PARC_META[post.tipo_post] || PARC_META.parceria
+function RecentPostCard({ post }: { post: any }) {
+  const meta      = TIPOS_META[post.tipo_post] || { emoji: '📋', label: post.tipo_post, cor: PRIMARY }
   const avatarUrl = post.author_avatar
     ? (post.author_avatar.startsWith('http') ? post.author_avatar : API_BASE + post.author_avatar)
     : null
-  const nome = post.page_nome || post.author_nome || 'Usuário'
-  const loc  = [post.data_json?.cidade, post.data_json?.estado].filter(Boolean).join(' · ')
+  const nome  = post.page_nome || post.author_nome || 'Usuário'
+  const texto = post.data_json?.texto || post.data_json?.descricao
+  const sub   = post.data_json?.subcategoria
+  const loc   = [post.data_json?.cidade, post.data_json?.estado].filter(Boolean).join(' · ')
 
   return (
-    <View style={[s.parcCard, { borderLeftColor: meta.cor }]}>
-      <View style={s.parcTop}>
+    <View style={[s.recentCard, { borderLeftColor: meta.cor }]}>
+      <View style={s.recentTop}>
         <TouchableOpacity
-          style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, flex: 1 }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}
           onPress={() => post.author_id && router.push(`/usuario/${post.author_id}` as any)}
           activeOpacity={0.75}
         >
           {avatarUrl
-            ? <Image source={{ uri: avatarUrl }} style={s.parcAv} />
-            : <View style={[s.parcAv, { backgroundColor: meta.cor + '28', justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ color: meta.cor, fontWeight: '800', fontSize: 15 }}>{nome.charAt(0)}</Text>
+            ? <Image source={{ uri: avatarUrl }} style={s.recentAv} />
+            : <View style={[s.recentAv, { backgroundColor: meta.cor + '30', justifyContent: 'center', alignItems: 'center' }]}>
+                <Text style={{ color: meta.cor, fontWeight: '800', fontSize: 13 }}>{nome.charAt(0)}</Text>
               </View>
           }
           <View style={{ flex: 1 }}>
-            <Text style={s.parcNome}  numberOfLines={1}>{nome}</Text>
-            {post.tipo_profissional ? <Text style={s.parcCargo} numberOfLines={1}>{post.tipo_profissional}</Text> : null}
-            {loc ? <Text style={s.parcLoc}>{loc}</Text> : null}
+            <Text style={s.recentNome}  numberOfLines={1}>{nome}</Text>
+            {post.tipo_profissional
+              ? <Text style={s.recentCargo} numberOfLines={1}>{post.tipo_profissional}</Text>
+              : null}
+            {loc ? <Text style={s.recentLoc}>{loc}</Text> : null}
           </View>
         </TouchableOpacity>
-        <View style={[s.parcTag, { backgroundColor: meta.cor + '18', borderColor: meta.cor + '60' }]}>
-          <Text style={[s.parcTagT, { color: meta.cor }]}>{meta.emoji} {meta.label}</Text>
+        <View style={[s.recentBadge, { backgroundColor: meta.cor + '18', borderColor: meta.cor + '50' }]}>
+          <Text style={[s.recentBadgeT, { color: meta.cor }]}>{meta.emoji} {meta.label.toUpperCase()}</Text>
         </View>
       </View>
-      {post.data_json?.subcategoria
-        ? <View style={s.parcSub}><Text style={s.parcSubT}>{post.data_json.subcategoria}</Text></View>
-        : null}
-      {post.data_json?.texto
-        ? <Text style={s.parcTexto} numberOfLines={4}>{post.data_json.texto}</Text>
-        : null}
-      <Text style={s.parcTempo}>{tempoRelativo(post.created_at)}</Text>
+      {sub   ? <Text style={s.recentSub}>{sub}</Text>   : null}
+      {texto ? <Text style={s.recentTexto} numberOfLines={4}>{texto}</Text> : null}
+      <Text style={s.recentTempo}>{tempoRelativo(post.created_at)}</Text>
     </View>
-  )
-}
-
-// ── Card: Grupo ───────────────────────────────────────────────────────────────
-
-function GrupoCard({ grupo }: { grupo: any }) {
-  return (
-    <TouchableOpacity
-      style={s.grupoCard}
-      onPress={() => router.push(`/grupo/${grupo.id}` as any)}
-      activeOpacity={0.78}
-    >
-      <View style={[s.grupoIcon, { backgroundColor: PRIMARY + '1A' }]}>
-        <Text style={{ fontSize: 22 }}>{grupo.icone || '🦷'}</Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={s.grupoNome} numberOfLines={1}>{grupo.nome}</Text>
-        <Text style={s.grupoDesc} numberOfLines={2}>{grupo.descricao}</Text>
-      </View>
-      {grupo.total_posts > 0 ? (
-        <View style={s.grupoBadge}>
-          <Text style={s.grupoBadgeT}>{grupo.total_posts}</Text>
-          <Text style={s.grupoBadgeSub}> posts</Text>
-        </View>
-      ) : null}
-    </TouchableOpacity>
   )
 }
 
@@ -283,16 +291,16 @@ function EmptyState({ icon, title, sub }: { icon: string; title: string; sub: st
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-type Aba = 'vagas' | 'parcerias' | 'grupos' | 'candidaturas'
+type Aba = 'vagas' | 'recentes' | 'candidaturas'
 
 const ABAS: { key: Aba; label: string }[] = [
   { key: 'vagas',        label: 'Vagas para mim' },
-  { key: 'parcerias',    label: 'Parcerias'       },
-  { key: 'grupos',       label: 'Grupos'          },
-  { key: 'candidaturas', label: 'Candidaturas'    },
+  { key: 'recentes',     label: 'Recentes'       },
+  { key: 'candidaturas', label: 'Candidaturas'   },
 ]
 
-const EMPTY: Record<Aba, any[]> = { vagas: [], parcerias: [], grupos: [], candidaturas: [] }
+const EMPTY: Record<Aba, any[]> = { vagas: [], recentes: [], candidaturas: [] }
+const SETE_DIAS = 7 * 24 * 60 * 60 * 1000
 
 export default function Painel() {
   const { user } = useAuthStore()
@@ -315,18 +323,14 @@ export default function Painel() {
       if (tab === 'vagas') {
         const res = await api.get('/vagas')
         items = (res.data.vagas || [])
-          .map((v: any) => ({ ...v, _pct: calcularCompatClient(user, v) }))
+          .map((v: any) => ({ ...v, _pct: calcularCompatAvancado(user, v) }))
           .sort((a: any, b: any) => b._pct - a._pct)
-      } else if (tab === 'parcerias') {
-        const [pr, ar] = await Promise.all([
-          api.get('/posts?tipo_post=parceria'),
-          api.get('/posts?tipo_post=ajuda').catch(() => ({ data: { posts: [] } })),
-        ])
-        items = [...(pr.data.posts || []), ...(ar.data.posts || [])]
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      } else if (tab === 'grupos') {
-        const res = await api.get('/grupos/meus').catch(() => api.get('/grupos'))
-        items = res.data.grupos || res.data || []
+      } else if (tab === 'recentes') {
+        const res = await api.get('/posts')
+        const cutoff = Date.now() - SETE_DIAS
+        items = (res.data.posts || [])
+          .filter((p: any) => new Date(p.created_at).getTime() >= cutoff)
+          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       } else if (tab === 'candidaturas') {
         const res = await api.get('/vagas/minhas-candidaturas')
         items = res.data.candidaturas || res.data || []
@@ -414,44 +418,44 @@ export default function Painel() {
       >
         {/* [0] Profile card */}
         <View style={{ paddingTop: 14 }}>
-        <View style={s.profileCard}>
-          <TouchableOpacity
-            style={s.profileLeft}
-            onPress={() => router.push('/(tabs)/perfil' as any)}
-            activeOpacity={0.78}
-          >
-            {avatarUrl
-              ? <Image source={{ uri: avatarUrl }} style={s.profileAv} />
-              : <View style={[s.profileAv, { backgroundColor: PRIMARY, justifyContent: 'center', alignItems: 'center' }]}>
-                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 22 }}>{user?.nome?.charAt(0) || 'U'}</Text>
-                </View>
-            }
-            <View style={{ flex: 1 }}>
-              <Text style={s.profileNome} numberOfLines={1}>{user?.nome || 'Usuário'}</Text>
-              {user?.tipo_profissional
-                ? <Text style={s.profileCargo} numberOfLines={1}>{user.tipo_profissional}</Text>
-                : null}
-              {(user?.cidade || user?.estado)
-                ? <Text style={s.profileLoc}>📍 {[user?.cidade, user?.estado].filter(Boolean).join(', ')}</Text>
-                : null}
-            </View>
-          </TouchableOpacity>
-
-          {perfilPct < 100 && (
-            <TouchableOpacity onPress={() => router.push('/(tabs)/editar-perfil' as any)} activeOpacity={0.78}>
-              <View style={s.profilePctRow}>
-                <View style={s.profilePctBar}>
-                  <View style={[s.profilePctFill, { width: `${perfilPct}%` as any }]} />
-                </View>
-                <Text style={s.profilePctTxt}>{perfilPct}%</Text>
+          <View style={s.profileCard}>
+            <TouchableOpacity
+              style={s.profileLeft}
+              onPress={() => router.push('/(tabs)/perfil' as any)}
+              activeOpacity={0.78}
+            >
+              {avatarUrl
+                ? <Image source={{ uri: avatarUrl }} style={s.profileAv} />
+                : <View style={[s.profileAv, { backgroundColor: PRIMARY, justifyContent: 'center', alignItems: 'center' }]}>
+                    <Text style={{ color: '#fff', fontWeight: '800', fontSize: 22 }}>{user?.nome?.charAt(0) || 'U'}</Text>
+                  </View>
+              }
+              <View style={{ flex: 1 }}>
+                <Text style={s.profileNome} numberOfLines={1}>{user?.nome || 'Usuário'}</Text>
+                {user?.tipo_profissional
+                  ? <Text style={s.profileCargo} numberOfLines={1}>{user.tipo_profissional}</Text>
+                  : null}
+                {(user?.cidade || user?.estado)
+                  ? <Text style={s.profileLoc}>📍 {[user?.cidade, user?.estado].filter(Boolean).join(', ')}</Text>
+                  : null}
               </View>
-              <Text style={s.profileCompleteLink}>Completar perfil →</Text>
             </TouchableOpacity>
-          )}
-        </View>
+
+            {perfilPct < 100 && (
+              <TouchableOpacity onPress={() => router.push('/(tabs)/editar-perfil' as any)} activeOpacity={0.78}>
+                <View style={s.profilePctRow}>
+                  <View style={s.profilePctBar}>
+                    <View style={[s.profilePctFill, { width: `${perfilPct}%` as any }]} />
+                  </View>
+                  <Text style={s.profilePctTxt}>{perfilPct}%</Text>
+                </View>
+                <Text style={s.profileCompleteLink}>Completar perfil →</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        {/* [1] Aba bar — sticks to top on scroll */}
+        {/* [1] Aba bar — sticky */}
         <View style={s.abaBar}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.abaScroll}>
             {ABAS.map(a => (
@@ -473,21 +477,15 @@ export default function Painel() {
             <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 40 }} />
           ) : items.length === 0 ? (
             <EmptyState
-              icon={
-                aba === 'vagas'        ? '💼' :
-                aba === 'parcerias'    ? '🤝' :
-                aba === 'grupos'       ? '👥' : '📋'
-              }
+              icon={aba === 'vagas' ? '💼' : aba === 'recentes' ? '📋' : '📬'}
               title={
                 aba === 'vagas'        ? 'Nenhuma vaga encontrada'     :
-                aba === 'parcerias'    ? 'Nenhuma parceria no momento' :
-                aba === 'grupos'       ? 'Nenhum grupo encontrado'     :
+                aba === 'recentes'     ? 'Nada nos últimos 7 dias'      :
                 'Nenhuma candidatura'
               }
               sub={
-                aba === 'vagas'        ? 'Novas oportunidades aparecerão aqui conforme forem publicadas' :
-                aba === 'parcerias'    ? 'Acompanhe novidades da rede de profissionais'                  :
-                aba === 'grupos'       ? 'Acesse a aba Grupos para participar de comunidades'            :
+                aba === 'vagas'        ? 'Novas oportunidades aparecerão aqui conforme publicadas' :
+                aba === 'recentes'     ? 'As publicações recentes da rede aparecerão aqui'          :
                 'Candidate-se a vagas para acompanhar o status aqui'
               }
             />
@@ -495,13 +493,9 @@ export default function Painel() {
             <View style={{ gap: 12 }}>
               {items.map(v => <VagaCard key={v.id} vaga={v} user={user} />)}
             </View>
-          ) : aba === 'parcerias' ? (
+          ) : aba === 'recentes' ? (
             <View style={{ gap: 12 }}>
-              {items.map(p => <ParceriaCard key={p.id} post={p} />)}
-            </View>
-          ) : aba === 'grupos' ? (
-            <View style={{ gap: 10 }}>
-              {items.map(g => <GrupoCard key={g.id} grupo={g} />)}
+              {items.map(p => <RecentPostCard key={p.id} post={p} />)}
             </View>
           ) : (
             <View style={{ gap: 12 }}>
@@ -517,7 +511,6 @@ export default function Painel() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  // Header
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 12, backgroundColor: PRIMARY,
@@ -539,7 +532,6 @@ const s = StyleSheet.create({
   uav: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1A6FD4', justifyContent: 'center', alignItems: 'center' },
   uavt: { color: '#fff', fontWeight: '800', fontSize: 14 },
 
-  // Verification banner
   verifBanner: {
     backgroundColor: '#FFF3E0', borderBottomWidth: 1, borderBottomColor: '#FFCC80',
     paddingHorizontal: 16, paddingVertical: 10,
@@ -548,7 +540,6 @@ const s = StyleSheet.create({
   verifBannerT: { flex: 1, fontSize: 12, color: '#92400E', lineHeight: 17, fontWeight: '600' },
   verifBannerLink: { fontSize: 12, color: '#E65100', fontWeight: '800', flexShrink: 0 },
 
-  // Profile card
   profileCard: {
     backgroundColor: '#fff', padding: 16,
     borderRadius: 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#D0E8DA', gap: 12,
@@ -564,7 +555,6 @@ const s = StyleSheet.create({
   profilePctTxt: { fontSize: 12, fontWeight: '800', color: PRIMARY, width: 34, textAlign: 'right' },
   profileCompleteLink: { fontSize: 12, fontWeight: '700', color: GOLD, marginTop: 4 },
 
-  // Aba bar
   abaBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#D0E8DA', marginTop: 12 },
   abaScroll: { paddingHorizontal: 14, paddingVertical: 10, gap: 8 },
   abaBtn: {
@@ -593,28 +583,18 @@ const s = StyleSheet.create({
   actionBtn: { borderRadius: 12, paddingVertical: 11, alignItems: 'center' },
   actionBtnT: { color: '#fff', fontSize: 14, fontWeight: '800' },
 
-  // Parceria card
-  parcCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', borderLeftWidth: 4, gap: 8 },
-  parcTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  parcAv: { width: 42, height: 42, borderRadius: 21, flexShrink: 0 },
-  parcNome: { fontSize: 14, fontWeight: '800', color: '#0A1C14' },
-  parcCargo: { fontSize: 12, color: PRIMARY, fontWeight: '600', marginTop: 1 },
-  parcLoc: { fontSize: 11, color: '#7A9E8E', marginTop: 1 },
-  parcTag: { borderWidth: 1, borderRadius: 100, paddingHorizontal: 9, paddingVertical: 4, flexShrink: 0 },
-  parcTagT: { fontSize: 10, fontWeight: '800' },
-  parcSub: { alignSelf: 'flex-start', backgroundColor: '#F0F0F0', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  parcSubT: { fontSize: 12, fontWeight: '700', color: '#3A6550' },
-  parcTexto: { fontSize: 13, color: '#4A7060', lineHeight: 19 },
-  parcTempo: { fontSize: 11, color: '#A0B8AC', fontWeight: '600' },
-
-  // Grupo card
-  grupoCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', flexDirection: 'row', alignItems: 'center', gap: 12 },
-  grupoIcon: { width: 46, height: 46, borderRadius: 12, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  grupoNome: { fontSize: 14, fontWeight: '800', color: '#0A1C14' },
-  grupoDesc: { fontSize: 12, color: '#7A9E8E', marginTop: 2, lineHeight: 17 },
-  grupoBadge: { flexDirection: 'row', alignItems: 'baseline', backgroundColor: PRIMARY + '18', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, flexShrink: 0 },
-  grupoBadgeT: { fontSize: 14, fontWeight: '900', color: PRIMARY },
-  grupoBadgeSub: { fontSize: 10, color: PRIMARY, fontWeight: '600' },
+  // Recent post card
+  recentCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', borderLeftWidth: 4, gap: 8 },
+  recentTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  recentAv: { width: 38, height: 38, borderRadius: 19, flexShrink: 0 },
+  recentNome: { fontSize: 13, fontWeight: '800', color: '#0A1C14' },
+  recentCargo: { fontSize: 11, color: PRIMARY, fontWeight: '600', marginTop: 1 },
+  recentLoc: { fontSize: 11, color: '#7A9E8E', marginTop: 1 },
+  recentBadge: { borderWidth: 1, borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3, flexShrink: 0 },
+  recentBadgeT: { fontSize: 9, fontWeight: '800' },
+  recentSub: { fontSize: 12, fontWeight: '700', color: '#0A1C14' },
+  recentTexto: { fontSize: 13, color: '#4A7060', lineHeight: 18 },
+  recentTempo: { fontSize: 11, color: '#A0B8AC', fontWeight: '600' },
 
   // Candidatura card
   candCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', gap: 10 },
@@ -629,7 +609,6 @@ const s = StyleSheet.create({
   candPct: { borderWidth: 1, borderColor: '#D0E8DA', borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 },
   candPctT: { fontSize: 11, fontWeight: '700', color: '#3A6550' },
 
-  // Empty state
   empty: { alignItems: 'center', paddingTop: 48, paddingBottom: 32, paddingHorizontal: 24 },
   emptyIcon: { fontSize: 52, marginBottom: 14 },
   emptyTitle: { fontSize: 17, fontWeight: '800', color: '#0A1C14', marginBottom: 8, textAlign: 'center' },

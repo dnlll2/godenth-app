@@ -10,57 +10,46 @@ function mk(c: string) {
   return { stroke: c, strokeWidth: SW, fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
 }
 
-function HomeIcon({ color }: { color: string }) {
+function DashboardIcon({ color }: { color: string }) {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24">
+      <Rect x="3"  y="3"  width="8" height="8" rx="1" stroke={color} strokeWidth={SW} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <Rect x="13" y="3"  width="8" height="8" rx="1" stroke={color} strokeWidth={SW} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <Rect x="3"  y="13" width="8" height="8" rx="1" stroke={color} strokeWidth={SW} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <Rect x="13" y="13" width="8" height="8" rx="1" stroke={color} strokeWidth={SW} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  )
+}
+
+function StarIcon({ color }: { color: string }) {
   const b = mk(color)
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Path d="M2,11 L12,3 L22,11" {...b} />
-      <Path d="M4,11 L4,21 L20,21 L20,11" {...b} />
+      <Path d="M12,2 L15.09,8.26 L22,9.27 L17,14.14 L18.18,21.02 L12,17.77 L5.82,21.02 L7,14.14 L2,9.27 L8.91,8.26 Z" {...b} />
+    </Svg>
+  )
+}
+
+function CartIcon({ color }: { color: string }) {
+  const b = mk(color)
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24">
+      <Path d="M2,3 L5.5,3 L7.72,14.4 C7.85,15 8.38,15.42 9,15.42 L19,15.42 C19.6,15.42 20.12,15.02 20.27,14.43 L22,7 L6,7" {...b} />
+      <Circle cx="9"  cy="20" r="1.5" {...b} />
+      <Circle cx="17" cy="20" r="1.5" {...b} />
+    </Svg>
+  )
+}
+
+function BuildingIcon({ color }: { color: string }) {
+  const b = mk(color)
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24">
+      <Path d="M3,21 L3,6 C3,5.45 3.45,5 4,5 L20,5 C20.55,5 21,5.45 21,6 L21,21" {...b} />
+      <Line x1="1" y1="21" x2="23" y2="21" {...b} />
       <Path d="M9,21 L9,15 L15,15 L15,21" {...b} />
-    </Svg>
-  )
-}
-
-function SearchIcon({ color }: { color: string }) {
-  const b = mk(color)
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Circle cx="10.5" cy="10.5" r="6.5" {...b} />
-      <Line x1="15.5" y1="15.5" x2="21" y2="21" {...b} />
-    </Svg>
-  )
-}
-
-function BellIcon({ color }: { color: string }) {
-  const b = mk(color)
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Path d="M10,7 C10,5.3 14,5.3 14,7" {...b} />
-      <Path d="M5,17 C5,12 7.5,8 12,8 C16.5,8 19,12 19,17 L20,19 L4,19 Z" {...b} />
-      <Path d="M10,19 C10,20.7 14,20.7 14,19" {...b} />
-    </Svg>
-  )
-}
-
-function ChatIcon({ color }: { color: string }) {
-  const b = mk(color)
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Path d="M3,5 C3,3.9 3.9,3 5,3 L19,3 C20.1,3 21,3.9 21,5 L21,14 C21,15.1 20.1,16 19,16 L8,16 L3,21 Z" {...b} />
-    </Svg>
-  )
-}
-
-function GroupsIcon({ color }: { color: string }) {
-  const b = mk(color)
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Circle cx="12" cy="8" r="3" {...b} />
-      <Path d="M5,20 C5,16.7 8.1,14 12,14 C15.9,14 19,16.7 19,20" {...b} />
-      <Circle cx="19.5" cy="7" r="2.5" {...b} />
-      <Path d="M22,18.5 C22,16.6 20.9,15.2 19.5,15" {...b} />
-      <Circle cx="4.5" cy="7" r="2.5" {...b} />
-      <Path d="M2,18.5 C2,16.6 3.1,15.2 4.5,15" {...b} />
+      <Rect x="8"  y="8" width="3" height="3" stroke={color} strokeWidth={SW} fill="none" />
+      <Rect x="13" y="8" width="3" height="3" stroke={color} strokeWidth={SW} fill="none" />
     </Svg>
   )
 }
@@ -94,20 +83,20 @@ export default function TabsLayout() {
         shadowOpacity: 0.06,
         shadowRadius: 8,
       },
-      tabBarLabelStyle: {
-        fontSize: 10,
-        fontWeight: '700',
-      },
+      tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
     }}>
-      <Tabs.Screen name="feed"         options={{ title: 'Painel',  tabBarIcon: ({ color }) => <HomeIcon   color={color} /> }} />
-      <Tabs.Screen name="buscar"       options={{ title: 'Buscar',  tabBarIcon: ({ color }) => <SearchIcon color={color} /> }} />
-      <Tabs.Screen name="grupos"       options={{ title: 'Grupos',  tabBarIcon: ({ color }) => <GroupsIcon color={color} /> }} />
-      <Tabs.Screen name="mensagens"    options={{ title: 'Chat',    tabBarIcon: ({ color }) => <ChatIcon   color={color} /> }} />
-      <Tabs.Screen name="perfil"       options={{ title: 'Perfil',  tabBarIcon: ({ color }) => <PersonIcon color={color} /> }} />
-      <Tabs.Screen name="notificacoes" options={{ href: null }} />
-      <Tabs.Screen name="publicar"     options={{ href: null }} />
+      <Tabs.Screen name="feed"          options={{ title: 'Painel',       tabBarIcon: ({ color }) => <DashboardIcon color={color} /> }} />
+      <Tabs.Screen name="oportunidades" options={{ title: 'Oportunidades', tabBarIcon: ({ color }) => <StarIcon      color={color} /> }} />
+      <Tabs.Screen name="marketplace"   options={{ title: 'Marketplace',   tabBarIcon: ({ color }) => <CartIcon      color={color} /> }} />
+      <Tabs.Screen name="empresas"      options={{ title: 'Páginas',       tabBarIcon: ({ color }) => <BuildingIcon  color={color} /> }} />
+      <Tabs.Screen name="perfil"        options={{ title: 'Perfil',        tabBarIcon: ({ color }) => <PersonIcon    color={color} /> }} />
+      <Tabs.Screen name="grupos"        options={{ href: null }} />
+      <Tabs.Screen name="notificacoes"  options={{ href: null }} />
+      <Tabs.Screen name="mensagens"     options={{ href: null }} />
+      <Tabs.Screen name="publicar"      options={{ href: null }} />
       <Tabs.Screen name="editar-perfil" options={{ href: null }} />
-      <Tabs.Screen name="vagas"        options={{ href: null }} />
+      <Tabs.Screen name="vagas"         options={{ href: null }} />
+      <Tabs.Screen name="buscar"        options={{ href: null }} />
     </Tabs>
   )
 }
