@@ -59,15 +59,6 @@ type ImageAsset = { uri: string; name: string; type: string; base64?: string | n
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function absUrl(url?: string | null) {
-  if (!url) return null
-  if (url.startsWith('https://')) return url
-  if (url.startsWith('http://'))  return url.replace('http://', 'https://')
-  if (url.startsWith('/'))        return API_BASE + url
-  // bare filename sem path prefix (ex: "avatar_7_123.jpeg") → /uploads/
-  return `${API_BASE}/uploads/${url}`
-}
-
 function timeAgo(d: string) {
   const s = (Date.now() - new Date(d).getTime()) / 1000
   if (s < 60) return 'agora'
@@ -78,7 +69,7 @@ function timeAgo(d: string) {
 }
 
 function Avatar({ uri, nome, size = 40, border }: { uri?: string | null; nome: string; size?: number; border?: string }) {
-  const src = absUrl(uri)
+  const src = uri || null
   const initials = (nome ?? '?').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
   const inner = src
     ? <Image source={{ uri: src }} style={{ width: size, height: size, borderRadius: size / 2 }} />
@@ -113,7 +104,7 @@ function PostCard({ post, accentColor }: { post: GrupoPost; accentColor: string 
       </View>
       {!!post.texto && <Text style={pc.texto}>{post.texto}</Text>}
       {!!post.imagem_url && (
-        <Image source={{ uri: absUrl(post.imagem_url)! }} style={pc.img} resizeMode="cover" />
+        <Image source={{ uri: post.imagem_url }} style={pc.img} resizeMode="cover" />
       )}
       <View style={[pc.stripe, { backgroundColor: accentColor }]} />
     </View>
@@ -305,7 +296,7 @@ export default function GrupoScreen() {
 
   const ListHeader = () => {
     if (!grupo) return null
-    const capaUri = absUrl(grupo.capa_url)
+    const capaUri = grupo.capa_url || null
     const ultimos = grupo.ultimos_ativos ?? []
 
     return (
