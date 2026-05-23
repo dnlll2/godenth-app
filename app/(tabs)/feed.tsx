@@ -552,7 +552,7 @@ const s = StyleSheet.create({
   profileCompleteLink: { fontSize: 12, fontWeight: '700', color: GOLD, marginTop: 4 },
 
   // Aba bar
-  abaBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#D0E8DA' },
+  abaBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#D0E8DA', marginTop: 12 },
   abaScroll: { paddingHorizontal: 14, paddingVertical: 10, gap: 8 },
   abaBtn: {
     backgroundColor: '#EEF7F2', borderWidth: 1.5, borderColor: '#D0E8DA',
