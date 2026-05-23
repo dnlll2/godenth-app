@@ -400,7 +400,7 @@ export default function Painel() {
         }
       >
         {/* [0] Profile card */}
-        <View style={{ paddingHorizontal: 14, paddingTop: 14 }}>
+        <View style={{ paddingTop: 14 }}>
         <View style={s.profileCard}>
           <TouchableOpacity
             style={s.profileLeft}
@@ -538,7 +538,7 @@ const s = StyleSheet.create({
   // Profile card
   profileCard: {
     backgroundColor: '#fff', padding: 16,
-    borderRadius: 16, borderWidth: 1, borderColor: '#D0E8DA', gap: 12,
+    borderRadius: 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#D0E8DA', gap: 12,
   },
   profileLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   profileAv: { width: 54, height: 54, borderRadius: 27, flexShrink: 0 },
