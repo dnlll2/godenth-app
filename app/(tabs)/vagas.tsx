@@ -919,12 +919,12 @@ function VagaDetalheModal({ vaga, isOwner, onClose, onCandidatou }: {
                 <Text style={dm.candidatarBtnT}>✓ Candidatura enviada!</Text>
               </View>
             ) : step === 'detail' ? (
-              <TouchableOpacity style={[dm.candidatarBtn, { backgroundColor: cor }]} onPress={goToApply} disabled={!vagaFull}>
+              <TouchableOpacity style={[dm.candidatarBtn, { backgroundColor: '#1c909b' }]} onPress={goToApply} disabled={!vagaFull}>
                 <Text style={dm.candidatarBtnT}>Candidatar-se →</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={[dm.candidatarBtn, { backgroundColor: cor }, sending && { opacity: 0.7 }]}
+                style={[dm.candidatarBtn, { backgroundColor: '#1c909b' }, sending && { opacity: 0.7 }]}
                 onPress={confirmar}
                 disabled={sending}
               >
