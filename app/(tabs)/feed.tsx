@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, ScrollView, Image, Platform,
+  RefreshControl, ActivityIndicator, ScrollView, Image, Platform, Linking,
 } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import Svg, { Circle, Line, Path } from 'react-native-svg'
@@ -53,21 +53,16 @@ function calcularPerfilPct(user: any): number {
   return Math.round(checks.filter(Boolean).length / checks.length * 100)
 }
 
-// Algoritmo preciso: localização + habilidades + formação + experiência
 function calcularCompatAvancado(user: any, vaga: any): number {
   let score = 0
-
-  // Localização (20 pts)
   const vagaEstado = (vaga.estado || vaga.empresa_estado || '').toLowerCase().trim()
   const vagaCidade = (vaga.cidade || vaga.empresa_cidade || '').toLowerCase().trim()
   if (!vagaEstado) {
-    score += 20 // remoto / nacional
+    score += 20
   } else if (user?.estado && user.estado.toLowerCase().trim() === vagaEstado) {
     score += 10
     if (vagaCidade && user?.cidade && user.cidade.toLowerCase().trim() === vagaCidade) score += 10
   }
-
-  // Habilidades obrigatórias (40 pts)
   const reqObrig: string[] = vaga.requisitos_obrigatorios || []
   const reqDesej: string[] = vaga.requisitos_desejaveis  || []
   const userCaps = [
@@ -77,26 +72,10 @@ function calcularCompatAvancado(user: any, vaga: any): number {
     user?.tipo_profissional || '',
   ].map((c: string) => c.toLowerCase().trim()).filter(Boolean)
   const n = (s: string) => s.toLowerCase().trim()
-
-  if (reqObrig.length) {
-    score += (reqObrig.filter(r => userCaps.includes(n(r))).length / reqObrig.length) * 40
-  } else {
-    score += 40
-  }
-
-  // Habilidades desejáveis (20 pts)
-  if (reqDesej.length) {
-    score += (reqDesej.filter(r => userCaps.includes(n(r))).length / reqDesej.length) * 20
-  } else {
-    score += 20
-  }
-
-  // Formação acadêmica (10 pts)
-  if (user?.formacao?.length) score += 10
-
-  // Experiência profissional (10 pts)
+  score += reqObrig.length ? (reqObrig.filter(r => userCaps.includes(n(r))).length / reqObrig.length) * 40 : 40
+  score += reqDesej.length ? (reqDesej.filter(r => userCaps.includes(n(r))).length / reqDesej.length) * 20 : 20
+  if (user?.formacao?.length)    score += 10
   if (user?.experiencia?.length) score += 10
-
   return Math.min(100, Math.round(score))
 }
 
@@ -110,37 +89,54 @@ function tempoRelativo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('pt-BR')
 }
 
+function isVendaGroup(grupo: any): boolean {
+  const text = `${grupo.nome} ${grupo.descricao} ${grupo.categoria}`.toLowerCase()
+  return ['venda', 'vend', 'equipament', 'insumo', 'material', 'produto', 'compra', 'loja'].some(k => text.includes(k))
+}
+
+// ── Metadata ──────────────────────────────────────────────────────────────────
+
 const CONTRATO_COR: Record<string, string> = {
   CLT: '#00A880', PJ: '#1A6FD4', Freelancer: GOLD, 'Estágio': '#7B3FC4',
 }
 
-const STATUS_META: Record<string, { label: string; cor: string }> = {
-  pendente:   { label: 'Pendente',   cor: GOLD      },
-  em_analise: { label: 'Em Análise', cor: '#1A6FD4' },
-  aprovado:   { label: 'Aprovado',   cor: '#00A880' },
-  reprovado:  { label: 'Reprovado',  cor: '#E53935' },
-}
-
 const TIPOS_META: Record<string, { emoji: string; label: string; cor: string }> = {
-  parceria:     { emoji: '🤝', label: 'Parceria',      cor: '#7B3FC4' },
-  vaga:         { emoji: '💼', label: 'Vaga',           cor: GOLD      },
-  ajuda:        { emoji: '🆘', label: 'Ajuda',          cor: '#E53935' },
-  dica_clinica: { emoji: '💡', label: 'Dica Clínica',   cor: '#00A880' },
-  caso_clinico: { emoji: '🦷', label: 'Caso Clínico',   cor: '#1A6FD4' },
-  oportunidade: { emoji: '🚀', label: 'Oportunidade',   cor: GOLD      },
-  pergunta:     { emoji: '❓', label: 'Pergunta',        cor: '#7B3FC4' },
-  noticia:      { emoji: '📰', label: 'Notícia',         cor: '#D4600A' },
-  humor:        { emoji: '😄', label: 'Humor',           cor: '#D4186A' },
+  parceria:     { emoji: '🤝', label: 'Parceria',     cor: '#7B3FC4' },
+  vaga:         { emoji: '💼', label: 'Vaga',          cor: GOLD      },
+  ajuda:        { emoji: '🆘', label: 'Ajuda',         cor: '#E53935' },
+  dica_clinica: { emoji: '💡', label: 'Dica Clínica',  cor: '#00A880' },
+  caso_clinico: { emoji: '🦷', label: 'Caso Clínico',  cor: '#1A6FD4' },
+  oportunidade: { emoji: '🚀', label: 'Oportunidade',  cor: GOLD      },
+  pergunta:     { emoji: '❓', label: 'Pergunta',       cor: '#7B3FC4' },
+  noticia:      { emoji: '📰', label: 'Notícia',        cor: '#D4600A' },
+  humor:        { emoji: '😄', label: 'Humor',          cor: '#D4186A' },
 }
 
-// ── Card: Vaga ────────────────────────────────────────────────────────────────
+const TIPO_CURSO_META: Record<string, { emoji: string; cor: string }> = {
+  curso:       { emoji: '🎓', cor: '#1A6FD4' },
+  treinamento: { emoji: '🏋️', cor: '#7B3FC4' },
+  palestra:    { emoji: '🎤', cor: PRIMARY   },
+  evento:      { emoji: '🗓️', cor: GOLD      },
+}
+
+const CAT_META: Record<string, { label: string; cor: string }> = {
+  clinica:     { label: 'Clínica Odontológica',      cor: '#00A880' },
+  laboratorio: { label: 'Laboratório de Prótese',     cor: '#7B3FC4' },
+  fabricante:  { label: 'Fabricante / Distribuidora', cor: '#D4600A' },
+  ensino:      { label: 'Instituição de Ensino',      cor: '#0891B2' },
+  marketing:   { label: 'Marketing & Comunicação',    cor: '#D4186A' },
+  gestao:      { label: 'Gestão & Consultoria',       cor: '#334155' },
+  servicos:    { label: 'Serviços Profissionais',     cor: '#334155' },
+}
+
+// ── Card: Vaga (compatibilidade) ──────────────────────────────────────────────
 
 function VagaCard({ vaga, user }: { vaga: any; user: any }) {
-  const pct      = vaga._pct ?? calcularCompatAvancado(user, vaga)
-  const barCor   = pct >= 80 ? '#00A880' : pct >= 50 ? GOLD : '#EF4444'
-  const cCor     = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
-  const loc      = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
-  const logoUrl  = vaga.logo_url
+  const pct    = vaga._pct ?? calcularCompatAvancado(user, vaga)
+  const barCor = pct >= 80 ? '#00A880' : pct >= 50 ? GOLD : '#EF4444'
+  const cCor   = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
+  const loc    = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
+  const logoUrl = vaga.logo_url
     ? (vaga.logo_url.startsWith('http') ? vaga.logo_url : API_BASE + vaga.logo_url)
     : null
   const salMin = vaga.salario_min
@@ -173,7 +169,6 @@ function VagaCard({ vaga, user }: { vaga: any; user: any }) {
           <Text style={[s.pctT, { color: barCor }]}>{pct}%</Text>
         </View>
       </View>
-
       <View style={s.chips}>
         {vaga.contrato ? (
           <View style={[s.chip, { borderColor: cCor + '70', backgroundColor: cCor + '14' }]}>
@@ -183,11 +178,9 @@ function VagaCard({ vaga, user }: { vaga: any; user: any }) {
         {loc     ? <View style={s.chip}><Text style={s.chipT}>📍 {loc}</Text></View>     : null}
         {salario ? <View style={s.chip}><Text style={s.chipT}>{salario}</Text></View> : null}
       </View>
-
       <View style={s.compatBar}>
         <View style={[s.compatFill, { width: `${Math.min(100, pct)}%` as any, backgroundColor: barCor }]} />
       </View>
-
       <TouchableOpacity
         style={[s.actionBtn, { backgroundColor: PRIMARY }]}
         onPress={() => router.push('/(tabs)/vagas' as any)}
@@ -199,7 +192,61 @@ function VagaCard({ vaga, user }: { vaga: any; user: any }) {
   )
 }
 
-// ── Card: Post Recente ────────────────────────────────────────────────────────
+// ── Card: Vaga de interesse (por data) ────────────────────────────────────────
+
+function VagaInteresseCard({ vaga, user }: { vaga: any; user: any }) {
+  const pct    = vaga._pct ?? calcularCompatAvancado(user, vaga)
+  const barCor = pct >= 60 ? '#00A880' : pct >= 30 ? GOLD : '#EF4444'
+  const cCor   = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
+  const loc    = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
+  const logoUrl = vaga.logo_url
+    ? (vaga.logo_url.startsWith('http') ? vaga.logo_url : API_BASE + vaga.logo_url)
+    : null
+
+  return (
+    <View style={s.vagaCard}>
+      <View style={s.vagaTop}>
+        <TouchableOpacity
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}
+          onPress={() => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)}
+          activeOpacity={vaga.page_id ? 0.72 : 1}
+          disabled={!vaga.page_id}
+        >
+          {logoUrl
+            ? <Image source={{ uri: logoUrl }} style={s.vagaLogo} />
+            : <View style={[s.vagaLogo, s.vagaLogoFb]}>
+                <Text style={s.vagaLogoFbT}>{(vaga.empresa_nome || '?').charAt(0)}</Text>
+              </View>
+          }
+          <View style={{ flex: 1 }}>
+            <Text style={s.vagaEmpresa} numberOfLines={1}>{vaga.empresa_nome}</Text>
+            <Text style={s.vagaCargo}   numberOfLines={2}>{vaga.cargo}</Text>
+          </View>
+        </TouchableOpacity>
+        <View style={[s.pctBadge, { borderColor: barCor + '80', backgroundColor: barCor + '15' }]}>
+          <Text style={[s.pctT, { color: barCor }]}>{pct}%</Text>
+        </View>
+      </View>
+      <View style={s.chips}>
+        {vaga.contrato ? (
+          <View style={[s.chip, { borderColor: cCor + '70', backgroundColor: cCor + '14' }]}>
+            <Text style={[s.chipT, { color: cCor }]}>{vaga.contrato}</Text>
+          </View>
+        ) : null}
+        {loc ? <View style={s.chip}><Text style={s.chipT}>📍 {loc}</Text></View> : null}
+      </View>
+      <TouchableOpacity
+        style={[s.actionBtn, { backgroundColor: '#475569' }]}
+        onPress={() => router.push('/(tabs)/vagas' as any)}
+        activeOpacity={0.8}
+      >
+        <Text style={s.actionBtnT}>Ver vaga →</Text>
+      </TouchableOpacity>
+    </View>
+  )
+}
+
+// ── Card: Post (recentes / feed geral) ────────────────────────────────────────
 
 function RecentPostCard({ post }: { post: any }) {
   const meta      = TIPOS_META[post.tipo_post] || { emoji: '📋', label: post.tipo_post, cor: PRIMARY }
@@ -244,35 +291,149 @@ function RecentPostCard({ post }: { post: any }) {
   )
 }
 
-// ── Card: Candidatura ─────────────────────────────────────────────────────────
+// ── Card: Produto (marketplace) ───────────────────────────────────────────────
 
-function CandidaturaCard({ cand }: { cand: any }) {
-  const vaga  = cand.vaga || cand
-  const status = cand.status || 'pendente'
-  const sm    = STATUS_META[status] || { label: status, cor: '#7A9E8E' }
-  const pct   = cand.compatibilidade_pct ?? cand.compatibilidade ?? null
-  const loc   = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
+function ProdutoCard({ post, grupoNome }: { post: any; grupoNome: string }) {
+  const imgUrl = post.imagem_url
+    ? (post.imagem_url.startsWith('http') ? post.imagem_url : API_BASE + post.imagem_url)
+    : null
+  const avatarUrl = post.author_avatar
+    ? (post.author_avatar.startsWith('http') ? post.author_avatar : API_BASE + post.author_avatar)
+    : null
 
   return (
-    <View style={s.candCard}>
-      <View style={s.candTop}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.candEmpresa} numberOfLines={1}>{vaga.empresa_nome || 'Empresa'}</Text>
-          <Text style={s.candCargo}   numberOfLines={2}>{vaga.cargo || 'Cargo não informado'}</Text>
-          {loc ? <Text style={s.candLoc}>{loc}</Text> : null}
-        </View>
-        <View style={[s.statusBadge, { backgroundColor: sm.cor + '1E', borderColor: sm.cor + '60' }]}>
-          <Text style={[s.statusT, { color: sm.cor }]}>{sm.label}</Text>
-        </View>
-      </View>
-      <View style={s.candFoot}>
-        <Text style={s.candData}>{tempoRelativo(cand.created_at || cand.data_candidatura)}</Text>
-        {pct !== null ? (
-          <View style={s.candPct}>
-            <Text style={s.candPctT}>{pct}% compatível</Text>
+    <View style={s.prodCard}>
+      {imgUrl ? <Image source={{ uri: imgUrl }} style={s.prodImg} resizeMode="cover" /> : null}
+      <View style={s.prodBody}>
+        <View style={s.prodTop}>
+          <TouchableOpacity
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}
+            onPress={() => post.author_id && router.push(`/usuario/${post.author_id}` as any)}
+            activeOpacity={0.75}
+          >
+            {avatarUrl
+              ? <Image source={{ uri: avatarUrl }} style={s.prodAv} />
+              : <View style={[s.prodAv, { backgroundColor: PRIMARY + '30', justifyContent: 'center', alignItems: 'center' }]}>
+                  <Text style={{ color: PRIMARY, fontWeight: '800', fontSize: 12 }}>{(post.author_nome || 'U').charAt(0)}</Text>
+                </View>
+            }
+            <View style={{ flex: 1 }}>
+              <Text style={s.prodAutorNome} numberOfLines={1}>{post.author_nome || 'Usuário'}</Text>
+              {post.author_tipo ? <Text style={s.prodAutorTipo} numberOfLines={1}>{post.author_tipo}</Text> : null}
+            </View>
+          </TouchableOpacity>
+          <View style={s.prodGrupoBadge}>
+            <Text style={s.prodGrupoBadgeT} numberOfLines={1}>{grupoNome}</Text>
           </View>
-        ) : null}
+        </View>
+        {post.texto ? <Text style={s.prodTexto} numberOfLines={5}>{post.texto}</Text> : null}
+        <View style={s.prodFooter}>
+          <Text style={s.prodTempo}>{tempoRelativo(post.created_at)}</Text>
+          <TouchableOpacity
+            style={s.contatoBtn}
+            onPress={() => post.author_id && router.push(`/usuario/${post.author_id}` as any)}
+            activeOpacity={0.8}
+          >
+            <Text style={s.contatoBtnT}>Contatar →</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+    </View>
+  )
+}
+
+// ── Card: Curso / Evento ──────────────────────────────────────────────────────
+
+function CursoCard({ pub, pageNome, pageLogo }: { pub: any; pageNome: string; pageLogo: string | null }) {
+  const meta    = TIPO_CURSO_META[pub.tipo] || { emoji: '📋', cor: PRIMARY }
+  const dados   = pub.dados || {}
+  const logoUrl = pageLogo
+    ? (pageLogo.startsWith('http') ? pageLogo : API_BASE + pageLogo)
+    : null
+
+  return (
+    <View style={s.cursoCard}>
+      <View style={s.cursoTop}>
+        {logoUrl
+          ? <Image source={{ uri: logoUrl }} style={s.cursoLogo} />
+          : <View style={[s.cursoLogo, { backgroundColor: meta.cor + '25', justifyContent: 'center', alignItems: 'center' }]}>
+              <Text style={{ fontSize: 18 }}>{meta.emoji}</Text>
+            </View>
+        }
+        <View style={{ flex: 1 }}>
+          <Text style={s.cursoPageNome} numberOfLines={1}>{pageNome}</Text>
+          <Text style={s.cursoTitulo}   numberOfLines={2}>{pub.titulo}</Text>
+        </View>
+        <View style={[s.cursoBadge, { backgroundColor: meta.cor + '18', borderColor: meta.cor + '50' }]}>
+          <Text style={[s.cursoBadgeT, { color: meta.cor }]}>{meta.emoji} {pub.tipo?.toUpperCase()}</Text>
+        </View>
+      </View>
+      {dados.descricao ? <Text style={s.cursoDesc} numberOfLines={3}>{dados.descricao}</Text> : null}
+      <View style={s.cursoPills}>
+        {dados.modalidade    ? <View style={s.cursoPill}><Text style={s.cursoPillT}>{dados.modalidade}</Text></View>    : null}
+        {dados.carga_horaria ? <View style={s.cursoPill}><Text style={s.cursoPillT}>⏱ {dados.carga_horaria}</Text></View> : null}
+        {dados.data_inicio   ? <View style={s.cursoPill}><Text style={s.cursoPillT}>📅 {dados.data_inicio}</Text></View>  : null}
+        {dados.data          ? <View style={s.cursoPill}><Text style={s.cursoPillT}>📅 {dados.data}</Text></View>         : null}
+        {dados.local         ? <View style={s.cursoPill}><Text style={s.cursoPillT}>📍 {dados.local}</Text></View>        : null}
+      </View>
+      {dados.link_inscricao ? (
+        <TouchableOpacity
+          style={[s.actionBtn, { backgroundColor: meta.cor }]}
+          onPress={() => Linking.openURL(dados.link_inscricao).catch(() => null)}
+          activeOpacity={0.8}
+        >
+          <Text style={s.actionBtnT}>Inscrever-se →</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  )
+}
+
+// ── Card: Página de empresa ───────────────────────────────────────────────────
+
+function PaginaCard({ page, curtido, curtindo, onCurtir }: {
+  page: any; curtido: boolean; curtindo: boolean; onCurtir: () => void
+}) {
+  const logoUrl = page.logo_url
+    ? (page.logo_url.startsWith('http') ? page.logo_url : API_BASE + page.logo_url)
+    : null
+  const cat   = CAT_META[page.categoria] || { label: page.categoria || 'Empresa', cor: PRIMARY }
+  const count = page.curtidas ?? page.followers_count ?? 0
+
+  return (
+    <View style={s.paginaCard}>
+      <TouchableOpacity
+        style={s.paginaMain}
+        onPress={() => router.push(`/pagina/${page.id}` as any)}
+        activeOpacity={0.78}
+      >
+        {logoUrl
+          ? <Image source={{ uri: logoUrl }} style={s.paginaLogo} />
+          : <View style={[s.paginaLogo, s.paginaLogoFb]}>
+              <Text style={s.paginaLogoFbT}>{(page.nome || '?').charAt(0)}</Text>
+            </View>
+        }
+        <View style={{ flex: 1 }}>
+          <Text style={s.paginaNome} numberOfLines={1}>{page.nome}</Text>
+          <View style={[s.catBadge, { backgroundColor: cat.cor + '18', borderColor: cat.cor + '50' }]}>
+            <Text style={[s.catBadgeT, { color: cat.cor }]}>{cat.label}</Text>
+          </View>
+          {count > 0 ? <Text style={s.paginaCurtidas}>{count} {count === 1 ? 'curtida' : 'curtidas'}</Text> : null}
+        </View>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[s.curtirBtn, curtido ? s.curtirBtnOn : null]}
+        onPress={onCurtir}
+        disabled={curtindo}
+        activeOpacity={0.8}
+      >
+        {curtindo
+          ? <ActivityIndicator color={curtido ? PRIMARY : '#fff'} size="small" />
+          : <Text style={[s.curtirBtnT, curtido && { color: PRIMARY }]}>
+              {curtido ? '❤️ Curtido' : '🤍 Curtir'}
+            </Text>
+        }
+      </TouchableOpacity>
     </View>
   )
 }
@@ -291,24 +452,43 @@ function EmptyState({ icon, title, sub }: { icon: string; title: string; sub: st
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-type Aba = 'vagas' | 'recentes' | 'candidaturas'
+type Aba = 'vagas' | 'interesse' | 'recentes' | 'marketplace' | 'cursos' | 'feed_geral' | 'paginas'
 
 const ABAS: { key: Aba; label: string }[] = [
-  { key: 'vagas',        label: 'Vagas para mim' },
-  { key: 'recentes',     label: 'Recentes'       },
-  { key: 'candidaturas', label: 'Candidaturas'   },
+  { key: 'vagas',       label: 'Vagas para mim'     },
+  { key: 'interesse',   label: 'Talvez te interesse' },
+  { key: 'recentes',    label: 'Recentes'            },
+  { key: 'marketplace', label: 'Marketplace'         },
+  { key: 'cursos',      label: 'Cursos e Eventos'    },
+  { key: 'feed_geral',  label: 'Feed geral'          },
+  { key: 'paginas',     label: 'Páginas'             },
 ]
 
-const EMPTY: Record<Aba, any[]> = { vagas: [], recentes: [], candidaturas: [] }
+const EMPTY_DATA: Record<Aba, any[]> = {
+  vagas: [], interesse: [], recentes: [], marketplace: [], cursos: [], feed_geral: [], paginas: [],
+}
+
 const SETE_DIAS = 7 * 24 * 60 * 60 * 1000
+
+const EMPTY_META: Record<Aba, { icon: string; title: string; sub: string }> = {
+  vagas:       { icon: '💼', title: 'Nenhuma vaga encontrada',       sub: 'Novas oportunidades aparecerão aqui conforme publicadas' },
+  interesse:   { icon: '🔍', title: 'Nenhuma vaga no momento',        sub: 'Vagas de áreas relacionadas aparecerão aqui' },
+  recentes:    { icon: '📋', title: 'Nada nos últimos 7 dias',         sub: 'As publicações recentes da rede aparecerão aqui' },
+  marketplace: { icon: '🛒', title: 'Marketplace em breve',           sub: 'Posts de grupos de venda de equipamentos e insumos aparecerão aqui' },
+  cursos:      { icon: '🎓', title: 'Nenhum curso ou evento',          sub: 'Cursos, treinamentos e eventos das empresas aparecerão aqui' },
+  feed_geral:  { icon: '📰', title: 'Nenhuma publicação ainda',        sub: 'O feed da comunidade aparecerá aqui' },
+  paginas:     { icon: '🏢', title: 'Nenhuma página encontrada',       sub: 'Páginas de clínicas e empresas do setor aparecerão aqui' },
+}
 
 export default function Painel() {
   const { user } = useAuthStore()
   const [aba, setAba]               = useState<Aba>('vagas')
-  const [allData, setAllData]       = useState<Record<Aba, any[]>>(EMPTY)
+  const [allData, setAllData]       = useState<Record<Aba, any[]>>(EMPTY_DATA)
   const [loading, setLoading]       = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [curtidos, setCurtidos]     = useState<Record<number, boolean>>({})
+  const [curtindo, setCurtindo]     = useState<Record<number, boolean>>({})
   const abaRef = useRef<Aba>('vagas')
 
   const avatarUrl = user?.avatar_url
@@ -320,21 +500,69 @@ export default function Painel() {
     if (!isRefresh) setLoading(true)
     try {
       let items: any[] = []
+
       if (tab === 'vagas') {
         const res = await api.get('/vagas')
         items = (res.data.vagas || [])
           .map((v: any) => ({ ...v, _pct: calcularCompatAvancado(user, v) }))
           .sort((a: any, b: any) => b._pct - a._pct)
+
+      } else if (tab === 'interesse') {
+        const res = await api.get('/vagas')
+        items = (res.data.vagas || [])
+          .map((v: any) => ({ ...v, _pct: calcularCompatAvancado(user, v) }))
+          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
       } else if (tab === 'recentes') {
         const res = await api.get('/posts')
         const cutoff = Date.now() - SETE_DIAS
         items = (res.data.posts || [])
           .filter((p: any) => new Date(p.created_at).getTime() >= cutoff)
           .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      } else if (tab === 'candidaturas') {
-        const res = await api.get('/vagas/minhas-candidaturas')
-        items = res.data.candidaturas || res.data || []
+
+      } else if (tab === 'marketplace') {
+        const gruposRes = await api.get('/grupos')
+        const vendas = (gruposRes.data || []).filter(isVendaGroup)
+        const postsArrays = await Promise.all(
+          vendas.map((g: any) =>
+            api.get(`/grupos/${g.id}/posts`)
+              .then(r => (r.data || []).map((p: any) => ({ post: p, grupoNome: g.nome })))
+              .catch(() => [] as any[])
+          )
+        )
+        items = postsArrays.flat()
+          .sort((a: any, b: any) => new Date(b.post.created_at).getTime() - new Date(a.post.created_at).getTime())
+
+      } else if (tab === 'cursos') {
+        const pagesRes = await api.get('/pages').catch(() => ({ data: { pages: [] } }))
+        const pages: any[] = (pagesRes.data.pages || pagesRes.data || []).slice(0, 8)
+        const pubsArr = await Promise.all(
+          pages.map((p: any) =>
+            api.get(`/pages/${p.id}/publicacoes`)
+              .then(r => (r.data || []).map((pub: any) => ({
+                ...pub, _pageNome: p.nome, _pageLogo: p.logo_url,
+              })))
+              .catch(() => [] as any[])
+          )
+        )
+        items = pubsArr.flat()
+          .filter((pub: any) => ['curso', 'treinamento', 'palestra', 'evento'].includes(pub.tipo))
+          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+      } else if (tab === 'feed_geral') {
+        const res = await api.get('/posts')
+        items = (res.data.posts || [])
+          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+      } else if (tab === 'paginas') {
+        const res = await api.get('/pages')
+        const list: any[] = res.data.pages || res.data || []
+        items = list
+        const estado: Record<number, boolean> = {}
+        list.forEach((p: any) => { if (p.is_liked != null) estado[p.id] = !!p.is_liked })
+        setCurtidos(prev => ({ ...estado, ...prev }))
       }
+
       setAllData(prev => ({ ...prev, [tab]: items }))
     } catch {}
     finally {
@@ -362,7 +590,27 @@ export default function Painel() {
     loadData(tab)
   }
 
+  const handleCurtir = async (pageId: number) => {
+    if (!user) { router.push('/(auth)/login' as any); return }
+    setCurtindo(prev => ({ ...prev, [pageId]: true }))
+    try {
+      const res = await api.post(`/follows/${pageId}`)
+      const following: boolean = res.data.following ?? !curtidos[pageId]
+      setCurtidos(prev => ({ ...prev, [pageId]: following }))
+      setAllData(prev => ({
+        ...prev,
+        paginas: prev.paginas.map((p: any) =>
+          p.id === pageId ? { ...p, curtidas: (p.curtidas ?? 0) + (following ? 1 : -1) } : p
+        ),
+      }))
+    } catch {}
+    finally {
+      setCurtindo(prev => ({ ...prev, [pageId]: false }))
+    }
+  }
+
   const items = allData[aba]
+  const emptyMeta = EMPTY_META[aba]
 
   return (
     <View style={{ flex: 1, backgroundColor: '#E0E0E0' }}>
@@ -440,7 +688,6 @@ export default function Painel() {
                   : null}
               </View>
             </TouchableOpacity>
-
             {perfilPct < 100 && (
               <TouchableOpacity onPress={() => router.push('/(tabs)/editar-perfil' as any)} activeOpacity={0.78}>
                 <View style={s.profilePctRow}>
@@ -476,34 +723,57 @@ export default function Painel() {
           {loading ? (
             <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 40 }} />
           ) : items.length === 0 ? (
-            <EmptyState
-              icon={aba === 'vagas' ? '💼' : aba === 'recentes' ? '📋' : '📬'}
-              title={
-                aba === 'vagas'        ? 'Nenhuma vaga encontrada'     :
-                aba === 'recentes'     ? 'Nada nos últimos 7 dias'      :
-                'Nenhuma candidatura'
-              }
-              sub={
-                aba === 'vagas'        ? 'Novas oportunidades aparecerão aqui conforme publicadas' :
-                aba === 'recentes'     ? 'As publicações recentes da rede aparecerão aqui'          :
-                'Candidate-se a vagas para acompanhar o status aqui'
-              }
-            />
+            <EmptyState icon={emptyMeta.icon} title={emptyMeta.title} sub={emptyMeta.sub} />
           ) : aba === 'vagas' ? (
             <View style={{ gap: 12 }}>
               {items.map(v => <VagaCard key={v.id} vaga={v} user={user} />)}
             </View>
-          ) : aba === 'recentes' ? (
+          ) : aba === 'interesse' ? (
+            <View style={{ gap: 12 }}>
+              {items.map(v => <VagaInteresseCard key={v.id} vaga={v} user={user} />)}
+            </View>
+          ) : aba === 'recentes' || aba === 'feed_geral' ? (
             <View style={{ gap: 12 }}>
               {items.map(p => <RecentPostCard key={p.id} post={p} />)}
             </View>
-          ) : (
+          ) : aba === 'marketplace' ? (
             <View style={{ gap: 12 }}>
-              {items.map((c, i) => <CandidaturaCard key={c.id ?? i} cand={c} />)}
+              {items.map(({ post, grupoNome }: any, i: number) => (
+                <ProdutoCard key={post.id ?? i} post={post} grupoNome={grupoNome} />
+              ))}
             </View>
-          )}
+          ) : aba === 'cursos' ? (
+            <View style={{ gap: 12 }}>
+              {items.map((pub: any, i: number) => (
+                <CursoCard key={pub.id ?? i} pub={pub} pageNome={pub._pageNome} pageLogo={pub._pageLogo} />
+              ))}
+            </View>
+          ) : aba === 'paginas' ? (
+            <View style={{ gap: 12 }}>
+              {items.map((page: any) => (
+                <PaginaCard
+                  key={page.id}
+                  page={page}
+                  curtido={!!curtidos[page.id]}
+                  curtindo={!!curtindo[page.id]}
+                  onCurtir={() => handleCurtir(page.id)}
+                />
+              ))}
+            </View>
+          ) : null}
         </View>
       </ScrollView>
+
+      {/* ── FAB publicar (feed geral) ── */}
+      {aba === 'feed_geral' && (
+        <TouchableOpacity
+          style={s.fab}
+          onPress={() => router.push('/(tabs)/publicar' as any)}
+          activeOpacity={0.85}
+        >
+          <Text style={s.fabT}>+</Text>
+        </TouchableOpacity>
+      )}
     </View>
   )
 }
@@ -542,7 +812,7 @@ const s = StyleSheet.create({
 
   profileCard: {
     backgroundColor: '#fff', padding: 16,
-    borderRadius: 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#D0E8DA', gap: 12,
+    borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#D0E8DA', gap: 12,
   },
   profileLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   profileAv: { width: 54, height: 54, borderRadius: 27, flexShrink: 0 },
@@ -565,7 +835,7 @@ const s = StyleSheet.create({
   abaBtnT: { fontSize: 13, fontWeight: '700', color: '#3A6550' },
   abaBtnTOn: { color: '#fff' },
 
-  // Vaga card
+  // Vaga card (shared by VagaCard and VagaInteresseCard)
   vagaCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', gap: 10 },
   vagaTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   vagaLogo: { width: 40, height: 40, borderRadius: 10, flexShrink: 0 },
@@ -574,6 +844,7 @@ const s = StyleSheet.create({
   vagaEmpresa: { fontSize: 12, fontWeight: '700', color: '#3A6550' },
   vagaCargo: { fontSize: 15, fontWeight: '800', color: '#0A1C14', marginTop: 2, lineHeight: 20 },
   pctCircle: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  pctBadge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, flexShrink: 0, alignItems: 'center' },
   pctT: { fontSize: 12, fontWeight: '900' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: { borderWidth: 1, borderColor: '#D0E8DA', borderRadius: 100, paddingHorizontal: 9, paddingVertical: 4 },
@@ -583,7 +854,7 @@ const s = StyleSheet.create({
   actionBtn: { borderRadius: 12, paddingVertical: 11, alignItems: 'center' },
   actionBtnT: { color: '#fff', fontSize: 14, fontWeight: '800' },
 
-  // Recent post card
+  // Recent / feed geral post card
   recentCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', borderLeftWidth: 4, gap: 8 },
   recentTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   recentAv: { width: 38, height: 38, borderRadius: 19, flexShrink: 0 },
@@ -596,18 +867,58 @@ const s = StyleSheet.create({
   recentTexto: { fontSize: 13, color: '#4A7060', lineHeight: 18 },
   recentTempo: { fontSize: 11, color: '#A0B8AC', fontWeight: '600' },
 
-  // Candidatura card
-  candCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', gap: 10 },
-  candTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  candEmpresa: { fontSize: 12, fontWeight: '700', color: '#3A6550' },
-  candCargo: { fontSize: 15, fontWeight: '800', color: '#0A1C14', marginTop: 2, lineHeight: 20 },
-  candLoc: { fontSize: 11, color: '#7A9E8E', marginTop: 2 },
-  statusBadge: { borderWidth: 1, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 5, flexShrink: 0 },
-  statusT: { fontSize: 11, fontWeight: '800' },
-  candFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTopWidth: 1, borderTopColor: '#EEF7F2' },
-  candData: { fontSize: 11, color: '#7A9E8E', fontWeight: '600' },
-  candPct: { borderWidth: 1, borderColor: '#D0E8DA', borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 },
-  candPctT: { fontSize: 11, fontWeight: '700', color: '#3A6550' },
+  // Produto card (marketplace)
+  prodCard: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#D0E8DA', overflow: 'hidden' },
+  prodImg: { width: '100%', height: 200 },
+  prodBody: { padding: 14, gap: 10 },
+  prodTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  prodAv: { width: 36, height: 36, borderRadius: 18, flexShrink: 0 },
+  prodAutorNome: { fontSize: 13, fontWeight: '800', color: '#0A1C14' },
+  prodAutorTipo: { fontSize: 11, color: PRIMARY, fontWeight: '600', marginTop: 1 },
+  prodGrupoBadge: { backgroundColor: PRIMARY + '15', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, maxWidth: 120 },
+  prodGrupoBadgeT: { fontSize: 10, fontWeight: '700', color: PRIMARY },
+  prodTexto: { fontSize: 14, color: '#2A4030', lineHeight: 20 },
+  prodFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTopWidth: 1, borderTopColor: '#EEF7F2' },
+  prodTempo: { fontSize: 11, color: '#A0B8AC', fontWeight: '600' },
+  contatoBtn: { backgroundColor: GOLD, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
+  contatoBtnT: { color: '#fff', fontSize: 13, fontWeight: '800' },
+
+  // Curso card
+  cursoCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', gap: 10 },
+  cursoTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cursoLogo: { width: 44, height: 44, borderRadius: 10, flexShrink: 0 },
+  cursoPageNome: { fontSize: 11, fontWeight: '700', color: '#7A9E8E' },
+  cursoTitulo: { fontSize: 15, fontWeight: '800', color: '#0A1C14', marginTop: 2, lineHeight: 20 },
+  cursoBadge: { borderWidth: 1, borderRadius: 100, paddingHorizontal: 9, paddingVertical: 4, flexShrink: 0 },
+  cursoBadgeT: { fontSize: 9, fontWeight: '800' },
+  cursoDesc: { fontSize: 13, color: '#4A7060', lineHeight: 18 },
+  cursoPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  cursoPill: { backgroundColor: '#F0F0F0', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 },
+  cursoPillT: { fontSize: 11, fontWeight: '600', color: '#555' },
+
+  // Página card
+  paginaCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', gap: 12 },
+  paginaMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  paginaLogo: { width: 52, height: 52, borderRadius: 12, flexShrink: 0 },
+  paginaLogoFb: { backgroundColor: '#D0E8DA', justifyContent: 'center', alignItems: 'center' },
+  paginaLogoFbT: { fontSize: 20, fontWeight: '800', color: '#3A6550' },
+  paginaNome: { fontSize: 15, fontWeight: '800', color: '#0A1C14', marginBottom: 6, lineHeight: 20 },
+  catBadge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 4 },
+  catBadgeT: { fontSize: 10, fontWeight: '800' },
+  paginaCurtidas: { fontSize: 11, color: '#7A9E8E', fontWeight: '600' },
+  curtirBtn: { backgroundColor: PRIMARY, borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
+  curtirBtnOn: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA' },
+  curtirBtnT: { color: '#fff', fontSize: 13, fontWeight: '800' },
+
+  // FAB
+  fab: {
+    position: 'absolute', bottom: 20, right: 20,
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: PRIMARY, justifyContent: 'center', alignItems: 'center',
+    elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2, shadowRadius: 6,
+  },
+  fabT: { color: '#fff', fontSize: 30, fontWeight: '300', lineHeight: 34, marginTop: -2 },
 
   empty: { alignItems: 'center', paddingTop: 48, paddingBottom: 32, paddingHorizontal: 24 },
   emptyIcon: { fontSize: 52, marginBottom: 14 },
