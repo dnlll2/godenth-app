@@ -35,6 +35,15 @@ function BellIcon() {
   )
 }
 
+function PlusIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24">
+      <Line x1="12" y1="5" x2="12" y2="19" {...IB} />
+      <Line x1="5"  y1="12" x2="19" y2="12" {...IB} />
+    </Svg>
+  )
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function calcularPerfilPct(user: any): number {
@@ -622,6 +631,9 @@ export default function Painel() {
           <Text style={{ color: '#fff' }}>Denth</Text>
         </Text>
         <View style={s.headerIcons}>
+          <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/publicar' as any)}>
+            <PlusIcon />
+          </TouchableOpacity>
           <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/buscar' as any)}>
             <SearchIcon />
           </TouchableOpacity>
