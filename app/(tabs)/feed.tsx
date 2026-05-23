@@ -810,6 +810,53 @@ function PaginaCard({ page, curtido, curtindo, onCurtir }: {
   )
 }
 
+// ── Card: Grupo ───────────────────────────────────────────────────────────────
+
+const GRUPO_CAT: Record<string, { label: string; cor: string }> = {
+  protese:      { label: 'Prótese Dentária', cor: '#7B3FC4' },
+  odontologia:  { label: 'Odontologia',      cor: '#00A880' },
+}
+
+function GrupoCard({ grupo }: { grupo: any }) {
+  const cat = GRUPO_CAT[grupo.categoria] || { label: grupo.categoria || 'Geral', cor: PRIMARY }
+
+  return (
+    <TouchableOpacity
+      style={s.grupoCard}
+      onPress={() => router.push(`/grupo/${grupo.id}` as any)}
+      activeOpacity={0.82}
+    >
+      <View style={s.grupoTop}>
+        <View style={[s.grupoIconBg, { backgroundColor: cat.cor + '22' }]}>
+          <Text style={s.grupoIconT}>{grupo.icone || '💬'}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.grupoNome} numberOfLines={1}>{grupo.nome}</Text>
+          <View style={[s.grupoCat, { backgroundColor: cat.cor + '18', borderColor: cat.cor + '50' }]}>
+            <Text style={[s.grupoCatT, { color: cat.cor }]}>{cat.label}</Text>
+          </View>
+        </View>
+        {grupo.is_member ? (
+          <View style={s.grupoMembroBadge}>
+            <Text style={s.grupoMembroBadgeT}>Membro</Text>
+          </View>
+        ) : null}
+      </View>
+      {grupo.descricao ? (
+        <Text style={s.grupoDesc} numberOfLines={2}>{grupo.descricao}</Text>
+      ) : null}
+      <View style={s.grupoFooter}>
+        <Text style={s.grupoMeta}>
+          {grupo.total_membros ?? 0} membros · {grupo.total_posts ?? 0} posts
+        </Text>
+        <View style={[s.grupoBtn, { backgroundColor: grupo.is_member ? '#475569' : PRIMARY }]}>
+          <Text style={s.grupoBtnT}>{grupo.is_member ? 'Ver grupo →' : 'Entrar →'}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  )
+}
+
 // ── EmptyState ────────────────────────────────────────────────────────────────
 
 function EmptyState({ icon, title, sub }: { icon: string; title: string; sub: string }) {
@@ -904,6 +951,10 @@ export default function Painel() {
         )
         items = postsArrays.flat()
           .sort((a: any, b: any) => new Date(b.post.created_at).getTime() - new Date(a.post.created_at).getTime())
+
+      } else if (tab === 'grupos') {
+        const res = await api.get('/grupos')
+        items = res.data || []
 
       } else if (tab === 'cursos') {
         const res = await api.get('/publicacoes/cursos-eventos')
@@ -1160,10 +1211,10 @@ export default function Painel() {
               ))}
             </View>
           ) : aba === 'grupos' ? (
-            <View style={s.emBreve}>
-              <Text style={s.emBreveIcon}>💬</Text>
-              <Text style={s.emBreveTitle}>Grupos</Text>
-              <Text style={s.emBreveSub}>Em breve você poderá criar e participar de grupos de discussão da comunidade odontológica.</Text>
+            <View style={{ gap: 12 }}>
+              {items.map((grupo: any) => (
+                <GrupoCard key={grupo.id} grupo={grupo} />
+              ))}
             </View>
           ) : null}
         </View>
@@ -1339,10 +1390,21 @@ const s = StyleSheet.create({
   emptyTitle: { fontSize: 17, fontWeight: '800', color: '#0A1C14', marginBottom: 8, textAlign: 'center' },
   emptySub: { fontSize: 13, color: '#7A9E8E', textAlign: 'center', lineHeight: 19 },
 
-  emBreve: { alignItems: 'center', paddingTop: 56, paddingBottom: 40, paddingHorizontal: 32 },
-  emBreveIcon: { fontSize: 60, marginBottom: 18 },
-  emBreveTitle: { fontSize: 22, fontWeight: '900', color: '#0A1C14', marginBottom: 10 },
-  emBreveSub: { fontSize: 14, color: '#7A9E8E', textAlign: 'center', lineHeight: 21 },
+  // Grupo card
+  grupoCard:        { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', gap: 10 },
+  grupoTop:         { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  grupoIconBg:      { width: 46, height: 46, borderRadius: 12, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  grupoIconT:       { fontSize: 22 },
+  grupoNome:        { fontSize: 14, fontWeight: '800', color: '#0A1C14', marginBottom: 5 },
+  grupoCat:         { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 100, paddingHorizontal: 9, paddingVertical: 3 },
+  grupoCatT:        { fontSize: 10, fontWeight: '800' },
+  grupoMembroBadge: { backgroundColor: '#E8F5EE', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4, flexShrink: 0 },
+  grupoMembroBadgeT:{ fontSize: 10, fontWeight: '800', color: '#00A880' },
+  grupoDesc:        { fontSize: 12, color: '#4A7060', lineHeight: 17 },
+  grupoFooter:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTopWidth: 1, borderTopColor: '#EEF7F2' },
+  grupoMeta:        { fontSize: 11, color: '#7A9E8E', fontWeight: '600' },
+  grupoBtn:         { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  grupoBtnT:        { color: '#fff', fontSize: 12, fontWeight: '800' },
 })
 
 // ── Styles: FeedVagaModal ─────────────────────────────────────────────────────
