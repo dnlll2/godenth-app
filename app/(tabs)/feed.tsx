@@ -880,10 +880,8 @@ export default function Painel() {
         items = res.data.vagas || []
 
       } else if (tab === 'interesse') {
-        const res = await api.get('/vagas')
-        items = (res.data.vagas || [])
-          .map((v: any) => ({ ...v, _pct: calcCompatPerfil(user, v) ?? 0 }))
-          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        const res = await api.get('/vagas/talvez-interesse')
+        items = res.data.vagas || []
 
       } else if (tab === 'recentes') {
         const res = await api.get('/posts')
