@@ -55,7 +55,7 @@ interface Membro {
 }
 
 type Tab = 'discussao' | 'membros' | 'sobre'
-type ImageAsset = { uri: string; name: string; type: string }
+type ImageAsset = { uri: string; name: string; type: string; base64?: string | null }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -232,26 +232,15 @@ export default function GrupoScreen() {
     if (!texto.trim() && !imagem) { Alert.alert('Atenção', 'Escreva algo ou adicione uma imagem.'); return }
     setPublishing(true)
     try {
-      const form = new FormData()
-      if (texto.trim()) form.append('texto', texto.trim())
-      if (imagem) form.append('imagem', { uri: imagem.uri, name: imagem.name, type: imagem.type } as any)
-      // fetch nativo: o XHR do RN seta Content-Type: multipart/form-data; boundary=<uuid>
-      // automaticamente ao detectar FormData — Axios interfere nessa geração do boundary
-      const token = getAuthToken()
-      const res = await fetch(`${API_BASE}/grupos/${id}/posts`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token ?? ''}` },
-        body: form as any,
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Não foi possível publicar.')
-      }
+      const payload: Record<string, any> = {}
+      if (texto.trim()) payload.texto = texto.trim()
+      if (imagem?.base64) { payload.imagem_base64 = imagem.base64; payload.imagem_tipo = imagem.type }
+      await api.post(`/grupos/${id}/posts`, payload)
       setTexto(''); setImagem(null); setModalOpen(false)
       setGrupo(prev => prev ? { ...prev, is_member: true } : prev)
       fetchGrupo()
     } catch (err: any) {
-      Alert.alert('Erro', err.message || 'Não foi possível publicar.')
+      Alert.alert('Erro', err?.response?.data?.error || 'Não foi possível publicar.')
     } finally {
       setPublishing(false)
     }
@@ -260,12 +249,12 @@ export default function GrupoScreen() {
   const handlePickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!perm.granted) { Alert.alert('Permissão necessária', 'Permita acesso à galeria.'); return }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, allowsEditing: true })
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.6, allowsEditing: true, base64: true })
     if (!result.canceled && result.assets[0]) {
       const a = result.assets[0]
       const mime = a.mimeType || 'image/jpeg'
       const ext = mime.split('/')[1] || 'jpg'
-      setImagem({ uri: a.uri, name: `foto.${ext}`, type: mime })
+      setImagem({ uri: a.uri, name: `foto.${ext}`, type: mime, base64: a.base64 || null })
     }
   }
 
