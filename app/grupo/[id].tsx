@@ -232,7 +232,6 @@ export default function GrupoScreen() {
       if (texto.trim()) form.append('texto', texto.trim())
       if (imagem) form.append('imagem', { uri: imagem.uri, name: imagem.name, type: imagem.type } as any)
       await api.post(`/grupos/${id}/posts`, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
         transformRequest: (data: any) => data,
       })
       setTexto(''); setImagem(null); setModalOpen(false)
@@ -274,7 +273,6 @@ export default function GrupoScreen() {
       // transformRequest preserva o FormData intacto para que o XHR do React Native
       // adicione o boundary correto ao Content-Type em vez de o axios serializar o body
       const res = await api.put(`/grupos/${id}/capa`, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
         transformRequest: (data: any) => data,
       })
       setGrupo(prev => prev ? { ...prev, capa_url: res.data.capa_url } : prev)
