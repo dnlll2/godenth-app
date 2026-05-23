@@ -63,6 +63,7 @@ export default function Publicar() {
   const [subcategoria, setSubcategoria] = useState<string | null>(null)
   const [texto, setTexto]           = useState('')
   const [loading, setLoading]       = useState(false)
+  const [published, setPublished]   = useState(false)
 
   const tipoMeta = TIPOS.find(t => t.key === tipo)
   const cor = tipoMeta?.cor || '#1c909b'
@@ -111,9 +112,10 @@ export default function Publicar() {
           estado:       user?.estado || '',
         },
       })
-      Alert.alert('✅ Publicado!', 'Seu post apareceu no feed', [
-        { text: 'OK', onPress: () => { reset(); router.back() } },
-      ])
+      setPublished(true)
+      setTimeout(() => {
+        router.replace('/(tabs)/feed' as any)
+      }, 1500)
     } catch (err: any) {
       Alert.alert('Erro', err.response?.data?.error || 'Não foi possível publicar')
     } finally {
@@ -247,6 +249,15 @@ export default function Publicar() {
         )}
 
       </ScrollView>
+
+      {/* ── Overlay de sucesso ── */}
+      {published && (
+        <View style={s.successOverlay}>
+          <Text style={s.successIcon}>✅</Text>
+          <Text style={s.successTitle}>Publicado com sucesso!</Text>
+          <Text style={s.successSub}>Redirecionando para o feed…</Text>
+        </View>
+      )}
     </View>
   )
 }
@@ -315,4 +326,15 @@ const s = StyleSheet.create({
 
   publishBtn: { borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
   publishBtnT: { color: '#fff', fontSize: 16, fontWeight: '800' },
+
+  successOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#00A880',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  successIcon:  { fontSize: 56, marginBottom: 16 },
+  successTitle: { fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 8 },
+  successSub:   { fontSize: 14, color: 'rgba(255,255,255,0.8)' },
 })
