@@ -509,16 +509,16 @@ function FeedVagaModal({ vagaId, isOwner, user, onClose }: {
 // ── Card: Vaga (compatibilidade) ──────────────────────────────────────────────
 
 function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?: () => void }) {
-  const pct: number | null = vaga._pct != null ? vaga._pct : calcCompatPerfil(user, vaga)
-  const barCor = pct != null ? (pct >= 80 ? '#00A880' : pct >= 50 ? GOLD : '#EF4444') : '#D0E8DA'
-  const cCor   = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
-  const loc    = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
-  const logoUrl = vaga.logo_url
+  const cargo    = vaga.cargo    || vaga.data_json?.cargo
+  const contrato = vaga.contrato || vaga.data_json?.contrato
+  const cCor     = CONTRATO_COR[contrato] || '#7A9E8E'
+  const loc      = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
+  const logoUrl  = vaga.logo_url
     ? (vaga.logo_url.startsWith('http') ? vaga.logo_url : API_BASE + vaga.logo_url)
     : null
-  const salMin = vaga.salario_min
-  const salMax = vaga.salario_max
-  const salario = salMin
+  const salMin   = vaga.salario_min ?? vaga.data_json?.salario_min
+  const salMax   = vaga.salario_max ?? vaga.data_json?.salario_max
+  const salario  = salMin
     ? `R$ ${Number(salMin).toLocaleString('pt-BR')}${salMax ? ` – ${Number(salMax).toLocaleString('pt-BR')}` : ''}`
     : null
 
@@ -534,34 +534,24 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
           {logoUrl
             ? <Image source={{ uri: logoUrl }} style={s.vagaLogo} />
             : <View style={[s.vagaLogo, s.vagaLogoFb]}>
-                <Text style={s.vagaLogoFbT}>{(vaga.empresa_nome || '?').charAt(0)}</Text>
+                <Text style={s.vagaLogoFbT}>{(vaga.empresa_nome || vaga.page_nome || '?').charAt(0)}</Text>
               </View>
           }
           <View style={{ flex: 1 }}>
             <Text style={s.vagaEmpresa} numberOfLines={1}>{vaga.empresa_nome || vaga.page_nome}</Text>
-            <Text style={s.vagaCargo}   numberOfLines={2}>{vaga.cargo}</Text>
+            <Text style={s.vagaCargo}   numberOfLines={2}>{cargo}</Text>
           </View>
         </TouchableOpacity>
-        {pct != null ? (
-          <View style={[s.pctCircle, { borderColor: barCor }]}>
-            <Text style={[s.pctT, { color: barCor }]}>{pct}%</Text>
-          </View>
-        ) : null}
       </View>
       <View style={s.chips}>
-        {vaga.contrato ? (
+        {contrato ? (
           <View style={[s.chip, { borderColor: cCor + '70', backgroundColor: cCor + '14' }]}>
-            <Text style={[s.chipT, { color: cCor }]}>{vaga.contrato}</Text>
+            <Text style={[s.chipT, { color: cCor }]}>{contrato}</Text>
           </View>
         ) : null}
         {loc     ? <View style={s.chip}><Text style={s.chipT}>📍 {loc}</Text></View>     : null}
         {salario ? <View style={s.chip}><Text style={s.chipT}>{salario}</Text></View> : null}
       </View>
-      {pct != null ? (
-        <View style={s.compatBar}>
-          <View style={[s.compatFill, { width: `${Math.min(100, pct)}%` as any, backgroundColor: barCor }]} />
-        </View>
-      ) : null}
       <TouchableOpacity
         style={[s.actionBtn, { backgroundColor: PRIMARY }]}
         onPress={() => onVerVaga ? onVerVaga() : router.push('/(tabs)/vagas' as any)}
@@ -576,10 +566,8 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
 // ── Card: Vaga de interesse (por data) ────────────────────────────────────────
 
 function VagaInteresseCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?: () => void }) {
-  const pct    = vaga._pct ?? calcularCompatAvancado(user, vaga)
-  const barCor = pct >= 60 ? '#00A880' : pct >= 30 ? GOLD : '#EF4444'
-  const cCor   = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
-  const loc    = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
+  const cCor    = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
+  const loc     = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
   const logoUrl = vaga.logo_url
     ? (vaga.logo_url.startsWith('http') ? vaga.logo_url : API_BASE + vaga.logo_url)
     : null
@@ -604,9 +592,6 @@ function VagaInteresseCard({ vaga, user, onVerVaga }: { vaga: any; user: any; on
             <Text style={s.vagaCargo}   numberOfLines={2}>{vaga.cargo}</Text>
           </View>
         </TouchableOpacity>
-        <View style={[s.pctBadge, { borderColor: barCor + '80', backgroundColor: barCor + '15' }]}>
-          <Text style={[s.pctT, { color: barCor }]}>{pct}%</Text>
-        </View>
       </View>
       <View style={s.chips}>
         {vaga.contrato ? (
@@ -890,13 +875,13 @@ export default function Painel() {
       if (tab === 'vagas') {
         const res = await api.get('/vagas')
         items = (res.data.vagas || [])
-          .map((v: any) => ({ ...v, _pct: calcularCompatAvancado(user, v) }))
+          .map((v: any) => ({ ...v, _pct: calcCompatPerfil(user, v) ?? 0 }))
           .sort((a: any, b: any) => b._pct - a._pct)
 
       } else if (tab === 'interesse') {
         const res = await api.get('/vagas')
         items = (res.data.vagas || [])
-          .map((v: any) => ({ ...v, _pct: calcularCompatAvancado(user, v) }))
+          .map((v: any) => ({ ...v, _pct: calcCompatPerfil(user, v) ?? 0 }))
           .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
       } else if (tab === 'recentes') {
@@ -1144,15 +1129,15 @@ export default function Painel() {
           ) : aba === 'recentes' || aba === 'feed_geral' ? (
             <View style={{ gap: 12 }}>
               {items.map(p =>
-                p.source_type === 'vaga'
+                p.source_type === 'vaga' || p.tipo_post === 'vaga'
                   ? <VagaCard
-                      key={`vaga-${p.id}`}
+                      key={`${p.source_type}-${p.id}`}
                       vaga={p}
                       user={user}
-                      onVerVaga={() => {
-                        setFeedVagaIsOwner(false)
-                        setFeedVagaId(p.id)
-                      }}
+                      onVerVaga={p.source_type === 'vaga'
+                        ? () => { setFeedVagaIsOwner(false); setFeedVagaId(p.id) }
+                        : p.page_id ? () => router.push(`/pagina/${p.page_id}` as any) : undefined
+                      }
                     />
                   : <RecentPostCard key={`post-${p.id}`} post={p} />
               )}
