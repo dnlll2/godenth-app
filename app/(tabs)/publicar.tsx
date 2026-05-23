@@ -1,97 +1,320 @@
-import { router } from "expo-router"
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, ActivityIndicator } from 'react-native'
+import {
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  ScrollView, ActivityIndicator, Alert, Platform,
+} from 'react-native'
+import { router } from 'expo-router'
+import { useAuthStore } from '../../stores/authStore'
 import api from '../../services/api'
-import { Colors } from '../../constants/colors'
+
+// ── Dados das etapas ──────────────────────────────────────────────────────────
 
 const TIPOS = [
-  { key: 'disponibilidade', label: '🙋 Estou disponível', desc: 'Apareça no feed para recrutadores', pessoal: true },
-  { key: 'parceria', label: '🤝 Busco parceria', desc: 'Lab, clínica ou fornecedor', pessoal: true },
+  {
+    key: 'parceria',
+    emoji: '🤝',
+    label: 'Busco Parceria',
+    desc: 'Lab, clínica ou especialista para trabalhar junto',
+    cor: '#00A880',
+  },
+  {
+    key: 'vaga',
+    emoji: '💼',
+    label: 'Tenho uma Vaga',
+    desc: 'Divulgue uma oportunidade de trabalho',
+    cor: '#1A6FD4',
+  },
+  {
+    key: 'ajuda',
+    emoji: '🆘',
+    label: 'Preciso de Ajuda',
+    desc: 'Substituto, urgência ou caso específico',
+    cor: '#E53935',
+  },
 ]
 
+const SUBCATEGORIAS: Record<string, string[]> = {
+  parceria: [
+    'Implantodontia', 'Ortodontia', 'Prótese', 'Cirurgia',
+    'Endodontia', 'Periodontia', 'Pediatria', 'Estética',
+    'Radiologia', 'Saúde Bucal',
+  ],
+  vaga: [
+    'Dentista', 'Auxiliar', 'Recepcionista', 'Técnico em Prótese',
+    'Protético', 'Administrativo', 'Marketing', 'TI',
+  ],
+  ajuda: [
+    'Auxiliar urgente', 'Substituto', 'Técnico de cadeira',
+    'Protético', 'Recepcionista', 'Administrativo',
+  ],
+}
+
+const PLACEHOLDER: Record<string, string> = {
+  parceria: 'Descreva sua especialidade, disponibilidade e o que busca na parceria…',
+  vaga:     'Descreva a vaga, requisitos, local e condições de trabalho…',
+  ajuda:    'Descreva sua necessidade urgente e como a pessoa deve entrar em contato…',
+}
+
+// ── Componente ────────────────────────────────────────────────────────────────
+
 export default function Publicar() {
-  const [tipo, setTipo] = useState('disponibilidade')
-  const [descricao, setDescricao] = useState('')
-  const [especialidade, setEspecialidade] = useState('')
-  const [cidade, setCidade] = useState('')
-  const [loading, setLoading] = useState(false)
+  const { user } = useAuthStore()
+
+  const [etapa, setEtapa]           = useState<1 | 2 | 3>(1)
+  const [tipo, setTipo]             = useState<string | null>(null)
+  const [subcategoria, setSubcategoria] = useState<string | null>(null)
+  const [texto, setTexto]           = useState('')
+  const [loading, setLoading]       = useState(false)
+
+  const tipoMeta = TIPOS.find(t => t.key === tipo)
+  const cor = tipoMeta?.cor || '#1c909b'
+
+  const reset = () => {
+    setEtapa(1)
+    setTipo(null)
+    setSubcategoria(null)
+    setTexto('')
+  }
+
+  const voltar = () => {
+    if (etapa === 1) {
+      router.back()
+    } else if (etapa === 2) {
+      setEtapa(1)
+      setSubcategoria(null)
+    } else {
+      setEtapa(2)
+    }
+  }
+
+  const selecionarTipo = (key: string) => {
+    setTipo(key)
+    setSubcategoria(null)
+    setEtapa(2)
+  }
+
+  const selecionarSubcategoria = (sub: string) => {
+    setSubcategoria(sub)
+    setEtapa(3)
+  }
 
   const handlePublish = async () => {
-    if (!especialidade) return Alert.alert('Atenção', 'Preencha a especialidade')
+    if (!texto.trim()) {
+      return Alert.alert('Atenção', 'Escreva uma descrição para o seu post')
+    }
     setLoading(true)
     try {
       await api.post('/posts', {
         tipo_post: tipo,
-        data_json: { descricao, especialidade, cidade }
+        data_json: {
+          texto:        texto.trim(),
+          subcategoria: subcategoria,
+          cidade:       user?.cidade || '',
+          estado:       user?.estado || '',
+        },
       })
-      Alert.alert('✅ Publicado!', 'Seu post apareceu no feed')
-      setDescricao('')
-      setEspecialidade('')
-      setCidade('')
+      Alert.alert('✅ Publicado!', 'Seu post apareceu no feed', [
+        { text: 'OK', onPress: () => { reset(); router.back() } },
+      ])
     } catch (err: any) {
-      Alert.alert('Erro', err.response?.data?.error || 'Erro ao publicar')
+      Alert.alert('Erro', err.response?.data?.error || 'Não foi possível publicar')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>← Voltar</Text>
+    <View style={{ flex: 1, backgroundColor: '#F0F8F4' }}>
+
+      {/* ── Header dinâmico ── */}
+      <View style={[s.header, { backgroundColor: cor }]}>
+        <TouchableOpacity onPress={voltar} style={s.backBtn} activeOpacity={0.75}>
+          <Text style={s.backBtnT}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Nova publicação</Text>
+        <Text style={s.headerTitle}>
+          {etapa === 1 ? 'Nova publicação' : etapa === 2 ? 'Especialidade' : 'Descrição'}
+        </Text>
+        <View style={s.dotsRow}>
+          {([1, 2, 3] as const).map(n => (
+            <View key={n} style={[s.dot, etapa >= n && s.dotOn]} />
+          ))}
+        </View>
       </View>
-      <Text style={styles.sub}>Feed limpo e profissional — campos fixos</Text>
 
-      <View style={styles.info}>
-        <Text style={styles.infoIcon}>🔒</Text>
-        <Text style={styles.infoText}>Vagas, serviços e cursos só por <Text style={{ fontWeight: '800' }}>Páginas de Empresa</Text></Text>
-      </View>
+      <ScrollView
+        contentContainerStyle={s.body}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
 
-      <Text style={styles.sectionTitle}>Tipo de publicação</Text>
-      {TIPOS.map(t => (
-        <TouchableOpacity key={t.key} style={[styles.opt, tipo === t.key && styles.optOn]} onPress={() => setTipo(t.key)}>
-          <Text style={styles.optLabel}>{t.label}</Text>
-          <Text style={styles.optDesc}>{t.desc}</Text>
-        </TouchableOpacity>
-      ))}
+        {/* ── ETAPA 1: Tipo ── */}
+        {etapa === 1 && (
+          <View>
+            <Text style={s.etapaLabel}>O que você quer publicar?</Text>
+            {TIPOS.map(t => (
+              <TouchableOpacity
+                key={t.key}
+                style={[s.tipoCard, { borderColor: t.cor, backgroundColor: t.cor + '12' }]}
+                onPress={() => selecionarTipo(t.key)}
+                activeOpacity={0.82}
+              >
+                <Text style={s.tipoEmoji}>{t.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.tipoLabel, { color: t.cor }]}>{t.label}</Text>
+                  <Text style={s.tipoDesc}>{t.desc}</Text>
+                </View>
+                <Text style={[s.tipoArrow, { color: t.cor }]}>›</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
-      <Text style={styles.sectionTitle}>Detalhes</Text>
-      <Text style={styles.label}>Especialidade *</Text>
-      <TextInput style={styles.input} placeholder="Ex: Implantodontia, Prótese…" placeholderTextColor={Colors.text3} value={especialidade} onChangeText={setEspecialidade} />
-      <Text style={styles.label}>Descrição</Text>
-      <TextInput style={[styles.input, styles.textarea]} placeholder="Conte mais sobre você e o que busca…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={4} textAlignVertical="top" />
-      <Text style={styles.label}>Cidade</Text>
-      <TextInput style={styles.input} placeholder="São Paulo · SP" placeholderTextColor={Colors.text3} value={cidade} onChangeText={setCidade} />
+        {/* ── ETAPA 2: Subcategoria ── */}
+        {etapa === 2 && tipo && (
+          <View>
+            <Text style={s.etapaLabel}>Qual especialidade ou área?</Text>
+            <View style={s.chipsGrid}>
+              {SUBCATEGORIAS[tipo].map(sub => {
+                const on = subcategoria === sub
+                return (
+                  <TouchableOpacity
+                    key={sub}
+                    style={[s.chip, on && { backgroundColor: cor, borderColor: cor }]}
+                    onPress={() => selecionarSubcategoria(sub)}
+                    activeOpacity={0.78}
+                  >
+                    <Text style={[s.chipT, on && { color: '#fff' }]}>{sub}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          </View>
+        )}
 
-      <TouchableOpacity style={styles.btn} onPress={handlePublish} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Publicar no Feed →</Text>}
-      </TouchableOpacity>
-    </ScrollView>
+        {/* ── ETAPA 3: Texto + localização ── */}
+        {etapa === 3 && tipoMeta && (
+          <View>
+            <Text style={s.etapaLabel}>Descreva sua publicação</Text>
+
+            {/* Badge tipo + subcategoria */}
+            <View style={[s.subcBadge, { backgroundColor: cor + '18', borderColor: cor + '50' }]}>
+              <Text style={[s.subcBadgeT, { color: cor }]}>
+                {tipoMeta.emoji} {tipoMeta.label} · {subcategoria}
+              </Text>
+            </View>
+
+            {/* Localização travada */}
+            <View style={s.locRow}>
+              <View style={[s.locBox, { flex: 1 }]}>
+                <Text style={s.locLabel}>📍 Cidade</Text>
+                <Text style={s.locVal}>{user?.cidade || 'Não informada'}</Text>
+              </View>
+              <View style={s.locBox}>
+                <Text style={s.locLabel}>Estado</Text>
+                <Text style={s.locVal}>{user?.estado || '—'}</Text>
+              </View>
+            </View>
+            {(!user?.cidade || !user?.estado) && (
+              <Text style={s.locHint}>
+                Localização não preenchida — complete seu perfil para aumentar a visibilidade
+              </Text>
+            )}
+
+            {/* Texto livre */}
+            <TextInput
+              style={s.textarea}
+              placeholder={PLACEHOLDER[tipo!]}
+              placeholderTextColor="#A0B8AC"
+              value={texto}
+              onChangeText={setTexto}
+              multiline
+              numberOfLines={7}
+              textAlignVertical="top"
+              maxLength={800}
+            />
+            <Text style={s.charCount}>{texto.length}/800</Text>
+
+            <TouchableOpacity
+              style={[s.publishBtn, { backgroundColor: cor }, loading && { opacity: 0.75 }]}
+              onPress={handlePublish}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={s.publishBtnT}>Publicar →</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        )}
+
+      </ScrollView>
+    </View>
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
-  backBtn: { padding: 4 },
-  backBtnText: { fontSize: 14, fontWeight: '700', color: '#00A880' },
-  scroll: { padding: 16, paddingBottom: 80 },
-  title: { fontSize: 22, fontWeight: '800', color: Colors.text, marginBottom: 4 },
-  sub: { fontSize: 13, color: Colors.text3, marginBottom: 16 },
-  info: { flexDirection: 'row', gap: 10, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 13, padding: 13, marginBottom: 20 },
-  infoIcon: { fontSize: 18 },
-  infoText: { flex: 1, fontSize: 12, color: Colors.text2, lineHeight: 18 },
-  sectionTitle: { fontSize: 11, fontWeight: '800', color: Colors.text2, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
-  opt: { backgroundColor: Colors.white, borderWidth: 2, borderColor: Colors.border, borderRadius: 14, padding: 14, marginBottom: 9 },
-  optOn: { borderColor: Colors.primary, backgroundColor: 'rgba(0,168,128,0.06)' },
-  optLabel: { fontSize: 14, fontWeight: '700', color: Colors.text, marginBottom: 2 },
-  optDesc: { fontSize: 11, color: Colors.text3 },
-  label: { fontSize: 12, fontWeight: '700', color: Colors.text2, marginBottom: 6, marginTop: 4 },
-  input: { backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12, padding: 13, fontSize: 14, color: Colors.text, marginBottom: 13 },
-  textarea: { height: 100 },
-  btn: { backgroundColor: Colors.primary, borderRadius: 13, padding: 15, alignItems: 'center', marginTop: 8 },
-  btnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+// ── Styles ────────────────────────────────────────────────────────────────────
+
+const s = StyleSheet.create({
+  header: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 52 : 16,
+    paddingBottom: 14,
+  },
+  backBtn: { width: 32, height: 32, justifyContent: 'center', alignItems: 'flex-start' },
+  backBtnT: { color: '#fff', fontSize: 26, lineHeight: 30, fontWeight: '300' },
+  headerTitle: { flex: 1, fontSize: 18, fontWeight: '800', color: '#fff' },
+  dotsRow: { flexDirection: 'row', gap: 5 },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.30)' },
+  dotOn: { backgroundColor: '#fff' },
+
+  body: { padding: 20, paddingBottom: 56 },
+
+  etapaLabel: { fontSize: 17, fontWeight: '800', color: '#0A1C14', marginBottom: 20 },
+
+  // Etapa 1 — cards de tipo
+  tipoCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderWidth: 2, borderRadius: 16, padding: 18, marginBottom: 12,
+  },
+  tipoEmoji: { fontSize: 30 },
+  tipoLabel: { fontSize: 16, fontWeight: '800', marginBottom: 3 },
+  tipoDesc:  { fontSize: 12, color: '#7A9E8E', lineHeight: 17 },
+  tipoArrow: { fontSize: 24, fontWeight: '300' },
+
+  // Etapa 2 — chips
+  chipsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  chip: {
+    borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 100,
+    paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#fff',
+  },
+  chipT: { fontSize: 13, fontWeight: '700', color: '#3A6550' },
+
+  // Etapa 3
+  subcBadge: {
+    borderWidth: 1, borderRadius: 100,
+    paddingHorizontal: 14, paddingVertical: 7,
+    alignSelf: 'flex-start', marginBottom: 16,
+  },
+  subcBadgeT: { fontSize: 13, fontWeight: '700' },
+
+  locRow: { flexDirection: 'row', gap: 10, marginBottom: 6 },
+  locBox: {
+    backgroundColor: '#E8F5EE', borderWidth: 1, borderColor: '#D0E8DA',
+    borderRadius: 12, padding: 12,
+  },
+  locLabel: { fontSize: 10, fontWeight: '700', color: '#7A9E8E', marginBottom: 3 },
+  locVal:   { fontSize: 14, fontWeight: '800', color: '#0A1C14' },
+  locHint:  { fontSize: 11, color: '#C49800', marginBottom: 14, lineHeight: 16 },
+
+  textarea: {
+    backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA',
+    borderRadius: 14, padding: 14, fontSize: 14, color: '#0A1C14',
+    minHeight: 160, marginTop: 16, lineHeight: 22,
+  },
+  charCount: { fontSize: 11, color: '#A0B8AC', textAlign: 'right', marginTop: 4, marginBottom: 20 },
+
+  publishBtn: { borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
+  publishBtnT: { color: '#fff', fontSize: 16, fontWeight: '800' },
 })
