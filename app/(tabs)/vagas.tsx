@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   RefreshControl, ActivityIndicator, Modal, TextInput,
   ScrollView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native'
-import { router, useFocusEffect } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -951,6 +951,17 @@ export default function Vagas() {
   const [criarModal, setCriarModal] = useState(false)
   const [selectedVaga, setSelectedVaga] = useState<any | null>(null)
   const { user } = useAuthStore()
+  const { vagaId } = useLocalSearchParams<{ vagaId?: string }>()
+  const handledVagaId = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!vagaId || vagaId === handledVagaId.current) return
+    handledVagaId.current = vagaId
+    api.get(`/vagas/${vagaId}`)
+      .then(r => setSelectedVaga(r.data))
+      .catch(() => null)
+    router.setParams({ vagaId: '' })
+  }, [vagaId])
 
   const loadVagas = async () => {
     try {

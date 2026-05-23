@@ -192,7 +192,7 @@ function VagaCard({ vaga, user }: { vaga: any; user: any }) {
       </View>
       <TouchableOpacity
         style={[s.actionBtn, { backgroundColor: PRIMARY }]}
-        onPress={() => router.push('/(tabs)/vagas' as any)}
+        onPress={() => router.push({ pathname: '/(tabs)/vagas', params: { vagaId: String(vaga.id) } } as any)}
         activeOpacity={0.8}
       >
         <Text style={s.actionBtnT}>Ver vaga →</Text>
