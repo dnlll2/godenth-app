@@ -400,6 +400,7 @@ export default function Painel() {
         }
       >
         {/* [0] Profile card */}
+        <View style={{ paddingHorizontal: 14, paddingTop: 14 }}>
         <View style={s.profileCard}>
           <TouchableOpacity
             style={s.profileLeft}
@@ -434,6 +435,7 @@ export default function Painel() {
               <Text style={s.profileCompleteLink}>Completar perfil →</Text>
             </TouchableOpacity>
           )}
+        </View>
         </View>
 
         {/* [1] Aba bar — sticks to top on scroll */}
@@ -536,7 +538,6 @@ const s = StyleSheet.create({
   // Profile card
   profileCard: {
     backgroundColor: '#fff', padding: 16,
-    marginHorizontal: 14, marginTop: 14,
     borderRadius: 16, borderWidth: 1, borderColor: '#D0E8DA', gap: 12,
   },
   profileLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -588,7 +589,7 @@ const s = StyleSheet.create({
   parcLoc: { fontSize: 11, color: '#7A9E8E', marginTop: 1 },
   parcTag: { borderWidth: 1, borderRadius: 100, paddingHorizontal: 9, paddingVertical: 4, flexShrink: 0 },
   parcTagT: { fontSize: 10, fontWeight: '800' },
-  parcSub: { alignSelf: 'flex-start', backgroundColor: '#EEF7F2', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  parcSub: { alignSelf: 'flex-start', backgroundColor: '#F0F0F0', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   parcSubT: { fontSize: 12, fontWeight: '700', color: '#3A6550' },
   parcTexto: { fontSize: 13, color: '#4A7060', lineHeight: 19 },
   parcTempo: { fontSize: 11, color: '#A0B8AC', fontWeight: '600' },
