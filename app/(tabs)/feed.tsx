@@ -1,7 +1,8 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet,
   RefreshControl, ActivityIndicator, ScrollView, Image, Platform, Linking,
+  Modal, Alert, TextInput,
 } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import Svg, { Circle, Line, Path } from 'react-native-svg'
@@ -138,9 +139,318 @@ const CAT_META: Record<string, { label: string; cor: string }> = {
   servicos:    { label: 'Serviços Profissionais',     cor: '#334155' },
 }
 
+const STATUS_COR: Record<string, string> = {
+  em_analise: '#C49800', aprovado: '#00A880', reprovado: '#EF4444',
+}
+const STATUS_LABEL: Record<string, string> = {
+  em_analise: 'Em análise', aprovado: '✓ Aprovado', reprovado: '✗ Reprovado',
+}
+
+// ── CompatBar (feed modal) ────────────────────────────────────────────────────
+
+function CompatBarFeed({ pct }: { pct: number }) {
+  const cor = pct > 70 ? '#00A880' : pct >= 40 ? '#C49800' : '#EF4444'
+  return (
+    <View style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ fontSize: 11, fontWeight: '800', color: '#3A6550', textTransform: 'uppercase', letterSpacing: 0.6 }}>Compatibilidade</Text>
+        <Text style={{ fontSize: 20, fontWeight: '900', color: cor }}>{pct}%</Text>
+      </View>
+      <View style={{ height: 8, backgroundColor: '#EEF7F2', borderRadius: 4, overflow: 'hidden' }}>
+        <View style={{ height: '100%', width: `${Math.min(100, pct)}%` as any, backgroundColor: cor, borderRadius: 4 }} />
+      </View>
+    </View>
+  )
+}
+
+// ── Modal de detalhe/candidatura de vaga (feed local) ─────────────────────────
+
+function FeedVagaModal({ vagaId, isOwner, onClose }: {
+  vagaId: number | null; isOwner: boolean; onClose: () => void
+}) {
+  const [vagaFull, setVagaFull]           = useState<any>(null)
+  const [loadingDetail, setLoadingDetail] = useState(false)
+  const [step, setStep]                   = useState<'detail' | 'apply'>('detail')
+  const [respostasObrig, setRespostasObrig] = useState<Record<number, boolean>>({})
+  const [respostasDesej, setRespostasDesej] = useState<Record<number, boolean>>({})
+  const [respostasTexto, setRespostasTexto] = useState<string[]>([])
+  const [sending, setSending]             = useState(false)
+  const [candidatou, setCandidatou]       = useState(false)
+
+  useEffect(() => {
+    if (!vagaId) return
+    setStep('detail'); setCandidatou(false); setVagaFull(null)
+    setRespostasObrig({}); setRespostasDesej({}); setRespostasTexto([])
+    setLoadingDetail(true)
+    api.get(`/vagas/${vagaId}`)
+      .then(r => setVagaFull(r.data))
+      .catch(() => {})
+      .finally(() => setLoadingDetail(false))
+  }, [vagaId])
+
+  const perguntas: string[] = vagaFull?.perguntas || []
+  const reqObrig: string[]  = vagaFull?.requisitos_obrigatorios || []
+  const reqDesej: string[]  = vagaFull?.requisitos_desejaveis || []
+  const jaCandidatou        = !!(vagaFull?.minha_candidatura)
+  const statusAtual         = vagaFull?.minha_candidatura?.status
+  const cor                 = CONTRATO_COR[vagaFull?.contrato] || '#00A880'
+
+  const calcPct = () => {
+    const obrigSim  = reqObrig.filter((_, i) => respostasObrig[i] === true).length
+    const desejSim  = reqDesej.filter((_, i) => respostasDesej[i] === true).length
+    const obrigScore = reqObrig.length > 0 ? (obrigSim / reqObrig.length) * 70 : 70
+    const desejScore = reqDesej.length > 0 ? (desejSim / reqDesej.length) * 30 : 30
+    return Math.round(obrigScore + desejScore)
+  }
+
+  const goToApply = () => {
+    if (reqObrig.length === 0 && reqDesej.length === 0 && perguntas.length === 0) {
+      Alert.alert('Confirmar candidatura', 'Esta vaga não possui requisitos — deseja confirmar?', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Confirmar', onPress: confirmar },
+      ])
+      return
+    }
+    setRespostasObrig({}); setRespostasDesej({})
+    setRespostasTexto(new Array(perguntas.length).fill(''))
+    setStep('apply')
+  }
+
+  const confirmar = async () => {
+    const pct = calcPct()
+    setSending(true)
+    try {
+      await api.post(`/vagas/${vagaId}/candidatar`, {
+        respostas: respostasTexto,
+        porcentagem_compatibilidade: pct,
+        respostas_requisitos: {
+          obrigatorios: reqObrig.map((r, i) => ({ req: r, sim: respostasObrig[i] === true })),
+          desejaveis:   reqDesej.map((r, i) => ({ req: r, sim: respostasDesej[i] === true })),
+        },
+      })
+      setCandidatou(true); setStep('detail')
+      Alert.alert('✅ Candidatura enviada!', `Você declarou atender ${pct}% dos requisitos desta vaga.`)
+    } catch (err: any) {
+      Alert.alert('Aviso', err.response?.data?.error || 'Erro ao candidatar')
+    } finally { setSending(false) }
+  }
+
+  return (
+    <Modal visible={!!vagaId} transparent animationType="slide"
+      onRequestClose={() => step === 'apply' ? setStep('detail') : onClose()}>
+      <View style={fm.overlay}>
+        <View style={fm.sheet}>
+          <View style={fm.handle} />
+
+          {/* Header */}
+          <View style={fm.header}>
+            <TouchableOpacity onPress={() => step === 'apply' ? setStep('detail') : onClose()} style={fm.closeBtn}>
+              <Text style={fm.closeT}>{step === 'apply' ? '←' : '✕'}</Text>
+            </TouchableOpacity>
+            {vagaFull && (
+              <View style={[fm.badge, { backgroundColor: cor + '18', borderColor: cor + '55' }]}>
+                <Text style={[fm.badgeT, { color: cor }]}>{vagaFull.contrato}</Text>
+              </View>
+            )}
+          </View>
+
+          {loadingDetail ? (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+              <ActivityIndicator color={PRIMARY} size="large" />
+            </View>
+          ) : !vagaFull ? null : step === 'detail' ? (
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={fm.scroll}>
+              <Text style={fm.cargo}>{vagaFull.cargo}</Text>
+              <TouchableOpacity onPress={() => { onClose(); router.push(`/pagina/${vagaFull.page_id}` as any) }}>
+                <Text style={[fm.empresa, { color: cor }]}>{vagaFull.empresa_nome} →</Text>
+              </TouchableOpacity>
+              {(vagaFull.cidade || vagaFull.estado) ? (
+                <Text style={fm.loc}>📍 {[vagaFull.cidade, vagaFull.estado].filter(Boolean).join(', ')}</Text>
+              ) : null}
+
+              {(jaCandidatou || candidatou) && (
+                <View style={[fm.statusCard, { borderColor: STATUS_COR[statusAtual || 'em_analise'] + '40' }]}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#3A6550', textTransform: 'uppercase', marginBottom: 4 }}>Sua candidatura</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={[fm.statusBadge, { color: STATUS_COR[statusAtual || 'em_analise'], backgroundColor: STATUS_COR[statusAtual || 'em_analise'] + '15' }]}>
+                      {STATUS_LABEL[statusAtual || 'em_analise']}
+                    </Text>
+                    {vagaFull.minha_candidatura?.porcentagem_compatibilidade != null && (
+                      <Text style={{ fontSize: 16, fontWeight: '900', color: '#00A880' }}>
+                        {vagaFull.minha_candidatura.porcentagem_compatibilidade}%
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {(vagaFull.salario_min || vagaFull.salario_max) ? (
+                <View style={fm.row}>
+                  <Text style={fm.rowLabel}>💰 Salário</Text>
+                  <Text style={fm.rowValue}>R$ {Number(vagaFull.salario_min).toLocaleString('pt-BR')} – R$ {Number(vagaFull.salario_max).toLocaleString('pt-BR')}</Text>
+                </View>
+              ) : vagaFull.salario ? (
+                <View style={fm.row}>
+                  <Text style={fm.rowLabel}>💰 Salário</Text>
+                  <Text style={fm.rowValue}>{vagaFull.salario}</Text>
+                </View>
+              ) : null}
+
+              {reqObrig.length > 0 && (
+                <View style={[fm.row, { flexDirection: 'column', alignItems: 'flex-start', gap: 8 }]}>
+                  <Text style={fm.rowLabel}>🔴 Requisitos Obrigatórios</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    {reqObrig.map((r, i) => (
+                      <View key={i} style={[fm.reqChip, { backgroundColor: '#E6F5EE', borderColor: '#00A88060' }]}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#00A880' }}>{r}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+              {reqDesej.length > 0 && (
+                <View style={[fm.row, { flexDirection: 'column', alignItems: 'flex-start', gap: 8 }]}>
+                  <Text style={fm.rowLabel}>🔵 Requisitos Desejáveis</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    {reqDesej.map((r, i) => (
+                      <View key={i} style={[fm.reqChip, { backgroundColor: '#EBF2FC', borderColor: '#1A6FD460' }]}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#1A6FD4' }}>{r}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+              {vagaFull.beneficios ? (
+                <View style={[fm.row, { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}>
+                  <Text style={fm.rowLabel}>🎁 Benefícios</Text>
+                  <Text style={fm.rowValue}>{vagaFull.beneficios}</Text>
+                </View>
+              ) : null}
+              {vagaFull.descricao ? (
+                <View style={[fm.row, { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}>
+                  <Text style={fm.rowLabel}>📋 Descrição</Text>
+                  <Text style={fm.rowValue}>{vagaFull.descricao}</Text>
+                </View>
+              ) : null}
+              {vagaFull.empresa_desc ? (
+                <View style={[fm.row, { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}>
+                  <Text style={fm.rowLabel}>🏢 Sobre a empresa</Text>
+                  <Text style={fm.rowValue}>{vagaFull.empresa_desc}</Text>
+                </View>
+              ) : null}
+              <Text style={fm.data}>Publicada em {new Date(vagaFull.created_at).toLocaleDateString('pt-BR')}</Text>
+            </ScrollView>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={fm.scroll} keyboardShouldPersistTaps="handled">
+              <Text style={fm.cargo}>{vagaFull.cargo}</Text>
+              <Text style={[fm.empresa, { color: cor, marginBottom: 16 }]}>{vagaFull.empresa_nome}</Text>
+
+              {reqObrig.length > 0 && (
+                <>
+                  <Text style={fap.sectionTitle}>🔴 Requisitos Obrigatórios</Text>
+                  <Text style={fap.sectionHint}>Peso: 70% da compatibilidade</Text>
+                  {reqObrig.map((r, i) => (
+                    <View key={i} style={fap.reqRow}>
+                      <Text style={fap.reqText}>{r}</Text>
+                      <View style={fap.simnaoRow}>
+                        <TouchableOpacity style={[fap.simBtn, respostasObrig[i] === true  && fap.simBtnOn]} onPress={() => setRespostasObrig(p => ({ ...p, [i]: true }))}>
+                          <Text style={[fap.simnaoT, respostasObrig[i] === true  && fap.simTOn]}>Sim</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[fap.naoBtn, respostasObrig[i] === false && fap.naoBtnOn]} onPress={() => setRespostasObrig(p => ({ ...p, [i]: false }))}>
+                          <Text style={[fap.simnaoT, respostasObrig[i] === false && fap.naoTOn]}>Não</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {reqDesej.length > 0 && (
+                <>
+                  <Text style={[fap.sectionTitle, { marginTop: 20 }]}>🔵 Requisitos Desejáveis</Text>
+                  <Text style={fap.sectionHint}>Peso: 30% da compatibilidade</Text>
+                  {reqDesej.map((r, i) => (
+                    <View key={i} style={fap.reqRow}>
+                      <Text style={fap.reqText}>{r}</Text>
+                      <View style={fap.simnaoRow}>
+                        <TouchableOpacity style={[fap.simBtn, respostasDesej[i] === true  && fap.simBtnOn]} onPress={() => setRespostasDesej(p => ({ ...p, [i]: true }))}>
+                          <Text style={[fap.simnaoT, respostasDesej[i] === true  && fap.simTOn]}>Sim</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[fap.naoBtn, respostasDesej[i] === false && fap.naoBtnOn]} onPress={() => setRespostasDesej(p => ({ ...p, [i]: false }))}>
+                          <Text style={[fap.simnaoT, respostasDesej[i] === false && fap.naoTOn]}>Não</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {perguntas.length > 0 && (
+                <>
+                  <Text style={[fap.sectionTitle, { marginTop: 20 }]}>❓ Perguntas do Recrutador</Text>
+                  {perguntas.map((p, i) => (
+                    <View key={i} style={{ marginBottom: 14 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#0A1C14', marginBottom: 6 }}>{i + 1}. {p}</Text>
+                      <TextInput
+                        style={fap.input}
+                        value={respostasTexto[i] || ''}
+                        onChangeText={v => { const r = [...respostasTexto]; r[i] = v; setRespostasTexto(r) }}
+                        placeholder="Sua resposta..."
+                        placeholderTextColor="#A0B8AC"
+                        multiline
+                        numberOfLines={3}
+                        textAlignVertical="top"
+                      />
+                    </View>
+                  ))}
+                </>
+              )}
+
+              <View style={[fm.compatCard, { marginTop: 20 }]}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: '#3A6550', textTransform: 'uppercase', marginBottom: 10 }}>
+                  Você atende {calcPct()}% dos requisitos desta vaga
+                </Text>
+                <CompatBarFeed pct={calcPct()} />
+                <Text style={{ fontSize: 11, color: '#7A9E8E', marginTop: 8, textAlign: 'center' }}>
+                  Esta porcentagem será declarada ao recrutador
+                </Text>
+              </View>
+            </ScrollView>
+          )}
+
+          {/* Botão fixo */}
+          {!loadingDetail && vagaFull && (
+            isOwner ? (
+              <View style={fm.ownerNote}><Text style={fm.ownerNoteT}>Você é o dono desta vaga</Text></View>
+            ) : candidatou || jaCandidatou ? (
+              <View style={[fm.candidatarBtn, { backgroundColor: '#059669' }]}>
+                <Text style={fm.candidatarBtnT}>✓ Candidatura enviada!</Text>
+              </View>
+            ) : step === 'detail' ? (
+              <TouchableOpacity style={[fm.candidatarBtn, { backgroundColor: '#1c909b' }]} onPress={goToApply}>
+                <Text style={fm.candidatarBtnT}>Candidatar-se →</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[fm.candidatarBtn, { backgroundColor: '#1c909b' }, sending && { opacity: 0.7 }]}
+                onPress={confirmar}
+                disabled={sending}
+              >
+                {sending
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={fm.candidatarBtnT}>Confirmar candidatura com {calcPct()}% →</Text>}
+              </TouchableOpacity>
+            )
+          )}
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
 // ── Card: Vaga (compatibilidade) ──────────────────────────────────────────────
 
-function VagaCard({ vaga, user }: { vaga: any; user: any }) {
+function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?: () => void }) {
   const pct    = vaga._pct ?? calcularCompatAvancado(user, vaga)
   const barCor = pct >= 80 ? '#00A880' : pct >= 50 ? GOLD : '#EF4444'
   const cCor   = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
@@ -192,7 +502,7 @@ function VagaCard({ vaga, user }: { vaga: any; user: any }) {
       </View>
       <TouchableOpacity
         style={[s.actionBtn, { backgroundColor: PRIMARY }]}
-        onPress={() => router.push({ pathname: '/(tabs)/vagas', params: { vagaId: String(vaga.id) } } as any)}
+        onPress={() => onVerVaga ? onVerVaga() : router.push('/(tabs)/vagas' as any)}
         activeOpacity={0.8}
       >
         <Text style={s.actionBtnT}>Ver vaga →</Text>
@@ -501,6 +811,8 @@ export default function Painel() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [curtidos, setCurtidos]     = useState<Record<number, boolean>>({})
   const [curtindo, setCurtindo]     = useState<Record<number, boolean>>({})
+  const [feedVagaId, setFeedVagaId]         = useState<number | null>(null)
+  const [feedVagaIsOwner, setFeedVagaIsOwner] = useState(false)
   const abaRef = useRef<Aba>('vagas')
 
   const avatarUrl = user?.avatar_url
@@ -751,7 +1063,15 @@ export default function Painel() {
             <View style={{ gap: 12 }}>
               {items.map(p =>
                 p.source_type === 'vaga'
-                  ? <VagaCard key={`vaga-${p.id}`} vaga={p} user={user} />
+                  ? <VagaCard
+                      key={`vaga-${p.id}`}
+                      vaga={p}
+                      user={user}
+                      onVerVaga={() => {
+                        setFeedVagaIsOwner(false)
+                        setFeedVagaId(p.id)
+                      }}
+                    />
                   : <RecentPostCard key={`post-${p.id}`} post={p} />
               )}
             </View>
@@ -782,6 +1102,13 @@ export default function Painel() {
           ) : null}
         </View>
       </ScrollView>
+
+      {/* ── Modal de vaga (feed geral) ── */}
+      <FeedVagaModal
+        vagaId={feedVagaId}
+        isOwner={feedVagaIsOwner}
+        onClose={() => setFeedVagaId(null)}
+      />
 
       {/* ── FAB publicar (feed geral) ── */}
       {aba === 'feed_geral' && (
@@ -943,4 +1270,49 @@ const s = StyleSheet.create({
   emptyIcon: { fontSize: 52, marginBottom: 14 },
   emptyTitle: { fontSize: 17, fontWeight: '800', color: '#0A1C14', marginBottom: 8, textAlign: 'center' },
   emptySub: { fontSize: 13, color: '#7A9E8E', textAlign: 'center', lineHeight: 19 },
+})
+
+// ── Styles: FeedVagaModal ─────────────────────────────────────────────────────
+
+const fm = StyleSheet.create({
+  overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.52)', justifyContent: 'flex-end' },
+  sheet:        { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: Platform.OS === 'ios' ? 36 : 20, maxHeight: '90%' },
+  handle:       { width: 40, height: 4, backgroundColor: '#D0E8DA', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  header:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  closeBtn:     { padding: 4 },
+  closeT:       { fontSize: 18, color: '#7A9E8E', fontWeight: '700' },
+  badge:        { borderWidth: 1, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 6 },
+  badgeT:       { fontSize: 12, fontWeight: '800' },
+  scroll:       { paddingBottom: 16 },
+  cargo:        { fontSize: 22, fontWeight: '900', color: '#0A1C14', marginBottom: 4 },
+  empresa:      { fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  loc:          { fontSize: 13, color: '#7A9E8E', marginBottom: 16 },
+  compatCard:   { backgroundColor: '#EEF7F2', borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#D0E8DA' },
+  statusCard:   { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1.5 },
+  statusBadge:  { fontSize: 13, fontWeight: '800', borderRadius: 100, paddingHorizontal: 12, paddingVertical: 5, overflow: 'hidden' as const },
+  row:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#EEF7F2', gap: 12 },
+  rowLabel:     { fontSize: 12, fontWeight: '800', color: '#7A9E8E', textTransform: 'uppercase', letterSpacing: 0.5 },
+  rowValue:     { fontSize: 14, fontWeight: '600', color: '#0A1C14', flex: 1, textAlign: 'right' },
+  reqChip:      { borderWidth: 1, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 },
+  data:         { fontSize: 12, color: '#AECEBE', marginTop: 16, textAlign: 'center' },
+  candidatarBtn:  { borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8 },
+  candidatarBtnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  ownerNote:    { backgroundColor: '#EEF7F2', borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8 },
+  ownerNoteT:   { fontSize: 14, fontWeight: '700', color: '#7A9E8E' },
+})
+
+const fap = StyleSheet.create({
+  sectionTitle: { fontSize: 12, fontWeight: '800', color: '#0A1C14', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },
+  sectionHint:  { fontSize: 11, color: '#7A9E8E', marginBottom: 10 },
+  reqRow:       { backgroundColor: '#F8FCFA', borderWidth: 1, borderColor: '#D0E8DA', borderRadius: 12, padding: 12, marginBottom: 8, gap: 10 },
+  reqText:      { fontSize: 13, fontWeight: '600', color: '#0A1C14', lineHeight: 18 },
+  simnaoRow:    { flexDirection: 'row', gap: 8 },
+  simBtn:       { flex: 1, borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 8, paddingVertical: 8, alignItems: 'center', backgroundColor: '#fff' },
+  simBtnOn:     { backgroundColor: '#00A880', borderColor: '#00A880' },
+  naoBtn:       { flex: 1, borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 8, paddingVertical: 8, alignItems: 'center', backgroundColor: '#fff' },
+  naoBtnOn:     { backgroundColor: '#EF4444', borderColor: '#EF4444' },
+  simnaoT:      { fontSize: 13, fontWeight: '700', color: '#3A6550' },
+  simTOn:       { color: '#fff' },
+  naoTOn:       { color: '#fff' },
+  input:        { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 13, fontSize: 14, color: '#0A1C14', marginBottom: 2 },
 })
