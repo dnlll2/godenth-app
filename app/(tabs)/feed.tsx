@@ -170,7 +170,7 @@ function VagaCard({ vaga, user }: { vaga: any; user: any }) {
               </View>
           }
           <View style={{ flex: 1 }}>
-            <Text style={s.vagaEmpresa} numberOfLines={1}>{vaga.empresa_nome}</Text>
+            <Text style={s.vagaEmpresa} numberOfLines={1}>{vaga.empresa_nome || vaga.page_nome}</Text>
             <Text style={s.vagaCargo}   numberOfLines={2}>{vaga.cargo}</Text>
           </View>
         </TouchableOpacity>
@@ -272,7 +272,10 @@ function RecentPostCard({ post }: { post: any }) {
       <View style={s.recentTop}>
         <TouchableOpacity
           style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}
-          onPress={() => post.author_id && router.push(`/usuario/${post.author_id}` as any)}
+          onPress={() => {
+            if (post.page_id) router.push(`/pagina/${post.page_id}` as any)
+            else if (post.author_id) router.push(`/usuario/${post.author_id}` as any)
+          }}
           activeOpacity={0.75}
         >
           {avatarUrl
@@ -746,7 +749,11 @@ export default function Painel() {
             </View>
           ) : aba === 'recentes' || aba === 'feed_geral' ? (
             <View style={{ gap: 12 }}>
-              {items.map(p => <RecentPostCard key={p.id} post={p} />)}
+              {items.map(p =>
+                p.source_type === 'vaga'
+                  ? <VagaCard key={`vaga-${p.id}`} vaga={p} user={user} />
+                  : <RecentPostCard key={`post-${p.id}`} post={p} />
+              )}
             </View>
           ) : aba === 'marketplace' ? (
             <View style={{ gap: 12 }}>
