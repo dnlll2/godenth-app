@@ -61,7 +61,11 @@ type ImageAsset = { uri: string; name: string; type: string }
 
 function absUrl(url?: string | null) {
   if (!url) return null
-  return url.startsWith('http') ? url : API_BASE + url
+  if (url.startsWith('http')) {
+    // Upgrade http → https; Android bloqueia cleartext traffic
+    return url.replace(/^http:\/\//, 'https://')
+  }
+  return API_BASE + url
 }
 
 function timeAgo(d: string) {
@@ -232,7 +236,8 @@ export default function GrupoScreen() {
       if (texto.trim()) form.append('texto', texto.trim())
       if (imagem) form.append('imagem', { uri: imagem.uri, name: imagem.name, type: imagem.type } as any)
       await api.post(`/grupos/${id}/posts`, form, {
-        transformRequest: (data: any) => data,
+        headers: { 'Content-Type': 'multipart/form-data' },
+        transformRequest: [(data: any) => data],
       })
       setTexto(''); setImagem(null); setModalOpen(false)
       // Auto-join e refresh
@@ -250,8 +255,10 @@ export default function GrupoScreen() {
     if (!perm.granted) { Alert.alert('Permissão necessária', 'Permita acesso à galeria.'); return }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, allowsEditing: true })
     if (!result.canceled && result.assets[0]) {
-      const a = result.assets[0]; const ext = a.uri.split('.').pop() || 'jpg'
-      setImagem({ uri: a.uri, name: `foto.${ext}`, type: `image/${ext}` })
+      const a = result.assets[0]
+      const mime = a.mimeType || 'image/jpeg'
+      const ext = mime.split('/')[1] || 'jpg'
+      setImagem({ uri: a.uri, name: `foto.${ext}`, type: mime })
     }
   }
 
@@ -273,7 +280,8 @@ export default function GrupoScreen() {
       // transformRequest preserva o FormData intacto para que o XHR do React Native
       // adicione o boundary correto ao Content-Type em vez de o axios serializar o body
       const res = await api.put(`/grupos/${id}/capa`, form, {
-        transformRequest: (data: any) => data,
+        headers: { 'Content-Type': 'multipart/form-data' },
+        transformRequest: [(data: any) => data],
       })
       setGrupo(prev => prev ? { ...prev, capa_url: res.data.capa_url } : prev)
     } catch (err: any) {
