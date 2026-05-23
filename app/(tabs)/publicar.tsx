@@ -14,45 +14,43 @@ const TIPOS = [
     key: 'parceria',
     emoji: '🤝',
     label: 'Busco Parceria',
-    desc: 'Lab, clínica ou especialista para trabalhar junto',
+    desc: 'Lab, clínica, especialista ou fornecedor para trabalhar junto',
     cor: '#00A880',
   },
   {
     key: 'vaga',
-    emoji: '💼',
-    label: 'Tenho uma Vaga',
-    desc: 'Divulgue uma oportunidade de trabalho',
+    emoji: '🛠️',
+    label: 'Ofereço Serviço',
+    desc: 'Plantão, freelance ou serviço pontual com condição especial',
     cor: '#1A6FD4',
   },
   {
     key: 'ajuda',
-    emoji: '🆘',
-    label: 'Preciso de Ajuda',
-    desc: 'Substituto, urgência ou caso específico',
+    emoji: '📋',
+    label: 'Tenho uma Demanda',
+    desc: 'Substituto, manutenção, equipamento ou caso urgente',
     cor: '#E53935',
   },
 ]
 
 const SUBCATEGORIAS: Record<string, string[]> = {
   parceria: [
-    'Implantodontia', 'Ortodontia', 'Prótese', 'Cirurgia',
-    'Endodontia', 'Periodontia', 'Pediatria', 'Estética',
-    'Radiologia', 'Saúde Bucal',
+    'Clínica', 'Laboratório', 'Especialista', 'Fornecedor', 'Investidor',
   ],
   vaga: [
-    'Dentista', 'Auxiliar', 'Recepcionista', 'Técnico em Prótese',
-    'Protético', 'Administrativo', 'Marketing', 'TI',
+    'Plantão', 'Freelance', 'Prótese', 'Ortodontia',
+    'Implante', 'Radiologia', 'Avaliação', 'Consultoria',
   ],
   ajuda: [
-    'Auxiliar urgente', 'Substituto', 'Técnico de cadeira',
-    'Protético', 'Recepcionista', 'Administrativo',
+    'Substituto', 'Urgente', 'Plantão', 'Cobertura',
+    'Caso específico', 'Manutenção', 'Equipamento', 'Reparo',
   ],
 }
 
 const PLACEHOLDER: Record<string, string> = {
-  parceria: 'Descreva sua especialidade, disponibilidade e o que busca na parceria…',
-  vaga:     'Descreva a vaga, requisitos, local e condições de trabalho…',
-  ajuda:    'Descreva sua necessidade urgente e como a pessoa deve entrar em contato…',
+  parceria: 'Descreva o perfil que busca, sua especialidade e como quer trabalhar junto…',
+  vaga:     'Descreva o serviço que oferece, disponibilidade e condições…',
+  ajuda:    'Descreva a demanda, urgência e como a pessoa deve entrar em contato…',
 }
 
 // ── Componente ────────────────────────────────────────────────────────────────
