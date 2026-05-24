@@ -10,9 +10,17 @@ import { Colors, PlanColors } from '../../constants/colors'
 
 const PLANOS = ['gratuito', 'premium', 'black'] as const
 const STATUS = ['ativo', 'inativo', 'banido'] as const
+const CARGOS = ['gratuito', 'moderador', 'admin'] as const
 
 type Plano = typeof PLANOS[number]
 type Status = typeof STATUS[number]
+type Cargo = typeof CARGOS[number]
+
+const CargoColors: Record<Cargo, string> = {
+  gratuito: Colors.text3,
+  moderador: Colors.primary,
+  admin: Colors.gold,
+}
 
 interface Stats {
   total_usuarios: number
@@ -30,6 +38,7 @@ interface UserRow {
   plano: Plano
   status: Status
   embaixador: boolean
+  cargo: Cargo
   created_at: string
 }
 
@@ -115,6 +124,25 @@ export default function AdminPanel() {
         },
       ]
     )
+  }
+
+  const changeCargo = (userId: number, cargoAtual: Cargo) => {
+    Alert.alert('Alterar cargo', `Cargo atual: ${cargoAtual}`, [
+      ...CARGOS.map(c => ({
+        text: c.charAt(0).toUpperCase() + c.slice(1),
+        style: c === cargoAtual ? 'cancel' as const : 'default' as const,
+        onPress: c === cargoAtual ? undefined : async () => {
+          setActionUser(userId)
+          try {
+            await api.patch(`/admin/usuarios/${userId}/cargo`, { cargo: c })
+            setUsers(prev => prev.map(u => u.id === userId ? { ...u, cargo: c } : u))
+          } catch (err: any) {
+            Alert.alert('Erro', err.response?.data?.error || 'Falha ao atualizar')
+          } finally { setActionUser(null) }
+        },
+      })),
+      { text: 'Cancelar', style: 'cancel' },
+    ])
   }
 
   const changeStatus = (userId: number, statusAtual: Status) => {
@@ -208,7 +236,15 @@ export default function AdminPanel() {
                 onPress={() => toggleEmbaixador(u.id, u.embaixador)}
               >
                 <Text style={[s.embaixadorBadgeT, u.embaixador && { color: '#7B3FC4' }]}>
-                  {u.embaixador ? '🌟 Embaixador' : '☆ Promover'}
+                  {u.embaixador ? '🌟 Emb.' : '☆ Emb.'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.cargoBadge, u.cargo !== 'gratuito' && { backgroundColor: CargoColors[u.cargo ?? 'gratuito'] + '18', borderColor: CargoColors[u.cargo ?? 'gratuito'] + '55' }]}
+                onPress={() => changeCargo(u.id, u.cargo ?? 'gratuito')}
+              >
+                <Text style={[s.cargoBadgeT, { color: CargoColors[u.cargo ?? 'gratuito'] }]}>
+                  {u.cargo === 'gratuito' ? '↑ Promover' : u.cargo.charAt(0).toUpperCase() + u.cargo.slice(1)}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -262,6 +298,8 @@ const s = StyleSheet.create({
   planoBadgeT: { fontSize: 12, fontWeight: '800' },
   statusBadge: { borderWidth: 1, borderColor: Colors.border, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 6, backgroundColor: Colors.surface },
   statusBadgeT: { fontSize: 12, fontWeight: '700', color: Colors.text2 },
-  embaixadorBadge: { borderWidth: 1, borderColor: Colors.border, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 6, backgroundColor: Colors.surface },
+  embaixadorBadge: { borderWidth: 1, borderColor: Colors.border, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: Colors.surface },
   embaixadorBadgeT: { fontSize: 12, fontWeight: '700', color: Colors.text3 },
+  cargoBadge: { borderWidth: 1, borderColor: Colors.border, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 6, backgroundColor: Colors.surface },
+  cargoBadgeT: { fontSize: 12, fontWeight: '800' },
 })
