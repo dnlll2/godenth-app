@@ -112,14 +112,16 @@ function PostCard({ post, accentColor, canDelete, onDelete }: {
   return (
     <View style={pc.card}>
       <View style={pc.header}>
-        <Avatar uri={post.author_avatar} nome={post.author_nome} size={42} />
-        <View style={pc.meta}>
-          <Text style={pc.nome}>{post.author_nome}</Text>
-          <Text style={pc.sub}>
-            {post.author_especialidade || post.author_tipo}
-            {post.author_cidade ? ` · ${post.author_cidade}` : ''}
-          </Text>
-        </View>
+        <TouchableOpacity style={pc.authorRow} onPress={() => router.push(`/usuario/${post.author_id}` as any)} activeOpacity={0.7}>
+          <Avatar uri={post.author_avatar} nome={post.author_nome} size={42} />
+          <View style={pc.meta}>
+            <Text style={pc.nome}>{post.author_nome}</Text>
+            <Text style={pc.sub}>
+              {post.author_especialidade || post.author_tipo}
+              {post.author_cidade ? ` · ${post.author_cidade}` : ''}
+            </Text>
+          </View>
+        </TouchableOpacity>
         <View style={pc.timeRow}>
           <Text style={pc.time}>{timeAgo(post.created_at)}</Text>
           {canDelete && (
@@ -139,9 +141,10 @@ function PostCard({ post, accentColor, canDelete, onDelete }: {
 }
 
 const pc = StyleSheet.create({
-  card:   { backgroundColor: CARD, marginBottom: 8, borderRadius: 0, overflow: 'hidden' },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 },
-  meta:   { flex: 1 },
+  card:      { backgroundColor: CARD, marginBottom: 8, borderRadius: 0, overflow: 'hidden' },
+  header:    { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 },
+  authorRow: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
+  meta:      { flex: 1 },
   nome:   { fontSize: 14, fontWeight: '700', color: TEXT },
   sub:    { fontSize: 11, color: MUTED, marginTop: 1 },
   timeRow:   { alignItems: 'flex-end', gap: 6 },
