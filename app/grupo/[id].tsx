@@ -37,6 +37,16 @@ const IB = { stroke: '#fff', strokeWidth: 1.7, fill: 'none', strokeLinecap: 'rou
 function PlusIcon()   { return <Svg width={20} height={20} viewBox="0 0 24 24"><Line x1="12" y1="5" x2="12" y2="19" {...IB} /><Line x1="5" y1="12" x2="19" y2="12" {...IB} /></Svg> }
 function SearchIcon() { return <Svg width={20} height={20} viewBox="0 0 24 24"><Circle cx="10.5" cy="10.5" r="6.5" {...IB} /><Line x1="15.5" y1="15.5" x2="21" y2="21" {...IB} /></Svg> }
 function BellIcon()   { return <Svg width={20} height={20} viewBox="0 0 24 24"><Path d="M10,7 C10,5.3 14,5.3 14,7" {...IB} /><Path d="M5,17 C5,12 7.5,8 12,8 C16.5,8 19,12 19,17 L20,19 L4,19 Z" {...IB} /><Path d="M10,19 C10,20.7 14,20.7 14,19" {...IB} /></Svg> }
+function TrashIcon()  {
+  const t = { stroke: '#E53935', strokeWidth: 1.6, fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+  return (
+    <Svg width={16} height={16} viewBox="0 0 24 24">
+      <Path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" {...t} />
+      <Line x1="10" y1="11" x2="10" y2="17" {...t} />
+      <Line x1="14" y1="11" x2="14" y2="17" {...t} />
+    </Svg>
+  )
+}
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -95,7 +105,10 @@ function Avatar({ uri, nome, size = 40, border }: { uri?: string | null; nome: s
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-function PostCard({ post, accentColor }: { post: GrupoPost; accentColor: string }) {
+function PostCard({ post, accentColor, canDelete, onDelete }: {
+  post: GrupoPost; accentColor: string
+  canDelete?: boolean; onDelete?: () => void
+}) {
   return (
     <View style={pc.card}>
       <View style={pc.header}>
@@ -107,7 +120,14 @@ function PostCard({ post, accentColor }: { post: GrupoPost; accentColor: string 
             {post.author_cidade ? ` · ${post.author_cidade}` : ''}
           </Text>
         </View>
-        <Text style={pc.time}>{timeAgo(post.created_at)}</Text>
+        <View style={pc.timeRow}>
+          <Text style={pc.time}>{timeAgo(post.created_at)}</Text>
+          {canDelete && (
+            <TouchableOpacity style={pc.deleteBtn} onPress={onDelete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <TrashIcon />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
       {!!post.texto && <Text style={pc.texto}>{post.texto}</Text>}
       {!!post.imagem_url && (
@@ -124,7 +144,9 @@ const pc = StyleSheet.create({
   meta:   { flex: 1 },
   nome:   { fontSize: 14, fontWeight: '700', color: TEXT },
   sub:    { fontSize: 11, color: MUTED, marginTop: 1 },
-  time:   { fontSize: 11, color: MUTED },
+  timeRow:   { alignItems: 'flex-end', gap: 6 },
+  time:      { fontSize: 11, color: MUTED },
+  deleteBtn: { padding: 2 },
   texto:  { fontSize: 14, color: TEXT, lineHeight: 21, paddingHorizontal: 14, paddingBottom: 12 },
   img:    { width: '100%', height: 240 },
   stripe: { height: 3, width: '100%', opacity: 0.5 },
@@ -289,6 +311,24 @@ export default function GrupoScreen() {
     }
   }
 
+  const handleDeletePost = (postId: number) => {
+    Alert.alert('Deletar post', 'Tem certeza que deseja remover este post?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Deletar', style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.delete(`/grupos/${id}/posts/${postId}`)
+            setPosts(prev => prev.filter(p => p.id !== postId))
+            setGrupo(prev => prev ? { ...prev, total_posts: Math.max(0, prev.total_posts - 1) } : prev)
+          } catch (err: any) {
+            Alert.alert('Erro', err?.response?.data?.error || 'Não foi possível deletar o post.')
+          }
+        },
+      },
+    ])
+  }
+
   const handleMore = () => {
     const opts = grupo?.is_member
       ? [{ text: 'Compartilhar grupo', onPress: () => Share.share({ message: `Participe do grupo "${grupo?.nome}" no GoDenth!` }) },
@@ -446,7 +486,17 @@ export default function GrupoScreen() {
   }
 
   const renderItem = ({ item }: { item: any }) => {
-    if (activeTab === 'discussao') return <PostCard post={item} accentColor={accent} />
+    if (activeTab === 'discussao') {
+      const canDelete = isAdmin || item.author_id === user?.id
+      return (
+        <PostCard
+          post={item}
+          accentColor={accent}
+          canDelete={canDelete}
+          onDelete={() => handleDeletePost(item.id)}
+        />
+      )
+    }
     if (activeTab === 'membros') return <MemberRow m={item} />
     return null
   }
