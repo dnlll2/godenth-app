@@ -473,10 +473,12 @@ export default function GrupoScreen() {
           <TouchableOpacity style={s.headerBack} onPress={handleBack}>
             <Text style={s.headerBackT}>‹</Text>
           </TouchableOpacity>
-          <Text style={s.headerLogo}>
-            <Text style={{ color: '#F5C800' }}>Go</Text>
-            <Text style={{ color: '#fff' }}>Denth</Text>
-          </Text>
+          <TouchableOpacity onPress={() => router.replace('/(tabs)/feed' as any)} activeOpacity={0.8}>
+            <Text style={s.headerLogo}>
+              <Text style={{ color: '#F5C800' }}>Go</Text>
+              <Text style={{ color: '#fff' }}>Denth</Text>
+            </Text>
+          </TouchableOpacity>
           <View style={{ width: 36 }} />
         </View>
         <View style={s.center}>
@@ -493,10 +495,12 @@ export default function GrupoScreen() {
         <TouchableOpacity style={s.headerBack} onPress={handleBack}>
           <Text style={s.headerBackT}>‹</Text>
         </TouchableOpacity>
-        <Text style={s.headerLogo}>
-          <Text style={{ color: '#F5C800' }}>Go</Text>
-          <Text style={{ color: '#fff' }}>Denth</Text>
-        </Text>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)/feed' as any)} activeOpacity={0.8}>
+          <Text style={s.headerLogo}>
+            <Text style={{ color: '#F5C800' }}>Go</Text>
+            <Text style={{ color: '#fff' }}>Denth</Text>
+          </Text>
+        </TouchableOpacity>
         <View style={s.headerIcons}>
           <TouchableOpacity style={s.headerIco} onPress={() => router.push('/(tabs)/publicar' as any)}>
             <PlusIcon />

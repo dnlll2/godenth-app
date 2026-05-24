@@ -1028,10 +1028,12 @@ export default function Painel() {
 
       {/* ── App Header ── */}
       <View style={s.header}>
-        <Text style={s.logo}>
-          <Text style={{ color: '#F5C800' }}>Go</Text>
-          <Text style={{ color: '#fff' }}>Denth</Text>
-        </Text>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)/feed' as any)} activeOpacity={0.8}>
+          <Text style={s.logo}>
+            <Text style={{ color: '#F5C800' }}>Go</Text>
+            <Text style={{ color: '#fff' }}>Denth</Text>
+          </Text>
+        </TouchableOpacity>
         <View style={s.headerIcons}>
           <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/publicar' as any)}>
             <PlusIcon />
