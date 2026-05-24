@@ -1,12 +1,12 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, Modal,
   TextInput, Image, ActivityIndicator, RefreshControl,
-  KeyboardAvoidingView, Platform, Alert, StatusBar, Share,
-  ScrollView, Dimensions,
+  KeyboardAvoidingView, Platform, Alert, Share, Dimensions,
 } from 'react-native'
 import { useLocalSearchParams, router } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
+import Svg, { Circle, Line, Path } from 'react-native-svg'
 import api, { getAuthToken } from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -30,6 +30,14 @@ const CAT_LABEL: Record<string, string> = {
   odontologia: 'Odontologia',
   protese:     'Prótese Dentária',
 }
+
+// ─── Header icons ────────────────────────────────────────────────────────────
+
+const IB = { stroke: '#fff', strokeWidth: 1.7, fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+
+function PlusIcon()   { return <Svg width={20} height={20} viewBox="0 0 24 24"><Line x1="12" y1="5" x2="12" y2="19" {...IB} /><Line x1="5" y1="12" x2="19" y2="12" {...IB} /></Svg> }
+function SearchIcon() { return <Svg width={20} height={20} viewBox="0 0 24 24"><Circle cx="10.5" cy="10.5" r="6.5" {...IB} /><Line x1="15.5" y1="15.5" x2="21" y2="21" {...IB} /></Svg> }
+function BellIcon()   { return <Svg width={20} height={20} viewBox="0 0 24 24"><Path d="M10,7 C10,5.3 14,5.3 14,7" {...IB} /><Path d="M5,17 C5,12 7.5,8 12,8 C16.5,8 19,12 19,17 L20,19 L4,19 Z" {...IB} /><Path d="M10,19 C10,20.7 14,20.7 14,19" {...IB} /></Svg> }
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -170,6 +178,12 @@ export default function GrupoScreen() {
   const [capaLoading, setCapaLoading] = useState(false)
 
   const accent = CAT_COLOR[grupo?.categoria ?? ''] ?? TEAL
+  const avatarUrl = user?.avatar_url || null
+
+  const handleBack = () => {
+    if (router.canGoBack()) router.back()
+    else router.replace('/(tabs)/feed' as any)
+  }
 
   const fetchGrupo = useCallback(async () => {
     try {
@@ -309,20 +323,16 @@ export default function GrupoScreen() {
                 <Text style={s.coverEmoji}>{grupo.icone}</Text>
               </View>
           }
-          {/* Gradiente escuro no topo para os botões */}
-          <View style={s.coverTopBar}>
-            <TouchableOpacity style={s.coverBtn} onPress={() => router.back()}>
-              <Text style={s.coverBtnT}>‹</Text>
-            </TouchableOpacity>
-            {isAdmin && (
+          {isAdmin && (
+            <View style={s.coverTopBar}>
               <TouchableOpacity style={s.coverBtn} onPress={handleCapaUpload} disabled={capaLoading}>
                 {capaLoading
                   ? <ActivityIndicator size="small" color="#fff" />
                   : <Text style={s.coverBtnT}>📷</Text>
                 }
               </TouchableOpacity>
-            )}
-          </View>
+            </View>
+          )}
         </View>
 
         {/* ── Info do grupo ── */}
@@ -466,15 +476,53 @@ export default function GrupoScreen() {
 
   if (loading) {
     return (
-      <View style={s.center}>
-        <ActivityIndicator size="large" color={TEAL} />
+      <View style={{ flex: 1, backgroundColor: '#EFEFEF' }}>
+        <View style={s.appHeader}>
+          <TouchableOpacity style={s.headerBack} onPress={handleBack}>
+            <Text style={s.headerBackT}>‹</Text>
+          </TouchableOpacity>
+          <Text style={s.headerLogo}>
+            <Text style={{ color: '#F5C800' }}>Go</Text>
+            <Text style={{ color: '#fff' }}>Denth</Text>
+          </Text>
+          <View style={{ width: 36 }} />
+        </View>
+        <View style={s.center}>
+          <ActivityIndicator size="large" color={TEAL} />
+        </View>
       </View>
     )
   }
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      {/* ── App Header ── */}
+      <View style={s.appHeader}>
+        <TouchableOpacity style={s.headerBack} onPress={handleBack}>
+          <Text style={s.headerBackT}>‹</Text>
+        </TouchableOpacity>
+        <Text style={s.headerLogo}>
+          <Text style={{ color: '#F5C800' }}>Go</Text>
+          <Text style={{ color: '#fff' }}>Denth</Text>
+        </Text>
+        <View style={s.headerIcons}>
+          <TouchableOpacity style={s.headerIco} onPress={() => router.push('/(tabs)/publicar' as any)}>
+            <PlusIcon />
+          </TouchableOpacity>
+          <TouchableOpacity style={s.headerIco} onPress={() => router.push('/(tabs)/buscar' as any)}>
+            <SearchIcon />
+          </TouchableOpacity>
+          <TouchableOpacity style={s.headerIco} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
+            <BellIcon />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/perfil' as any)}>
+            {avatarUrl
+              ? <Image source={{ uri: avatarUrl }} style={s.headerAv} />
+              : <View style={s.headerAv}><Text style={s.headerAvT}>{user?.nome?.charAt(0) || 'U'}</Text></View>
+            }
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <FlatList
         data={getListData()}
@@ -554,14 +602,25 @@ const s = StyleSheet.create({
   center:  { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: BG },
   listContent: { paddingBottom: 40 },
 
+  // App header
+  appHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 12, paddingVertical: 10, backgroundColor: TEAL,
+  },
+  headerBack:  { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
+  headerBackT: { color: '#fff', fontSize: 26, lineHeight: 30, fontWeight: '300', marginTop: -2 },
+  headerLogo:  { fontSize: 22, fontFamily: 'Poppins-ExtraBold', letterSpacing: -0.5 },
+  headerIcons: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerIco:   { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
+  headerAv:    { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1A6FD4', justifyContent: 'center', alignItems: 'center' },
+  headerAvT:   { color: '#fff', fontWeight: '800', fontSize: 14 },
+
   // Cover
   coverWrap:   { width: SCREEN_W, height: COVER_H, position: 'relative' },
   coverImg:    { width: '100%', height: COVER_H, alignItems: 'center', justifyContent: 'center' },
   coverEmoji:  { fontSize: 56, opacity: 0.6 },
   coverTopBar: {
-    position: 'absolute', top: 0, left: 0, right: 0,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 52 : 36, paddingHorizontal: 14,
+    position: 'absolute', top: 8, right: 14,
   },
   coverBtn:  { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.42)', alignItems: 'center', justifyContent: 'center' },
   coverBtnT: { color: '#fff', fontSize: 20, lineHeight: 22, fontWeight: '600' },
