@@ -7,11 +7,10 @@ import {
 import { useLocalSearchParams, router } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import Svg, { Circle, Line, Path } from 'react-native-svg'
-import api, { getAuthToken } from '../../services/api'
+import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 
 const { width: SCREEN_W } = Dimensions.get('window')
-const API_BASE  = 'https://godenth-api.onrender.com'
 const TEAL      = '#1c909b'
 const GOLD      = '#C49800'
 const BG        = '#FAFAF8'
@@ -269,29 +268,22 @@ export default function GrupoScreen() {
       Alert.alert('Permissão necessária', 'Permita acesso à galeria para alterar a capa.')
       return
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85, allowsEditing: true, aspect: [16, 6] })
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85, allowsEditing: true, aspect: [16, 6], base64: true,
+    })
     if (result.canceled || !result.assets[0]) return
     const a = result.assets[0]
-    const mimeType = a.mimeType || 'image/jpeg'
-    const ext = mimeType.split('/')[1] || 'jpg'
+    if (!a.base64) { Alert.alert('Erro', 'Não foi possível ler a imagem.'); return }
     setCapaLoading(true)
     try {
-      const form = new FormData()
-      form.append('capa', { uri: a.uri, name: `capa.${ext}`, type: mimeType } as any)
-      const token = getAuthToken()
-      const res = await fetch(`${API_BASE}/grupos/${id}/capa`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token ?? ''}` },
-        body: form as any,
+      const res = await api.put(`/grupos/${id}/capa`, {
+        imagem_base64: a.base64,
+        imagem_tipo: a.mimeType || 'image/jpeg',
       })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Não foi possível atualizar a capa.')
-      }
-      const data = await res.json()
-      setGrupo(prev => prev ? { ...prev, capa_url: data.capa_url } : prev)
+      setGrupo(prev => prev ? { ...prev, capa_url: res.data.capa_url } : prev)
     } catch (err: any) {
-      Alert.alert('Erro', err.message || 'Não foi possível atualizar a capa.')
+      Alert.alert('Erro', err?.response?.data?.error || 'Não foi possível atualizar a capa.')
     } finally {
       setCapaLoading(false)
     }
