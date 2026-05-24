@@ -1,12 +1,21 @@
 import { useState, useEffect } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  TextInput, ActivityIndicator, Platform, ScrollView, Modal,
+  TextInput, ActivityIndicator, Platform, ScrollView, Modal, Image,
 } from 'react-native'
 import { router } from 'expo-router'
-import Svg, { Circle, Line } from 'react-native-svg'
+import Svg, { Circle, Line, Path } from 'react-native-svg'
 import api from '../../services/api'
 import { Colors } from '../../constants/colors'
+import { useAuthStore } from '../../stores/authStore'
+
+const PRIMARY = '#1c909b'
+
+const IB = { stroke: '#fff', strokeWidth: 1.7, fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+
+function PlusIcon()   { return <Svg width={20} height={20} viewBox="0 0 24 24"><Line x1="12" y1="5" x2="12" y2="19" {...IB} /><Line x1="5" y1="12" x2="19" y2="12" {...IB} /></Svg> }
+function SearchIcon() { return <Svg width={20} height={20} viewBox="0 0 24 24"><Circle cx="10.5" cy="10.5" r="6.5" {...IB} /><Line x1="15.5" y1="15.5" x2="21" y2="21" {...IB} /></Svg> }
+function BellIcon()   { return <Svg width={20} height={20} viewBox="0 0 24 24"><Path d="M10,7 C10,5.3 14,5.3 14,7" {...IB} /><Path d="M5,17 C5,12 7.5,8 12,8 C16.5,8 19,12 19,17 L20,19 L4,19 Z" {...IB} /><Path d="M10,19 C10,20.7 14,20.7 14,19" {...IB} /></Svg> }
 
 function SearchBoxIcon() {
   return (
@@ -572,6 +581,9 @@ const EMPTY_FILTERS: FilterState = {
 }
 
 export default function Buscar() {
+  const { user } = useAuthStore()
+  const avatarUrl = user?.avatar_url || null
+
   const [q, setQ] = useState('')
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [filterModal, setFilterModal] = useState(false)
@@ -668,12 +680,31 @@ export default function Buscar() {
 
   return (
     <View style={s.root}>
+      {/* ── App Header ── */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.back}>←</Text>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)/feed' as any)} activeOpacity={0.8}>
+          <Text style={s.logo}>
+            <Text style={{ color: '#F5C800' }}>Go</Text>
+            <Text style={{ color: '#fff' }}>Denth</Text>
+          </Text>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Buscar Profissionais</Text>
-        <View style={{ width: 40 }} />
+        <View style={s.headerIcons}>
+          <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/publicar' as any)}>
+            <PlusIcon />
+          </TouchableOpacity>
+          <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/buscar' as any)}>
+            <SearchIcon />
+          </TouchableOpacity>
+          <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
+            <BellIcon />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/perfil' as any)}>
+            {avatarUrl
+              ? <Image source={{ uri: avatarUrl }} style={s.uav} />
+              : <View style={s.uav}><Text style={s.uavt}>{user?.nome?.charAt(0) || 'U'}</Text></View>
+            }
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={s.searchRow}>
@@ -793,13 +824,18 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 14,
-    paddingTop: Platform.OS === 'ios' ? 52 : 14,
-    backgroundColor: Colors.primary2,
+    paddingHorizontal: 16, paddingVertical: 12, backgroundColor: PRIMARY,
+    paddingTop: Platform.OS === 'ios' ? 48 : 12,
   },
-  backBtn: { width: 40 },
-  back: { fontSize: 24, color: '#fff', fontWeight: '700' },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: '#fff' },
+  logo: { fontSize: 26, fontFamily: 'Poppins-ExtraBold', letterSpacing: -0.5 },
+  headerIcons: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  ico: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  uav: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1A6FD4', justifyContent: 'center', alignItems: 'center' },
+  uavt: { color: '#fff', fontWeight: '800', fontSize: 14 },
 
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
