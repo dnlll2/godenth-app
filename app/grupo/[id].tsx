@@ -182,7 +182,6 @@ const mr = StyleSheet.create({
 export default function GrupoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { user } = useAuthStore()
-  const isAdmin = user?.plano === 'black'
 
   const [grupo, setGrupo]       = useState<Grupo | null>(null)
   const [posts, setPosts]       = useState<GrupoPost[]>([])
@@ -358,7 +357,7 @@ export default function GrupoScreen() {
                 <Text style={s.coverEmoji}>{grupo.icone}</Text>
               </View>
           }
-          {isAdmin && (
+          {user?.plano === 'black' && (
             <View style={s.coverTopBar}>
               <TouchableOpacity style={s.coverBtn} onPress={handleCapaUpload} disabled={capaLoading}>
                 {capaLoading
@@ -490,7 +489,7 @@ export default function GrupoScreen() {
 
   const renderItem = ({ item }: { item: any }) => {
     if (activeTab === 'discussao') {
-      const canDelete = isAdmin || item.author_id === user?.id
+      const canDelete = item.author_id === user?.id
       return (
         <PostCard
           post={item}
