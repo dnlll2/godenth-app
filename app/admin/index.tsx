@@ -23,7 +23,8 @@ const CargoColors: Record<Cargo, string> = {
 }
 
 interface Stats {
-  total_usuarios: number
+  human_count: number
+  bot_count: number
   total_posts: number
   total_conexoes: number
   total_paginas: number
@@ -181,7 +182,8 @@ export default function AdminPanel() {
           <>
             <Text style={s.sectionTitle}>Estatísticas</Text>
             <View style={s.statsGrid}>
-              <StatCard label="Usuários" value={stats.total_usuarios} />
+              <StatCard label="Humanos" value={stats.human_count} />
+              <StatCard label="Bots" value={stats.bot_count} />
               <StatCard label="Posts" value={stats.total_posts} />
               <StatCard label="Conexões" value={stats.total_conexoes} />
               <StatCard label="Páginas" value={stats.total_paginas} />
