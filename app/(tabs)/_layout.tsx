@@ -14,7 +14,7 @@ const IC_ON    = '#00C9B1'
 const IC_OFF   = '#B8D0C8'
 const SW       = 1.7
 const DESKTOP_BREAKPOINT = 768
-const SIDEBAR_EXPANDED   = 260
+const SIDEBAR_EXPANDED   = 220
 const SIDEBAR_COLLAPSED  = 60
 const RIGHT_PANEL_WIDTH  = 280
 
@@ -134,17 +134,56 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Perfil',       href: '/(tabs)/perfil',       Icon: PersonIcon },
 ]
 
+// ── Desktop Top Bar (full-width) ───────────────────────────────────────────────
+
+function DesktopTopBar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  const { user } = useAuthStore()
+  const avatarUrl = user?.avatar_url || null
+
+  return (
+    <View style={tb.bar}>
+      {/* Left: hamburger + logo */}
+      <View style={tb.left}>
+        <TouchableOpacity onPress={onToggle} style={tb.hamburgerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <HamburgerIcon color="#fff" />
+        </TouchableOpacity>
+        <Text style={tb.logoText}>
+          <Text style={{ color: '#F5C800' }}>Go</Text>
+          <Text style={{ color: '#fff' }}>Denth</Text>
+        </Text>
+      </View>
+
+      {/* Right: action icons */}
+      <View style={tb.right}>
+        <TouchableOpacity style={tb.iconBtn} onPress={() => router.push('/(tabs)/publicar' as any)}>
+          <Text style={tb.plusT}>+</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={tb.iconBtn} onPress={() => router.push('/(tabs)/buscar' as any)}>
+          <SearchIcon color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={tb.iconBtn} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
+          <BellIcon color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/perfil' as any)}>
+          {avatarUrl
+            ? <Image source={{ uri: avatarUrl }} style={tb.avatar} />
+            : <View style={tb.avatarFb}><Text style={tb.avatarFbT}>{user?.nome?.charAt(0) || 'U'}</Text></View>
+          }
+        </TouchableOpacity>
+      </View>
+    </View>
+  )
+}
+
 // ── Desktop Sidebar ────────────────────────────────────────────────────────────
 
-function DesktopSidebar({ collapsed, widthAnim, onToggle }: {
+function DesktopSidebar({ collapsed, widthAnim }: {
   collapsed: boolean
   widthAnim: Animated.Value
-  onToggle: () => void
 }) {
-  const pathname  = usePathname()
-  const { user }  = useAuthStore()
-  const isAdmin   = user?.plano === 'black'
-  const avatarUrl = user?.avatar_url || null
+  const pathname = usePathname()
+  const { user } = useAuthStore()
+  const isAdmin  = user?.plano === 'black'
 
   const items = isAdmin
     ? [...NAV_ITEMS, { label: 'Admin', href: '/admin', Icon: AdminIcon }]
@@ -152,37 +191,6 @@ function DesktopSidebar({ collapsed, widthAnim, onToggle }: {
 
   return (
     <Animated.View style={[ds.sidebar, { width: widthAnim }]}>
-      {/* Logo + action icons */}
-      <View style={ds.logoRow}>
-        <TouchableOpacity onPress={onToggle} style={ds.hamburgerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <HamburgerIcon color="#fff" />
-        </TouchableOpacity>
-        {!collapsed && (
-          <>
-            <Text style={ds.logoText} numberOfLines={1}>
-              <Text style={{ color: '#F5C800' }}>Go</Text>
-              <Text style={{ color: '#fff' }}>Denth</Text>
-            </Text>
-            <TouchableOpacity style={ds.sidebarActionBtn} onPress={() => router.push('/(tabs)/publicar' as any)}>
-              <Text style={ds.sidebarPlusT}>+</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={ds.sidebarActionBtn} onPress={() => router.push('/(tabs)/buscar' as any)}>
-              <SearchIcon color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity style={ds.sidebarActionBtn} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
-              <BellIcon color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/perfil' as any)}>
-              {avatarUrl
-                ? <Image source={{ uri: avatarUrl }} style={ds.sidebarAvatar} />
-                : <View style={ds.sidebarAvatarFb}><Text style={ds.sidebarAvatarFbT}>{user?.nome?.charAt(0) || 'U'}</Text></View>
-              }
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
-
-      {/* Nav items */}
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8 }}>
         {items.map(item => {
           const segment   = item.href.replace('/(tabs)/', '').replace(/^\//, '')
@@ -293,17 +301,16 @@ function DesktopShell() {
   }
 
   return (
-    <View style={{ flex: 1, flexDirection: 'row', backgroundColor: '#F0F8F4' }}>
-      <DesktopSidebar collapsed={collapsed} widthAnim={widthAnim} onToggle={toggleSidebar} />
-
-      {/* Centro: conteúdo */}
-      <View style={{ flex: 1, overflow: 'hidden' as any }}>
-        <Slot />
-      </View>
-
-      {/* Painel direito */}
-      <View style={{ width: RIGHT_PANEL_WIDTH, borderLeftWidth: 1, borderLeftColor: '#D0E8DA', backgroundColor: '#fff' }}>
-        <DesktopRightPanel />
+    <View style={{ flex: 1, flexDirection: 'column', backgroundColor: '#F0F8F4' }}>
+      <DesktopTopBar collapsed={collapsed} onToggle={toggleSidebar} />
+      <View style={{ flex: 1, flexDirection: 'row' }}>
+        <DesktopSidebar collapsed={collapsed} widthAnim={widthAnim} />
+        <View style={{ flex: 1, overflow: 'hidden' as any }}>
+          <Slot />
+        </View>
+        <View style={{ width: RIGHT_PANEL_WIDTH, borderLeftWidth: 1, borderLeftColor: '#D0E8DA', backgroundColor: '#fff' }}>
+          <DesktopRightPanel />
+        </View>
       </View>
     </View>
   )
@@ -361,6 +368,34 @@ export default function TabsLayout() {
   return <MobileTabLayout />
 }
 
+// ── Styles: Desktop Top Bar ───────────────────────────────────────────────────
+
+const tb = StyleSheet.create({
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: PRIMARY,
+    paddingHorizontal: 16,
+    height: 60,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
+  },
+  left: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  right: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  hamburgerBtn: { padding: 4 },
+  logoText: { fontSize: 22, fontFamily: 'Poppins-ExtraBold', letterSpacing: -0.5 },
+  iconBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  plusT: { color: '#fff', fontSize: 22, fontWeight: '800', lineHeight: 26, marginTop: -2 },
+  avatar: { width: 34, height: 34, borderRadius: 17 },
+  avatarFb: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#1A6FD4', justifyContent: 'center', alignItems: 'center' },
+  avatarFbT: { color: '#fff', fontSize: 13, fontWeight: '800' },
+})
+
 // ── Styles: Desktop Sidebar ───────────────────────────────────────────────────
 
 const ds = StyleSheet.create({
@@ -370,37 +405,6 @@ const ds = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: 'rgba(0,0,0,0.08)',
   },
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingTop: 18,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.12)',
-    minHeight: 60,
-  },
-  logoText: {
-    fontSize: 19,
-    fontFamily: 'Poppins-ExtraBold',
-    letterSpacing: -0.5,
-    flex: 1,
-    flexShrink: 1,
-  },
-  hamburgerBtn: {
-    padding: 3,
-    flexShrink: 0,
-  },
-  sidebarActionBtn: {
-    width: 26, height: 26, borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
-  },
-  sidebarPlusT: { color: '#fff', fontSize: 19, fontWeight: '800', lineHeight: 22, marginTop: -1 },
-  sidebarAvatar: { width: 26, height: 26, borderRadius: 13, flexShrink: 0 },
-  sidebarAvatarFb: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#1A6FD4', justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  sidebarAvatarFbT: { color: '#fff', fontSize: 10, fontWeight: '800' },
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
