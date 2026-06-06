@@ -492,9 +492,8 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
 
   return (
     <View style={s.vagaCard}>
-      <View style={s.vagaTop}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <TouchableOpacity
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}
           onPress={() => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)}
           activeOpacity={vaga.page_id ? 0.72 : 1}
           disabled={!vaga.page_id}
@@ -505,28 +504,28 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
                 <Text style={s.vagaLogoFbT}>{(vaga.empresa_nome || vaga.page_nome || '?').charAt(0)}</Text>
               </View>
           }
-          <View style={{ flex: 1 }}>
-            <Text style={s.vagaEmpresa} numberOfLines={1}>{vaga.empresa_nome || vaga.page_nome}</Text>
-            <Text style={s.vagaCargo}   numberOfLines={2}>{cargo}</Text>
+        </TouchableOpacity>
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text style={s.vagaEmpresa} numberOfLines={1}>{vaga.empresa_nome || vaga.page_nome}</Text>
+          <Text style={s.vagaCargo}   numberOfLines={2}>{cargo}</Text>
+          <View style={[s.chips, { marginTop: 2 }]}>
+            {contrato ? (
+              <View style={[s.chip, { borderColor: cCor + '70', backgroundColor: cCor + '14' }]}>
+                <Text style={[s.chipT, { color: cCor }]}>{contrato}</Text>
+              </View>
+            ) : null}
+            {loc     ? <View style={s.chip}><Text style={s.chipT}>📍 {loc}</Text></View>     : null}
+            {salario ? <View style={s.chip}><Text style={s.chipT}>{salario}</Text></View> : null}
           </View>
+        </View>
+        <TouchableOpacity
+          style={[s.actionBtn, { backgroundColor: PRIMARY }]}
+          onPress={() => onVerVaga ? onVerVaga() : router.push('/(tabs)/vagas' as any)}
+          activeOpacity={0.8}
+        >
+          <Text style={s.actionBtnT}>Ver vaga →</Text>
         </TouchableOpacity>
       </View>
-      <View style={s.chips}>
-        {contrato ? (
-          <View style={[s.chip, { borderColor: cCor + '70', backgroundColor: cCor + '14' }]}>
-            <Text style={[s.chipT, { color: cCor }]}>{contrato}</Text>
-          </View>
-        ) : null}
-        {loc     ? <View style={s.chip}><Text style={s.chipT}>📍 {loc}</Text></View>     : null}
-        {salario ? <View style={s.chip}><Text style={s.chipT}>{salario}</Text></View> : null}
-      </View>
-      <TouchableOpacity
-        style={[s.actionBtn, { backgroundColor: PRIMARY }]}
-        onPress={() => onVerVaga ? onVerVaga() : router.push('/(tabs)/vagas' as any)}
-        activeOpacity={0.8}
-      >
-        <Text style={s.actionBtnT}>Ver vaga →</Text>
-      </TouchableOpacity>
     </View>
   )
 }
@@ -540,9 +539,8 @@ function VagaInteresseCard({ vaga, user, onVerVaga }: { vaga: any; user: any; on
 
   return (
     <View style={s.vagaCard}>
-      <View style={s.vagaTop}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <TouchableOpacity
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}
           onPress={() => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)}
           activeOpacity={vaga.page_id ? 0.72 : 1}
           disabled={!vaga.page_id}
@@ -553,27 +551,27 @@ function VagaInteresseCard({ vaga, user, onVerVaga }: { vaga: any; user: any; on
                 <Text style={s.vagaLogoFbT}>{(vaga.empresa_nome || '?').charAt(0)}</Text>
               </View>
           }
-          <View style={{ flex: 1 }}>
-            <Text style={s.vagaEmpresa} numberOfLines={1}>{vaga.empresa_nome}</Text>
-            <Text style={s.vagaCargo}   numberOfLines={2}>{vaga.cargo}</Text>
+        </TouchableOpacity>
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text style={s.vagaEmpresa} numberOfLines={1}>{vaga.empresa_nome}</Text>
+          <Text style={s.vagaCargo}   numberOfLines={2}>{vaga.cargo}</Text>
+          <View style={[s.chips, { marginTop: 2 }]}>
+            {vaga.contrato ? (
+              <View style={[s.chip, { borderColor: cCor + '70', backgroundColor: cCor + '14' }]}>
+                <Text style={[s.chipT, { color: cCor }]}>{vaga.contrato}</Text>
+              </View>
+            ) : null}
+            {loc ? <View style={s.chip}><Text style={s.chipT}>📍 {loc}</Text></View> : null}
           </View>
+        </View>
+        <TouchableOpacity
+          style={[s.actionBtn, { backgroundColor: '#475569' }]}
+          onPress={() => onVerVaga ? onVerVaga() : router.push('/(tabs)/vagas' as any)}
+          activeOpacity={0.8}
+        >
+          <Text style={s.actionBtnT}>Ver vaga →</Text>
         </TouchableOpacity>
       </View>
-      <View style={s.chips}>
-        {vaga.contrato ? (
-          <View style={[s.chip, { borderColor: cCor + '70', backgroundColor: cCor + '14' }]}>
-            <Text style={[s.chipT, { color: cCor }]}>{vaga.contrato}</Text>
-          </View>
-        ) : null}
-        {loc ? <View style={s.chip}><Text style={s.chipT}>📍 {loc}</Text></View> : null}
-      </View>
-      <TouchableOpacity
-        style={[s.actionBtn, { backgroundColor: '#475569' }]}
-        onPress={() => onVerVaga ? onVerVaga() : router.push('/(tabs)/vagas' as any)}
-        activeOpacity={0.8}
-      >
-        <Text style={s.actionBtnT}>Ver vaga →</Text>
-      </TouchableOpacity>
     </View>
   )
 }
@@ -1308,7 +1306,7 @@ const s = StyleSheet.create({
   chipT: { fontSize: 11, fontWeight: '700', color: '#3A6550' },
   compatBar: { height: 5, backgroundColor: '#EEF7F2', borderRadius: 3, overflow: 'hidden' },
   compatFill: { height: '100%', borderRadius: 3 },
-  actionBtn: { borderRadius: 12, paddingVertical: 11, alignItems: 'center' },
+  actionBtn: { borderRadius: 20, paddingHorizontal: 24, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   actionBtnT: { color: '#fff', fontSize: 14, fontWeight: '800' },
 
   // Recent / feed geral post card

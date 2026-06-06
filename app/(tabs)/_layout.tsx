@@ -199,13 +199,10 @@ function DesktopHeader() {
 
   return (
     <View style={dh.header}>
-      <View style={dh.searchBox}>
-        <SearchIcon color="#7A9E8E" />
-        <TouchableOpacity style={{ flex: 1 }} onPress={() => router.push('/(tabs)/buscar' as any)} activeOpacity={0.8}>
-          <Text style={dh.searchPlaceholder}>Buscar profissionais, vagas…</Text>
-        </TouchableOpacity>
-      </View>
       <View style={dh.actions}>
+        <TouchableOpacity style={dh.iconBtn} onPress={() => router.push('/(tabs)/buscar' as any)}>
+          <SearchIcon color="#4A7060" />
+        </TouchableOpacity>
         <TouchableOpacity style={dh.iconBtn} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
           <BellIcon color="#4A7060" />
         </TouchableOpacity>
@@ -223,7 +220,6 @@ function DesktopHeader() {
 // ── Desktop Right Panel ────────────────────────────────────────────────────────
 
 function DesktopRightPanel() {
-  const { user } = useAuthStore()
   const [vagas, setVagas]         = useState<any[]>([])
   const [sugestoes, setSugestoes] = useState<any[]>([])
   const [loading, setLoading]     = useState(true)
@@ -237,26 +233,6 @@ function DesktopRightPanel() {
 
   return (
     <ScrollView style={rp.panel} contentContainerStyle={rp.scroll} showsVerticalScrollIndicator={false}>
-
-      {/* Perfil do usuário */}
-      {user && (
-        <View style={rp.profileCard}>
-          {user.avatar_url
-            ? <Image source={{ uri: user.avatar_url }} style={rp.profileAvatar} />
-            : <View style={rp.profileAvatarFb}><Text style={rp.profileAvatarT}>{user.nome?.charAt(0) || '?'}</Text></View>
-          }
-          <Text style={rp.profileName} numberOfLines={1}>{user.nome}</Text>
-          <Text style={rp.profileProfissao} numberOfLines={1}>{user.tipo_profissional}</Text>
-          {(user.cidade || user.estado) && (
-            <Text style={rp.profileLoc} numberOfLines={1}>
-              📍 {[user.cidade, user.estado].filter(Boolean).join(', ')}
-            </Text>
-          )}
-          <TouchableOpacity style={rp.profileLink} onPress={() => router.push('/(tabs)/perfil' as any)} activeOpacity={0.85}>
-            <Text style={rp.profileLinkT}>Ver perfil →</Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
       {/* Vagas em destaque */}
       {loading ? (
@@ -459,6 +435,7 @@ const dh = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
     gap: 12,
     paddingHorizontal: 20,
     paddingVertical: 12,
