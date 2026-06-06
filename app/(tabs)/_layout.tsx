@@ -14,7 +14,7 @@ const IC_ON    = '#00C9B1'
 const IC_OFF   = '#B8D0C8'
 const SW       = 1.7
 const DESKTOP_BREAKPOINT = 768
-const SIDEBAR_EXPANDED   = 220
+const SIDEBAR_EXPANDED   = 260
 const SIDEBAR_COLLAPSED  = 60
 const RIGHT_PANEL_WIDTH  = 280
 
@@ -141,9 +141,10 @@ function DesktopSidebar({ collapsed, widthAnim, onToggle }: {
   widthAnim: Animated.Value
   onToggle: () => void
 }) {
-  const pathname = usePathname()
+  const pathname  = usePathname()
   const { user }  = useAuthStore()
   const isAdmin   = user?.plano === 'black'
+  const avatarUrl = user?.avatar_url || null
 
   const items = isAdmin
     ? [...NAV_ITEMS, { label: 'Admin', href: '/admin', Icon: AdminIcon }]
@@ -151,17 +152,34 @@ function DesktopSidebar({ collapsed, widthAnim, onToggle }: {
 
   return (
     <Animated.View style={[ds.sidebar, { width: widthAnim }]}>
-      {/* Logo + toggle */}
+      {/* Logo + action icons */}
       <View style={ds.logoRow}>
-        {!collapsed && (
-          <Text style={ds.logoText}>
-            <Text style={{ color: '#F5C800' }}>Go</Text>
-            <Text style={{ color: '#fff' }}>Denth</Text>
-          </Text>
-        )}
         <TouchableOpacity onPress={onToggle} style={ds.hamburgerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <HamburgerIcon color="#fff" />
         </TouchableOpacity>
+        {!collapsed && (
+          <>
+            <Text style={ds.logoText} numberOfLines={1}>
+              <Text style={{ color: '#F5C800' }}>Go</Text>
+              <Text style={{ color: '#fff' }}>Denth</Text>
+            </Text>
+            <TouchableOpacity style={ds.sidebarActionBtn} onPress={() => router.push('/(tabs)/publicar' as any)}>
+              <Text style={ds.sidebarPlusT}>+</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={ds.sidebarActionBtn} onPress={() => router.push('/(tabs)/buscar' as any)}>
+              <SearchIcon color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={ds.sidebarActionBtn} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
+              <BellIcon color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/perfil' as any)}>
+              {avatarUrl
+                ? <Image source={{ uri: avatarUrl }} style={ds.sidebarAvatar} />
+                : <View style={ds.sidebarAvatarFb}><Text style={ds.sidebarAvatarFbT}>{user?.nome?.charAt(0) || 'U'}</Text></View>
+              }
+            </TouchableOpacity>
+          </>
+        )}
       </View>
 
       {/* Nav items */}
@@ -188,32 +206,6 @@ function DesktopSidebar({ collapsed, widthAnim, onToggle }: {
         })}
       </ScrollView>
     </Animated.View>
-  )
-}
-
-// ── Desktop Top Header ─────────────────────────────────────────────────────────
-
-function DesktopHeader() {
-  const { user } = useAuthStore()
-  const avatarUrl = user?.avatar_url || null
-
-  return (
-    <View style={dh.header}>
-      <View style={dh.actions}>
-        <TouchableOpacity style={dh.iconBtn} onPress={() => router.push('/(tabs)/buscar' as any)}>
-          <SearchIcon color="#4A7060" />
-        </TouchableOpacity>
-        <TouchableOpacity style={dh.iconBtn} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
-          <BellIcon color="#4A7060" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push('/(tabs)/perfil' as any)}>
-          {avatarUrl
-            ? <Image source={{ uri: avatarUrl }} style={dh.avatar} />
-            : <View style={dh.avatarFb}><Text style={dh.avatarFbT}>{user?.nome?.charAt(0) || 'U'}</Text></View>
-          }
-        </TouchableOpacity>
-      </View>
-    </View>
   )
 }
 
@@ -304,12 +296,9 @@ function DesktopShell() {
     <View style={{ flex: 1, flexDirection: 'row', backgroundColor: '#F0F8F4' }}>
       <DesktopSidebar collapsed={collapsed} widthAnim={widthAnim} onToggle={toggleSidebar} />
 
-      {/* Centro: header + conteúdo */}
+      {/* Centro: conteúdo */}
       <View style={{ flex: 1, overflow: 'hidden' as any }}>
-        <DesktopHeader />
-        <View style={{ flex: 1 }}>
-          <Slot />
-        </View>
+        <Slot />
       </View>
 
       {/* Painel direito */}
@@ -384,24 +373,34 @@ const ds = StyleSheet.create({
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingTop: 20,
-    paddingBottom: 16,
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingTop: 18,
+    paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.12)',
-    minHeight: 64,
+    minHeight: 60,
   },
   logoText: {
-    fontSize: 22,
+    fontSize: 19,
     fontFamily: 'Poppins-ExtraBold',
     letterSpacing: -0.5,
+    flex: 1,
     flexShrink: 1,
   },
   hamburgerBtn: {
-    padding: 4,
+    padding: 3,
     flexShrink: 0,
   },
+  sidebarActionBtn: {
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
+  },
+  sidebarPlusT: { color: '#fff', fontSize: 19, fontWeight: '800', lineHeight: 22, marginTop: -1 },
+  sidebarAvatar: { width: 26, height: 26, borderRadius: 13, flexShrink: 0 },
+  sidebarAvatarFb: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#1A6FD4', justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  sidebarAvatarFbT: { color: '#fff', fontSize: 10, fontWeight: '800' },
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -426,70 +425,6 @@ const ds = StyleSheet.create({
   },
   navLabelActive: {
     color: '#fff',
-  },
-})
-
-// ── Styles: Desktop Header ────────────────────────────────────────────────────
-
-const dh = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#D0E8DA',
-    height: 60,
-  },
-  searchBox: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#F0F8F4',
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#D0E8DA',
-    paddingHorizontal: 12,
-    height: 38,
-  },
-  searchPlaceholder: {
-    fontSize: 14,
-    color: '#7A9E8E',
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#EEF7F2',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-  },
-  avatarFb: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: PRIMARY,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarFbT: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 14,
   },
 })
 
