@@ -219,67 +219,102 @@ function DesktopSidebar({ collapsed, widthAnim }: {
 
 // ── Desktop Right Panel ────────────────────────────────────────────────────────
 
+const RP_API = 'https://godenth-api.onrender.com'
+
 function DesktopRightPanel() {
-  const [vagas, setVagas]         = useState<any[]>([])
-  const [sugestoes, setSugestoes] = useState<any[]>([])
-  const [loading, setLoading]     = useState(true)
+  const [empresas, setEmpresas]     = useState<any[]>([])
+  const [curriculos, setCurriculos] = useState<any[]>([])
+  const [loading, setLoading]       = useState(true)
 
   useEffect(() => {
     Promise.all([
-      api.get('/vagas/para-mim').then(r => setVagas((r.data.vagas || []).slice(0, 3))).catch(() => {}),
-      api.get('/users/search', { params: { limit: 3 } }).then(r => setSugestoes((r.data.users || []).slice(0, 3))).catch(() => {}),
+      api.get('/pages', { params: { limit: 3, orderBy: 'created_at' } })
+        .then(r => setEmpresas((r.data.pages || r.data || []).slice(0, 3)))
+        .catch(() => {}),
+      api.get('/users/search', { params: { limit: 3, orderBy: 'created_at', is_bot: false } })
+        .then(r => setCurriculos((r.data.users || r.data || []).slice(0, 3)))
+        .catch(() => {}),
     ]).finally(() => setLoading(false))
   }, [])
 
   return (
     <ScrollView style={rp.panel} contentContainerStyle={rp.scroll} showsVerticalScrollIndicator={false}>
-
-      {/* Vagas em destaque */}
       {loading ? (
         <ActivityIndicator color={PRIMARY} style={{ marginVertical: 20 }} />
       ) : (
         <>
-          {vagas.length > 0 && (
+          {/* Novas Empresas */}
+          {empresas.length > 0 && (
             <View style={rp.section}>
-              <Text style={rp.sectionTitle}>Vagas para você</Text>
-              {vagas.map(v => (
-                <TouchableOpacity
-                  key={v.id}
-                  style={rp.vagaItem}
-                  onPress={() => router.push('/(tabs)/oportunidades' as any)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={rp.vagaCargo} numberOfLines={1}>{v.cargo}</Text>
-                  <Text style={rp.vagaEmpresa} numberOfLines={1}>{v.empresa_nome}</Text>
-                  {v.cidade ? <Text style={rp.vagaLoc} numberOfLines={1}>📍 {v.cidade}</Text> : null}
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity onPress={() => router.push('/(tabs)/oportunidades' as any)}>
-                <Text style={rp.verTodas}>Ver todas as vagas →</Text>
+              <Text style={rp.sectionTitle}>🏢 Novas Empresas</Text>
+              {empresas.map(e => {
+                const logoUrl = e.logo_url
+                  ? (e.logo_url.startsWith('http') ? e.logo_url : RP_API + e.logo_url)
+                  : null
+                return (
+                  <TouchableOpacity
+                    key={e.id}
+                    style={rp.empresaItem}
+                    onPress={() => router.push(`/pagina/${e.id}` as any)}
+                    activeOpacity={0.8}
+                  >
+                    {logoUrl
+                      ? <Image source={{ uri: logoUrl }} style={rp.empresaLogo} />
+                      : <View style={rp.empresaLogoFb}>
+                          <Text style={rp.empresaLogoFbT}>{(e.nome || '?').charAt(0)}</Text>
+                        </View>
+                    }
+                    <View style={{ flex: 1 }}>
+                      <Text style={rp.empresaNome} numberOfLines={1}>{e.nome}</Text>
+                      {e.categoria
+                        ? <Text style={rp.empresaCat} numberOfLines={1}>{e.categoria}</Text>
+                        : null}
+                    </View>
+                  </TouchableOpacity>
+                )
+              })}
+              <TouchableOpacity onPress={() => router.push('/(tabs)/empresas' as any)}>
+                <Text style={rp.verTodas}>Ver todas as empresas →</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* Sugestões de conexão */}
-          {sugestoes.length > 0 && (
+          {/* Novos Currículos */}
+          {curriculos.length > 0 && (
             <View style={rp.section}>
-              <Text style={rp.sectionTitle}>Sugestões de conexão</Text>
-              {sugestoes.map(u => (
-                <TouchableOpacity
-                  key={u.id}
-                  style={rp.sugestaoItem}
-                  onPress={() => router.push(`/usuario/${u.id}` as any)}
-                  activeOpacity={0.8}
-                >
-                  <View style={rp.sugestaoAv}>
-                    <Text style={rp.sugestaoAvT}>{u.nome?.charAt(0) || '?'}</Text>
-                  </View>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={rp.sugestaoNome} numberOfLines={1}>{u.nome}</Text>
-                    <Text style={rp.sugestaoProf} numberOfLines={1}>{u.tipo_profissional}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+              <Text style={rp.sectionTitle}>👤 Novos Currículos</Text>
+              {curriculos.map(u => {
+                const avatarUrl = u.avatar_url
+                  ? (u.avatar_url.startsWith('http') ? u.avatar_url : RP_API + u.avatar_url)
+                  : null
+                return (
+                  <TouchableOpacity
+                    key={u.id}
+                    style={rp.sugestaoItem}
+                    onPress={() => router.push(`/usuario/${u.id}` as any)}
+                    activeOpacity={0.8}
+                  >
+                    {avatarUrl
+                      ? <Image source={{ uri: avatarUrl }} style={rp.sugestaoAv} />
+                      : <View style={rp.sugestaoAv}>
+                          <Text style={rp.sugestaoAvT}>{u.nome?.charAt(0) || '?'}</Text>
+                        </View>
+                    }
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={rp.sugestaoNome} numberOfLines={1}>{u.nome}</Text>
+                      {u.tipo_profissional
+                        ? <Text style={rp.sugestaoProf} numberOfLines={1}>{u.tipo_profissional}</Text>
+                        : null}
+                      {u.cidade
+                        ? <Text style={rp.curricCidade} numberOfLines={1}>📍 {u.cidade}</Text>
+                        : null}
+                    </View>
+                  </TouchableOpacity>
+                )
+              })}
+              <TouchableOpacity onPress={() => router.push('/(tabs)/buscar' as any)}>
+                <Text style={rp.verTodas}>Ver todos →</Text>
+              </TouchableOpacity>
             </View>
           )}
         </>
@@ -522,20 +557,19 @@ const rp = StyleSheet.create({
     borderColor: '#D0E8DA',
     gap: 2,
   },
-  vagaCargo: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0A1C14',
+  empresaItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#EEF7F2',
   },
-  vagaEmpresa: {
-    fontSize: 12,
-    color: PRIMARY,
-    fontWeight: '600',
+  empresaLogo: { width: 36, height: 36, borderRadius: 8, flexShrink: 0 },
+  empresaLogoFb: {
+    width: 36, height: 36, borderRadius: 8,
+    backgroundColor: PRIMARY + '20', justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
-  vagaLoc: {
-    fontSize: 11,
-    color: '#7A9E8E',
-  },
+  empresaLogoFbT: { fontSize: 16, fontWeight: '800', color: PRIMARY },
+  empresaNome: { fontSize: 13, fontWeight: '700', color: '#0A1C14' },
+  empresaCat: { fontSize: 11, color: '#7A9E8E', marginTop: 1, textTransform: 'capitalize' },
+  curricCidade: { fontSize: 11, color: '#7A9E8E' },
   verTodas: {
     fontSize: 12,
     color: PRIMARY,
