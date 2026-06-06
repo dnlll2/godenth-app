@@ -464,7 +464,7 @@ function FeedVagaModal({ vagaId, isOwner, user, onClose }: {
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={[fm.candidatarBtn, { backgroundColor: '#1c909b', alignSelf: 'stretch' }, sending && { opacity: 0.7 }]}
+                style={[fm.candidatarBtn, { backgroundColor: '#1c909b' }, Platform.OS === 'web' ? { maxWidth: 300, alignSelf: 'center' } : { alignSelf: 'stretch' }, sending && { opacity: 0.7 }]}
                 onPress={confirmar}
                 disabled={sending}
               >
@@ -1366,7 +1366,7 @@ const s = StyleSheet.create({
   catBadgeT: { fontSize: 10, fontWeight: '800' },
   paginaDesc: { fontSize: 12, color: '#4A7060', lineHeight: 17, marginTop: 4 },
   paginaCurtidas: { fontSize: 11, color: '#7A9E8E', fontWeight: '600' },
-  curtirBtn: { backgroundColor: PRIMARY, borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
+  curtirBtn: { backgroundColor: PRIMARY, borderRadius: 12, paddingVertical: 10, alignItems: 'center', ...(Platform.OS === 'web' ? { alignSelf: 'center' as const, paddingHorizontal: 40, minWidth: 160 } : {}) },
   curtirBtnOn: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA' },
   curtirBtnT: { color: '#fff', fontSize: 13, fontWeight: '800' },
 

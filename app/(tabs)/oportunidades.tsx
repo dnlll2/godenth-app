@@ -434,7 +434,7 @@ const s = StyleSheet.create({
   cursoPill: { backgroundColor: '#F0F0F0', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 },
   cursoPillT: { fontSize: 11, fontWeight: '600', color: '#555' },
 
-  actionBtn: { borderRadius: 12, paddingVertical: 11, alignItems: 'center' },
+  actionBtn: { borderRadius: 12, paddingVertical: 11, alignItems: 'center', ...(Platform.OS === 'web' ? { maxWidth: 300, alignSelf: 'center' as const } : {}) },
   actionBtnT: { color: '#fff', fontSize: 14, fontWeight: '800' },
 
   empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 24 },

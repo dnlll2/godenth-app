@@ -291,6 +291,7 @@ const s = StyleSheet.create({
   curtirBtn: {
     backgroundColor: PRIMARY, borderRadius: 12,
     paddingVertical: 10, alignItems: 'center',
+    ...(Platform.OS === 'web' ? { alignSelf: 'center' as const, paddingHorizontal: 40, minWidth: 160 } : {}),
   },
   curtirBtnOn: {
     backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA',
