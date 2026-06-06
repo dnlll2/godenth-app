@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, ActivityIndicator, Platform, FlatList,
+  ScrollView, Alert, ActivityIndicator, Platform, Modal, FlatList,
 } from 'react-native'
 import { router } from 'expo-router'
 import api from '../services/api'
@@ -24,59 +24,60 @@ export default function CriarPagina() {
   const [categoria, setCategoria] = useState('')
   const [nome, setNome]           = useState('')
   const [descricao, setDescricao] = useState('')
-  const [cidade, setCidade]       = useState('')
-  const [estado, setEstado]       = useState('')
   const [telefone, setTelefone]   = useState('')
   const [site, setSite]           = useState('')
   const [cnpj, setCnpj]           = useState('')
   const [loading, setLoading]     = useState(false)
 
-  const [municipios, setMunicipios]         = useState<any[]>([])
-  const [loadingMunicipios, setLoadingMunicipios] = useState(false)
-  const [sugestoes, setSugestoes]           = useState<any[]>([])
-  const [showSugestoes, setShowSugestoes]   = useState(false)
+  // Localização
+  const [estados, setEstados]           = useState<any[]>([])
+  const [cidades, setCidades]           = useState<any[]>([])
+  const [estadoSel, setEstadoSel]       = useState<any>(null)
+  const [cidadeSel, setCidadeSel]       = useState<any>(null)
+  const [loadingCidades, setLoadingCidades] = useState(false)
+  const [modalEstado, setModalEstado]   = useState(false)
+  const [modalCidade, setModalCidade]   = useState(false)
+  const [buscaCidade, setBuscaCidade]   = useState('')
 
   const corAtual = CATEGORIAS.find(c => c.key === categoria)?.cor || Colors.primary
 
   useEffect(() => {
-    setLoadingMunicipios(true)
-    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome')
+    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
       .then(r => r.json())
-      .then(data => setMunicipios(data))
+      .then(data => setEstados(data))
       .catch(() => {})
-      .finally(() => setLoadingMunicipios(false))
   }, [])
 
-  const handleCidadeChange = (text: string) => {
-    setCidade(text)
-    setEstado('')
-    if (text.trim().length < 2) {
-      setSugestoes([])
-      setShowSugestoes(false)
-      return
-    }
-    const norm = normalize(text.trim())
-    const filtered = municipios
-      .filter(m => normalize(m.nome).includes(norm))
-      .slice(0, 8)
-    setSugestoes(filtered)
-    setShowSugestoes(filtered.length > 0)
+  const carregarCidades = async (uf: any) => {
+    setEstadoSel(uf)
+    setCidadeSel(null)
+    setBuscaCidade('')
+    setLoadingCidades(true)
+    try {
+      const res = await fetch(
+        `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf.id}/municipios?orderBy=nome`
+      )
+      const data = await res.json()
+      setCidades(data)
+    } catch {}
+    setLoadingCidades(false)
   }
 
-  const handleSelecionarMunicipio = (municipio: any) => {
-    const uf = municipio.microrregiao?.mesorregiao?.UF?.sigla || ''
-    setCidade(municipio.nome)
-    setEstado(uf)
-    setSugestoes([])
-    setShowSugestoes(false)
-  }
+  const cidadesFiltradas = buscaCidade
+    ? cidades.filter(c => normalize(c.nome).includes(normalize(buscaCidade)))
+    : cidades
 
   const handleCriar = async () => {
     if (!nome.trim())  return Alert.alert('Atenção', 'Informe o nome da empresa')
     if (!categoria)    return Alert.alert('Atenção', 'Selecione uma categoria')
     setLoading(true)
     try {
-      const res = await api.post('/pages', { nome, categoria, descricao, cidade, estado, telefone, site, cnpj, cor: corAtual })
+      const res = await api.post('/pages', {
+        nome, categoria, descricao,
+        cidade: cidadeSel?.nome || '',
+        estado: estadoSel?.sigla || '',
+        telefone, site, cnpj, cor: corAtual,
+      })
       Alert.alert('✅ Empresa criada!', 'Sua empresa já está no ar.', [
         { text: 'Ver empresa', onPress: () => router.replace(`/pagina/${res.data.page.id}` as any) },
       ])
@@ -97,11 +98,7 @@ export default function CriarPagina() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={s.scroll}
-        keyboardShouldPersistTaps="handled"
-        onScrollBeginDrag={() => setShowSugestoes(false)}
-      >
+      <ScrollView contentContainerStyle={s.scroll}>
         <Text style={s.sectionTitle}>Categoria *</Text>
         <View style={s.grid}>
           {CATEGORIAS.map(c => (
@@ -138,60 +135,33 @@ export default function CriarPagina() {
         />
 
         <Text style={s.sectionTitle}>Localização</Text>
-        <View style={s.row}>
-          <View style={{ flex: 2 }}>
-            <Text style={s.label}>Cidade</Text>
-            <View style={{ position: 'relative' }}>
-              <View style={s.cidadeRow}>
-                <TextInput
-                  style={[s.input, { flex: 1, marginBottom: 0 }]}
-                  placeholder="Digite a cidade…"
-                  placeholderTextColor={Colors.text3}
-                  value={cidade}
-                  onChangeText={handleCidadeChange}
-                  onFocus={() => sugestoes.length > 0 && setShowSugestoes(true)}
-                  onBlur={() => setTimeout(() => setShowSugestoes(false), 150)}
-                />
-                {loadingMunicipios && (
-                  <ActivityIndicator size="small" color={Colors.primary} style={s.cidadeLoader} />
-                )}
-              </View>
-              {showSugestoes && (
-                <View style={s.dropdown}>
-                  <FlatList
-                    data={sugestoes}
-                    keyExtractor={item => item.id.toString()}
-                    scrollEnabled={false}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={s.dropdownItem}
-                        onPress={() => handleSelecionarMunicipio(item)}
-                      >
-                        <Text style={s.dropdownItemText}>{item.nome}</Text>
-                        <Text style={s.dropdownItemUF}>
-                          {item.microrregiao?.mesorregiao?.UF?.sigla}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                </View>
-              )}
-            </View>
-          </View>
-          <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text style={s.label}>UF</Text>
-            <TextInput
-              style={[s.input, estado ? s.inputReadonly : null]}
-              placeholder="SP"
-              placeholderTextColor={Colors.text3}
-              value={estado}
-              onChangeText={v => setEstado(v.toUpperCase())}
-              maxLength={2}
-              autoCapitalize="characters"
-              editable={!estado}
-            />
-          </View>
-        </View>
+
+        {/* Estado */}
+        <Text style={s.label}>Estado</Text>
+        <TouchableOpacity style={s.select} onPress={() => setModalEstado(true)}>
+          <Text style={[s.selectText, !estadoSel && { color: Colors.text3 }]}>
+            {estadoSel ? `${estadoSel.sigla} — ${estadoSel.nome}` : 'Selecione o estado…'}
+          </Text>
+          <Text style={s.selectArrow}>˅</Text>
+        </TouchableOpacity>
+
+        {/* Cidade */}
+        <Text style={s.label}>Cidade</Text>
+        <TouchableOpacity
+          style={[s.select, !estadoSel && s.selectDisabled]}
+          onPress={() => estadoSel && setModalCidade(true)}
+          disabled={!estadoSel}
+        >
+          {loadingCidades
+            ? <ActivityIndicator size="small" color={Colors.primary} />
+            : <Text style={[s.selectText, !cidadeSel && { color: Colors.text3 }]}>
+                {cidadeSel
+                  ? cidadeSel.nome
+                  : estadoSel ? 'Selecione a cidade…' : 'Selecione o estado primeiro'}
+              </Text>
+          }
+          <Text style={s.selectArrow}>˅</Text>
+        </TouchableOpacity>
 
         <Text style={s.sectionTitle}>Contato</Text>
         <Text style={s.label}>Telefone</Text>
@@ -236,6 +206,80 @@ export default function CriarPagina() {
           }
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Modal Estado */}
+      <Modal visible={modalEstado} animationType="fade" transparent onRequestClose={() => setModalEstado(false)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modal}>
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitle}>Selecione o Estado</Text>
+              <TouchableOpacity onPress={() => setModalEstado(false)}>
+                <Text style={s.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={estados}
+              keyExtractor={item => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={s.modalItem}
+                  onPress={() => { carregarCidades(item); setModalEstado(false) }}
+                >
+                  <Text style={s.modalItemSigla}>{item.sigla}</Text>
+                  <Text style={[s.modalItemLabel, estadoSel?.id === item.id && s.modalItemActive]}>
+                    {item.nome}
+                  </Text>
+                  {estadoSel?.id === item.id && <Text style={{ color: '#fff' }}>✓</Text>}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Cidade */}
+      <Modal
+        visible={modalCidade}
+        animationType="fade"
+        transparent
+        onRequestClose={() => { setModalCidade(false); setBuscaCidade('') }}
+      >
+        <View style={s.modalOverlay}>
+          <View style={s.modal}>
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitle}>Selecione a Cidade</Text>
+              <TouchableOpacity onPress={() => { setModalCidade(false); setBuscaCidade('') }}>
+                <Text style={s.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={cidadesFiltradas}
+              keyExtractor={item => item.id.toString()}
+              ListHeaderComponent={
+                <TextInput
+                  style={s.modalSearch}
+                  placeholder="Buscar cidade…"
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                  value={buscaCidade}
+                  onChangeText={setBuscaCidade}
+                  autoCapitalize="none"
+                />
+              }
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={s.modalItem}
+                  onPress={() => { setCidadeSel(item); setModalCidade(false); setBuscaCidade('') }}
+                >
+                  <Text style={[s.modalItemLabel, cidadeSel?.id === item.id && s.modalItemActive]}>
+                    {item.nome}
+                  </Text>
+                  {cidadeSel?.id === item.id && <Text style={{ color: '#fff' }}>✓</Text>}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -263,25 +307,34 @@ const s = StyleSheet.create({
     backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border,
     borderRadius: 12, padding: 13, fontSize: 14, color: Colors.text, marginBottom: 12,
   },
-  inputReadonly: { backgroundColor: Colors.bg, color: Colors.text2 },
   textarea: { height: 100 },
-  row: { flexDirection: 'row' },
-  cidadeRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  cidadeLoader: { position: 'absolute', right: 12 },
-  dropdown: {
-    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 999,
+  select: {
     backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: 12, marginTop: -10, overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    borderRadius: 12, padding: 13, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', marginBottom: 12,
   },
-  dropdownItem: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 14, paddingVertical: 11,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  dropdownItemText: { fontSize: 14, color: Colors.text, flex: 1 },
-  dropdownItemUF: { fontSize: 12, fontWeight: '800', color: Colors.text2, marginLeft: 8 },
+  selectDisabled: { opacity: 0.5 },
+  selectText: { fontSize: 14, color: Colors.text, flex: 1 },
+  selectArrow: { color: Colors.text2, fontSize: 18 },
   btn: { borderRadius: 13, padding: 15, alignItems: 'center', marginTop: 16 },
   btnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center' },
+  modal: { backgroundColor: 'rgba(28,144,155,0.92)', borderRadius: 20, width: '85%', maxHeight: '70%' },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
+  modalTitle: { fontSize: 16, fontWeight: '800', color: '#fff', flex: 1, textAlign: 'center' },
+  modalClose: { fontSize: 20, color: '#fff' },
+  modalItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16,
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)',
+  },
+  modalItemSigla: { fontSize: 13, fontWeight: '800', color: '#fff', width: 30 },
+  modalItemLabel: { fontSize: 15, color: '#fff', flex: 1, textAlign: 'center' },
+  modalItemActive: { fontWeight: '800' },
+  modalSearch: {
+    margin: 10, padding: 10, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    color: '#fff', fontSize: 14,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+  },
 })
