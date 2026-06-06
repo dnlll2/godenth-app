@@ -382,7 +382,7 @@ function FeedVagaModal({ vagaId, isOwner, user, onClose }: {
                   {reqObrig.map((r, i) => (
                     <View key={i} style={fap.reqRow}>
                       <Text style={fap.reqText}>{r}</Text>
-                      <View style={fap.simnaoRow}>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
                         <TouchableOpacity style={[fap.simBtn, respostasObrig[i] === true  && fap.simBtnOn]} onPress={() => setRespostasObrig(p => ({ ...p, [i]: true }))}>
                           <Text style={[fap.simnaoT, respostasObrig[i] === true  && fap.simTOn]}>Sim</Text>
                         </TouchableOpacity>
@@ -1446,9 +1446,9 @@ const fap = StyleSheet.create({
   reqRow:           { backgroundColor: '#F8F8F8', borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 10, padding: 12, marginBottom: 8, gap: 10 },
   reqText:          { fontSize: 13, fontWeight: '700', color: '#0A1C14', lineHeight: 18 },
   simnaoRow:        { flexDirection: 'row', gap: 8 },
-  simBtn:           { flex: 1, height: 44, borderWidth: 1.5, borderColor: '#1c909b', borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  simBtn:           { flex: 1, maxWidth: '50%' as any, height: 44, borderWidth: 1.5, borderColor: '#1c909b', borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   simBtnOn:         { backgroundColor: '#0B9E8E', borderColor: '#0B9E8E' },
-  naoBtn:           { flex: 1, height: 44, borderWidth: 1.5, borderColor: '#1c909b', borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  naoBtn:           { flex: 1, maxWidth: '50%' as any, height: 44, borderWidth: 1.5, borderColor: '#1c909b', borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   naoBtnOn:         { backgroundColor: '#E53935', borderColor: '#E53935' },
   simnaoT:          { fontSize: 13, fontWeight: '800', color: '#1c909b' },
   simTOn:           { color: '#fff' },
