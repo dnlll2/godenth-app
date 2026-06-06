@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet,
   RefreshControl, ActivityIndicator, ScrollView, Image, Platform, Linking,
-  Modal, Alert, TextInput,
+  Modal, Alert, TextInput, useWindowDimensions,
 } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import Svg, { Circle, Line, Path } from 'react-native-svg'
@@ -885,6 +885,8 @@ export default function Painel() {
 
   const avatarUrl = user?.avatar_url || null
   const perfilPct = calcularPerfilPct(user)
+  const { width } = useWindowDimensions()
+  const isDesktop = Platform.OS === 'web' && width >= 768
 
   const loadData = useCallback(async (tab: Aba, isRefresh = false) => {
     if (!isRefresh) setLoading(true)
@@ -997,37 +999,39 @@ export default function Painel() {
   return (
     <View style={{ flex: 1, backgroundColor: '#E0E0E0' }}>
 
-      {/* ── App Header ── */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)/feed' as any)} activeOpacity={0.8}>
-          <Text style={s.logo}>
-            <Text style={{ color: '#F5C800' }}>Go</Text>
-            <Text style={{ color: '#fff' }}>Denth</Text>
-          </Text>
-        </TouchableOpacity>
-        <View style={s.headerIcons}>
-          <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/publicar' as any)}>
-            <PlusIcon />
+      {/* ── App Header (mobile only) ── */}
+      {!isDesktop && (
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => router.replace('/(tabs)/feed' as any)} activeOpacity={0.8}>
+            <Text style={s.logo}>
+              <Text style={{ color: '#F5C800' }}>Go</Text>
+              <Text style={{ color: '#fff' }}>Denth</Text>
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/buscar' as any)}>
-            <SearchIcon />
-          </TouchableOpacity>
-          <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
-            <BellIcon />
-            {unreadCount > 0 && (
-              <View style={s.notifBadge}>
-                <Text style={s.notifBadgeT}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/perfil' as any)}>
-            {avatarUrl
-              ? <Image source={{ uri: avatarUrl }} style={s.uav} />
-              : <View style={s.uav}><Text style={s.uavt}>{user?.nome?.charAt(0) || 'U'}</Text></View>
-            }
-          </TouchableOpacity>
+          <View style={s.headerIcons}>
+            <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/publicar' as any)}>
+              <PlusIcon />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/buscar' as any)}>
+              <SearchIcon />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
+              <BellIcon />
+              {unreadCount > 0 && (
+                <View style={s.notifBadge}>
+                  <Text style={s.notifBadgeT}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/perfil' as any)}>
+              {avatarUrl
+                ? <Image source={{ uri: avatarUrl }} style={s.uav} />
+                : <View style={s.uav}><Text style={s.uavt}>{user?.nome?.charAt(0) || 'U'}</Text></View>
+              }
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      )}
 
       {/* ── Email verification banner ── */}
       {!user?.email_verificado && (
@@ -1425,7 +1429,7 @@ const fm = StyleSheet.create({
   rowValue:     { fontSize: 14, fontWeight: '600', color: '#0A1C14', flex: 1, textAlign: 'left' },
   reqChip:      { borderWidth: 1, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 },
   data:         { fontSize: 12, color: '#AECEBE', marginTop: 16, textAlign: 'center' },
-  candidatarBtn:  { borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8 },
+  candidatarBtn:  { borderRadius: 24, paddingHorizontal: 32, paddingVertical: 12, minHeight: 48, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginTop: 8 },
   candidatarBtnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
   ownerNote:    { backgroundColor: '#EEF7F2', borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8 },
   ownerNoteT:   { fontSize: 14, fontWeight: '700', color: '#7A9E8E' },

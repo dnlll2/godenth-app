@@ -1144,7 +1144,7 @@ const dm = StyleSheet.create({
   rowValue: { fontSize: 14, fontWeight: '600', color: '#0A1C14', flex: 1, textAlign: 'left' },
   reqChip: { borderWidth: 1, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 },
   data: { fontSize: 12, color: '#AECEBE', marginTop: 16, textAlign: 'center' },
-  candidatarBtn: { borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8 },
+  candidatarBtn: { borderRadius: 24, paddingHorizontal: 32, paddingVertical: 12, minHeight: 48, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginTop: 8 },
   candidatarBtnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
   ownerNote: { backgroundColor: '#EEF7F2', borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8 },
   ownerNoteT: { fontSize: 14, fontWeight: '700', color: '#7A9E8E' },

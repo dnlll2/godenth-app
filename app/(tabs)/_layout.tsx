@@ -240,7 +240,7 @@ function DesktopRightPanel() {
 
       {/* Perfil do usuário */}
       {user && (
-        <TouchableOpacity style={rp.profileCard} onPress={() => router.push('/(tabs)/perfil' as any)} activeOpacity={0.85}>
+        <View style={rp.profileCard}>
           {user.avatar_url
             ? <Image source={{ uri: user.avatar_url }} style={rp.profileAvatar} />
             : <View style={rp.profileAvatarFb}><Text style={rp.profileAvatarT}>{user.nome?.charAt(0) || '?'}</Text></View>
@@ -252,10 +252,10 @@ function DesktopRightPanel() {
               📍 {[user.cidade, user.estado].filter(Boolean).join(', ')}
             </Text>
           )}
-          <View style={rp.profileLink}>
+          <TouchableOpacity style={rp.profileLink} onPress={() => router.push('/(tabs)/perfil' as any)} activeOpacity={0.85}>
             <Text style={rp.profileLinkT}>Ver perfil →</Text>
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Vagas em destaque */}

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, ScrollView, Image, Linking,
+  RefreshControl, ActivityIndicator, ScrollView, Image, Linking, Platform, useWindowDimensions,
 } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import Svg, { Circle, Line, Path } from 'react-native-svg'
@@ -137,6 +137,8 @@ interface PostComGrupo { post: any; grupoNome: string }
 
 export default function Marketplace() {
   const { user } = useAuthStore()
+  const { width } = useWindowDimensions()
+  const isDesktop = Platform.OS === 'web' && width >= 768
   const [posts, setPosts]           = useState<PostComGrupo[]>([])
   const [loading, setLoading]       = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -193,33 +195,35 @@ export default function Marketplace() {
     <View style={{ flex: 1, backgroundColor: '#E0E0E0' }}>
 
       {/* ── Header ── */}
-      <View style={s.header}>
-        <View>
-          <Text style={s.headerTitle}>Marketplace</Text>
-          {gruposVenda.length > 0 && (
-            <Text style={s.headerSub}>{gruposVenda.length} {gruposVenda.length === 1 ? 'grupo' : 'grupos'} de venda</Text>
-          )}
-        </View>
-        <View style={s.headerIcons}>
-          <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/buscar' as any)}>
-            <SearchIcon />
-          </TouchableOpacity>
-          <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
-            <BellIcon />
-            {unreadCount > 0 && (
-              <View style={s.notifBadge}>
-                <Text style={s.notifBadgeT}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-              </View>
+      {!isDesktop && (
+        <View style={s.header}>
+          <View>
+            <Text style={s.headerTitle}>Marketplace</Text>
+            {gruposVenda.length > 0 && (
+              <Text style={s.headerSub}>{gruposVenda.length} {gruposVenda.length === 1 ? 'grupo' : 'grupos'} de venda</Text>
             )}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/perfil' as any)}>
-            {avatarUrl
-              ? <Image source={{ uri: avatarUrl }} style={s.uav} />
-              : <View style={s.uav}><Text style={s.uavt}>{user?.nome?.charAt(0) || 'U'}</Text></View>
-            }
-          </TouchableOpacity>
+          </View>
+          <View style={s.headerIcons}>
+            <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/buscar' as any)}>
+              <SearchIcon />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
+              <BellIcon />
+              {unreadCount > 0 && (
+                <View style={s.notifBadge}>
+                  <Text style={s.notifBadgeT}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/perfil' as any)}>
+              {avatarUrl
+                ? <Image source={{ uri: avatarUrl }} style={s.uav} />
+                : <View style={s.uav}><Text style={s.uavt}>{user?.nome?.charAt(0) || 'U'}</Text></View>
+              }
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      )}
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

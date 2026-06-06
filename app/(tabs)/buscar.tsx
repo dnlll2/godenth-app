@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  TextInput, ActivityIndicator, Platform, ScrollView, Modal, Image,
+  TextInput, ActivityIndicator, Platform, ScrollView, Modal, Image, useWindowDimensions,
 } from 'react-native'
 import { router } from 'expo-router'
 import Svg, { Circle, Line, Path } from 'react-native-svg'
@@ -583,6 +583,8 @@ const EMPTY_FILTERS: FilterState = {
 export default function Buscar() {
   const { user } = useAuthStore()
   const avatarUrl = user?.avatar_url || null
+  const { width } = useWindowDimensions()
+  const isDesktop = Platform.OS === 'web' && width >= 768
 
   const [q, setQ] = useState('')
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
@@ -680,32 +682,34 @@ export default function Buscar() {
 
   return (
     <View style={s.root}>
-      {/* ── App Header ── */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)/feed' as any)} activeOpacity={0.8}>
-          <Text style={s.logo}>
-            <Text style={{ color: '#F5C800' }}>Go</Text>
-            <Text style={{ color: '#fff' }}>Denth</Text>
-          </Text>
-        </TouchableOpacity>
-        <View style={s.headerIcons}>
-          <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/publicar' as any)}>
-            <PlusIcon />
+      {/* ── App Header (mobile only) ── */}
+      {!isDesktop && (
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => router.replace('/(tabs)/feed' as any)} activeOpacity={0.8}>
+            <Text style={s.logo}>
+              <Text style={{ color: '#F5C800' }}>Go</Text>
+              <Text style={{ color: '#fff' }}>Denth</Text>
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/buscar' as any)}>
-            <SearchIcon />
-          </TouchableOpacity>
-          <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
-            <BellIcon />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/perfil' as any)}>
-            {avatarUrl
-              ? <Image source={{ uri: avatarUrl }} style={s.uav} />
-              : <View style={s.uav}><Text style={s.uavt}>{user?.nome?.charAt(0) || 'U'}</Text></View>
-            }
-          </TouchableOpacity>
+          <View style={s.headerIcons}>
+            <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/publicar' as any)}>
+              <PlusIcon />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/buscar' as any)}>
+              <SearchIcon />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
+              <BellIcon />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/perfil' as any)}>
+              {avatarUrl
+                ? <Image source={{ uri: avatarUrl }} style={s.uav} />
+                : <View style={s.uav}><Text style={s.uavt}>{user?.nome?.charAt(0) || 'U'}</Text></View>
+              }
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      )}
 
       <View style={s.searchRow}>
         <View style={s.searchBox}>

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, ScrollView, Image, Platform, Linking,
+  RefreshControl, ActivityIndicator, ScrollView, Image, Platform, Linking, useWindowDimensions,
 } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import Svg, { Circle, Line, Path } from 'react-native-svg'
@@ -212,6 +212,8 @@ const EMPTY: Record<Aba, any[]> = { interesse: [], cursos: [] }
 
 export default function Oportunidades() {
   const { user } = useAuthStore()
+  const { width } = useWindowDimensions()
+  const isDesktop = Platform.OS === 'web' && width >= 768
   const [aba, setAba]               = useState<Aba>('interesse')
   const [allData, setAllData]       = useState<Record<Aba, any[]>>(EMPTY)
   const [loading, setLoading]       = useState(true)
@@ -284,29 +286,31 @@ export default function Oportunidades() {
   return (
     <View style={{ flex: 1, backgroundColor: '#E0E0E0' }}>
 
-      {/* ── Header ── */}
-      <View style={s.header}>
-        <Text style={s.headerTitle}>Oportunidades</Text>
-        <View style={s.headerIcons}>
-          <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/buscar' as any)}>
-            <SearchIcon />
-          </TouchableOpacity>
-          <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
-            <BellIcon />
-            {unreadCount > 0 && (
-              <View style={s.notifBadge}>
-                <Text style={s.notifBadgeT}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/perfil' as any)}>
-            {avatarUrl
-              ? <Image source={{ uri: avatarUrl }} style={s.uav} />
-              : <View style={s.uav}><Text style={s.uavt}>{user?.nome?.charAt(0) || 'U'}</Text></View>
-            }
-          </TouchableOpacity>
+      {/* ── Header (mobile only) ── */}
+      {!isDesktop && (
+        <View style={s.header}>
+          <Text style={s.headerTitle}>Oportunidades</Text>
+          <View style={s.headerIcons}>
+            <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/buscar' as any)}>
+              <SearchIcon />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.ico} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
+              <BellIcon />
+              {unreadCount > 0 && (
+                <View style={s.notifBadge}>
+                  <Text style={s.notifBadgeT}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/perfil' as any)}>
+              {avatarUrl
+                ? <Image source={{ uri: avatarUrl }} style={s.uav} />
+                : <View style={s.uav}><Text style={s.uavt}>{user?.nome?.charAt(0) || 'U'}</Text></View>
+              }
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      )}
 
       {/* ── Aba bar ── */}
       <View style={s.abaBar}>
