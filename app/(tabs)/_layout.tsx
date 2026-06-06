@@ -1,18 +1,32 @@
-import { Tabs } from 'expo-router'
-import { Platform } from 'react-native'
+import { useState, useEffect, useRef } from 'react'
+import { Tabs, Slot, router, usePathname } from 'expo-router'
+import {
+  Platform, useWindowDimensions, View, Text, TouchableOpacity,
+  StyleSheet, Animated, ScrollView, Image, ActivityIndicator,
+} from 'react-native'
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg'
+import { useAuthStore } from '../../stores/authStore'
+import api from '../../services/api'
 
-const IC_ON  = '#00C9B1'
-const IC_OFF = '#B8D0C8'
-const SW = 1.7
+// ── Constants ─────────────────────────────────────────────────────────────────
+const PRIMARY  = '#1c909b'
+const IC_ON    = '#00C9B1'
+const IC_OFF   = '#B8D0C8'
+const SW       = 1.7
+const DESKTOP_BREAKPOINT = 768
+const SIDEBAR_EXPANDED   = 220
+const SIDEBAR_COLLAPSED  = 60
+const RIGHT_PANEL_WIDTH  = 280
 
 function mk(c: string) {
   return { stroke: c, strokeWidth: SW, fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
 }
 
+// ── SVG Icons ─────────────────────────────────────────────────────────────────
+
 function DashboardIcon({ color }: { color: string }) {
   return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
+    <Svg width={22} height={22} viewBox="0 0 24 24">
       <Rect x="3"  y="3"  width="8" height="8" rx="1" stroke={color} strokeWidth={SW} fill="none" strokeLinecap="round" strokeLinejoin="round" />
       <Rect x="13" y="3"  width="8" height="8" rx="1" stroke={color} strokeWidth={SW} fill="none" strokeLinecap="round" strokeLinejoin="round" />
       <Rect x="3"  y="13" width="8" height="8" rx="1" stroke={color} strokeWidth={SW} fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -22,32 +36,29 @@ function DashboardIcon({ color }: { color: string }) {
 }
 
 function StarIcon({ color }: { color: string }) {
-  const b = mk(color)
   return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Path d="M12,2 L15.09,8.26 L22,9.27 L17,14.14 L18.18,21.02 L12,17.77 L5.82,21.02 L7,14.14 L2,9.27 L8.91,8.26 Z" {...b} />
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <Path d="M12,2 L15.09,8.26 L22,9.27 L17,14.14 L18.18,21.02 L12,17.77 L5.82,21.02 L7,14.14 L2,9.27 L8.91,8.26 Z" {...mk(color)} />
     </Svg>
   )
 }
 
 function CartIcon({ color }: { color: string }) {
-  const b = mk(color)
   return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Path d="M2,3 L5.5,3 L7.72,14.4 C7.85,15 8.38,15.42 9,15.42 L19,15.42 C19.6,15.42 20.12,15.02 20.27,14.43 L22,7 L6,7" {...b} />
-      <Circle cx="9"  cy="20" r="1.5" {...b} />
-      <Circle cx="17" cy="20" r="1.5" {...b} />
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <Path d="M2,3 L5.5,3 L7.72,14.4 C7.85,15 8.38,15.42 9,15.42 L19,15.42 C19.6,15.42 20.12,15.02 20.27,14.43 L22,7 L6,7" {...mk(color)} />
+      <Circle cx="9"  cy="20" r="1.5" {...mk(color)} />
+      <Circle cx="17" cy="20" r="1.5" {...mk(color)} />
     </Svg>
   )
 }
 
 function BuildingIcon({ color }: { color: string }) {
-  const b = mk(color)
   return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Path d="M3,21 L3,6 C3,5.45 3.45,5 4,5 L20,5 C20.55,5 21,5.45 21,6 L21,21" {...b} />
-      <Line x1="1" y1="21" x2="23" y2="21" {...b} />
-      <Path d="M9,21 L9,15 L15,15 L15,21" {...b} />
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <Path d="M3,21 L3,6 C3,5.45 3.45,5 4,5 L20,5 C20.55,5 21,5.45 21,6 L21,21" {...mk(color)} />
+      <Line x1="1" y1="21" x2="23" y2="21" {...mk(color)} />
+      <Path d="M9,21 L9,15 L15,15 L15,21" {...mk(color)} />
       <Rect x="8"  y="8" width="3" height="3" stroke={color} strokeWidth={SW} fill="none" />
       <Rect x="13" y="8" width="3" height="3" stroke={color} strokeWidth={SW} fill="none" />
     </Svg>
@@ -55,16 +66,287 @@ function BuildingIcon({ color }: { color: string }) {
 }
 
 function PersonIcon({ color }: { color: string }) {
-  const b = mk(color)
   return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Circle cx="12" cy="8" r="4" {...b} />
-      <Path d="M4,22 C4,16.5 7.5,14 12,14 C16.5,14 20,16.5 20,22" {...b} />
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <Circle cx="12" cy="8" r="4" {...mk(color)} />
+      <Path d="M4,22 C4,16.5 7.5,14 12,14 C16.5,14 20,16.5 20,22" {...mk(color)} />
     </Svg>
   )
 }
 
-export default function TabsLayout() {
+function GroupsIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <Circle cx="9" cy="7" r="3" {...mk(color)} />
+      <Circle cx="17" cy="8" r="2.5" {...mk(color)} />
+      <Path d="M2,21 C2,16.5 5,14 9,14 C13,14 16,16.5 16,21" {...mk(color)} />
+      <Path d="M19,21 C19,18 17.5,16.5 15.5,16" {...mk(color)} />
+    </Svg>
+  )
+}
+
+function AdminIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <Path d="M12,2 L15.09,8.26 L22,9.27 L17,14.14 L18.18,21.02 L12,17.77 L5.82,21.02 L7,14.14 L2,9.27 L8.91,8.26 Z" {...mk(color)} />
+    </Svg>
+  )
+}
+
+function SearchIcon({ color }: { color: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24">
+      <Circle cx="11" cy="11" r="8" {...mk(color)} />
+      <Line x1="21" y1="21" x2="16.65" y2="16.65" {...mk(color)} />
+    </Svg>
+  )
+}
+
+function BellIcon({ color }: { color: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24">
+      <Path d="M18,8 A6,6 0 0,0 6,8 C6,15 3,17 3,17 L21,17 C21,17 18,15 18,8" {...mk(color)} />
+      <Path d="M13.73,21 A2,2 0 0,1 10.27,21" {...mk(color)} />
+    </Svg>
+  )
+}
+
+function HamburgerIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <Line x1="3" y1="6"  x2="21" y2="6"  {...mk(color)} />
+      <Line x1="3" y1="12" x2="21" y2="12" {...mk(color)} />
+      <Line x1="3" y1="18" x2="21" y2="18" {...mk(color)} />
+    </Svg>
+  )
+}
+
+// ── Nav items definition ───────────────────────────────────────────────────────
+
+type NavItem = { label: string; href: string; Icon: React.ComponentType<{ color: string }> }
+
+const NAV_ITEMS: NavItem[] = [
+  { label: 'Painel',       href: '/(tabs)/feed',         Icon: DashboardIcon },
+  { label: 'Oportunidades', href: '/(tabs)/oportunidades', Icon: StarIcon },
+  { label: 'Marketplace',  href: '/(tabs)/marketplace',  Icon: CartIcon },
+  { label: 'Páginas',      href: '/(tabs)/empresas',     Icon: BuildingIcon },
+  { label: 'Grupos',       href: '/(tabs)/grupos',        Icon: GroupsIcon },
+  { label: 'Perfil',       href: '/(tabs)/perfil',       Icon: PersonIcon },
+]
+
+// ── Desktop Sidebar ────────────────────────────────────────────────────────────
+
+function DesktopSidebar({ collapsed, widthAnim, onToggle }: {
+  collapsed: boolean
+  widthAnim: Animated.Value
+  onToggle: () => void
+}) {
+  const pathname = usePathname()
+  const { user }  = useAuthStore()
+  const isAdmin   = user?.plano === 'black'
+
+  const items = isAdmin
+    ? [...NAV_ITEMS, { label: 'Admin', href: '/admin', Icon: AdminIcon }]
+    : NAV_ITEMS
+
+  return (
+    <Animated.View style={[ds.sidebar, { width: widthAnim }]}>
+      {/* Logo + toggle */}
+      <View style={ds.logoRow}>
+        {!collapsed && (
+          <Text style={ds.logoText}>
+            <Text style={{ color: '#F5C800' }}>Go</Text>
+            <Text style={{ color: '#fff' }}>Denth</Text>
+          </Text>
+        )}
+        <TouchableOpacity onPress={onToggle} style={ds.hamburgerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <HamburgerIcon color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Nav items */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8 }}>
+        {items.map(item => {
+          const segment   = item.href.replace('/(tabs)/', '').replace(/^\//, '')
+          const active    = pathname === `/${segment}` || pathname.startsWith(`/${segment}/`)
+          const iconColor = active ? '#fff' : 'rgba(255,255,255,0.55)'
+          return (
+            <TouchableOpacity
+              key={item.href}
+              style={[ds.navItem, active && ds.navItemActive, collapsed && ds.navItemCollapsed]}
+              onPress={() => router.push(item.href as any)}
+              activeOpacity={0.8}
+            >
+              <item.Icon color={iconColor} />
+              {!collapsed && (
+                <Text style={[ds.navLabel, active && ds.navLabelActive]} numberOfLines={1}>
+                  {item.label}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )
+        })}
+      </ScrollView>
+    </Animated.View>
+  )
+}
+
+// ── Desktop Top Header ─────────────────────────────────────────────────────────
+
+function DesktopHeader() {
+  const { user } = useAuthStore()
+  const avatarUrl = user?.avatar_url || null
+
+  return (
+    <View style={dh.header}>
+      <View style={dh.searchBox}>
+        <SearchIcon color="#7A9E8E" />
+        <TouchableOpacity style={{ flex: 1 }} onPress={() => router.push('/(tabs)/buscar' as any)} activeOpacity={0.8}>
+          <Text style={dh.searchPlaceholder}>Buscar profissionais, vagas…</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={dh.actions}>
+        <TouchableOpacity style={dh.iconBtn} onPress={() => router.push('/(tabs)/notificacoes' as any)}>
+          <BellIcon color="#4A7060" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/perfil' as any)}>
+          {avatarUrl
+            ? <Image source={{ uri: avatarUrl }} style={dh.avatar} />
+            : <View style={dh.avatarFb}><Text style={dh.avatarFbT}>{user?.nome?.charAt(0) || 'U'}</Text></View>
+          }
+        </TouchableOpacity>
+      </View>
+    </View>
+  )
+}
+
+// ── Desktop Right Panel ────────────────────────────────────────────────────────
+
+function DesktopRightPanel() {
+  const { user } = useAuthStore()
+  const [vagas, setVagas]         = useState<any[]>([])
+  const [sugestoes, setSugestoes] = useState<any[]>([])
+  const [loading, setLoading]     = useState(true)
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/vagas/para-mim').then(r => setVagas((r.data.vagas || []).slice(0, 3))).catch(() => {}),
+      api.get('/users/search', { params: { limit: 3 } }).then(r => setSugestoes((r.data.users || []).slice(0, 3))).catch(() => {}),
+    ]).finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <ScrollView style={rp.panel} contentContainerStyle={rp.scroll} showsVerticalScrollIndicator={false}>
+
+      {/* Perfil do usuário */}
+      {user && (
+        <TouchableOpacity style={rp.profileCard} onPress={() => router.push('/(tabs)/perfil' as any)} activeOpacity={0.85}>
+          {user.avatar_url
+            ? <Image source={{ uri: user.avatar_url }} style={rp.profileAvatar} />
+            : <View style={rp.profileAvatarFb}><Text style={rp.profileAvatarT}>{user.nome?.charAt(0) || '?'}</Text></View>
+          }
+          <Text style={rp.profileName} numberOfLines={1}>{user.nome}</Text>
+          <Text style={rp.profileProfissao} numberOfLines={1}>{user.tipo_profissional}</Text>
+          {(user.cidade || user.estado) && (
+            <Text style={rp.profileLoc} numberOfLines={1}>
+              📍 {[user.cidade, user.estado].filter(Boolean).join(', ')}
+            </Text>
+          )}
+          <View style={rp.profileLink}>
+            <Text style={rp.profileLinkT}>Ver perfil →</Text>
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {/* Vagas em destaque */}
+      {loading ? (
+        <ActivityIndicator color={PRIMARY} style={{ marginVertical: 20 }} />
+      ) : (
+        <>
+          {vagas.length > 0 && (
+            <View style={rp.section}>
+              <Text style={rp.sectionTitle}>Vagas para você</Text>
+              {vagas.map(v => (
+                <TouchableOpacity
+                  key={v.id}
+                  style={rp.vagaItem}
+                  onPress={() => router.push('/(tabs)/oportunidades' as any)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={rp.vagaCargo} numberOfLines={1}>{v.cargo}</Text>
+                  <Text style={rp.vagaEmpresa} numberOfLines={1}>{v.empresa_nome}</Text>
+                  {v.cidade ? <Text style={rp.vagaLoc} numberOfLines={1}>📍 {v.cidade}</Text> : null}
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity onPress={() => router.push('/(tabs)/oportunidades' as any)}>
+                <Text style={rp.verTodas}>Ver todas as vagas →</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Sugestões de conexão */}
+          {sugestoes.length > 0 && (
+            <View style={rp.section}>
+              <Text style={rp.sectionTitle}>Sugestões de conexão</Text>
+              {sugestoes.map(u => (
+                <TouchableOpacity
+                  key={u.id}
+                  style={rp.sugestaoItem}
+                  onPress={() => router.push(`/usuario/${u.id}` as any)}
+                  activeOpacity={0.8}
+                >
+                  <View style={rp.sugestaoAv}>
+                    <Text style={rp.sugestaoAvT}>{u.nome?.charAt(0) || '?'}</Text>
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={rp.sugestaoNome} numberOfLines={1}>{u.nome}</Text>
+                    <Text style={rp.sugestaoProf} numberOfLines={1}>{u.tipo_profissional}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </>
+      )}
+    </ScrollView>
+  )
+}
+
+// ── Desktop Shell (wraps sidebar + content + right panel) ────────────────────
+
+function DesktopShell() {
+  const [collapsed, setCollapsed] = useState(false)
+  const widthAnim = useRef(new Animated.Value(SIDEBAR_EXPANDED)).current
+
+  const toggleSidebar = () => {
+    const toValue = collapsed ? SIDEBAR_EXPANDED : SIDEBAR_COLLAPSED
+    Animated.timing(widthAnim, { toValue, duration: 240, useNativeDriver: false }).start()
+    setCollapsed(c => !c)
+  }
+
+  return (
+    <View style={{ flex: 1, flexDirection: 'row', backgroundColor: '#F0F8F4' }}>
+      <DesktopSidebar collapsed={collapsed} widthAnim={widthAnim} onToggle={toggleSidebar} />
+
+      {/* Centro: header + conteúdo */}
+      <View style={{ flex: 1, overflow: 'hidden' as any }}>
+        <DesktopHeader />
+        <View style={{ flex: 1 }}>
+          <Slot />
+        </View>
+      </View>
+
+      {/* Painel direito */}
+      <View style={{ width: RIGHT_PANEL_WIDTH, borderLeftWidth: 1, borderLeftColor: '#D0E8DA', backgroundColor: '#fff' }}>
+        <DesktopRightPanel />
+      </View>
+    </View>
+  )
+}
+
+// ── Mobile Tab Layout ──────────────────────────────────────────────────────────
+
+function MobileTabLayout() {
   return (
     <Tabs screenOptions={{
       headerShown: false,
@@ -85,7 +367,7 @@ export default function TabsLayout() {
       },
       tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
     }}>
-      <Tabs.Screen name="feed"          options={{ title: 'Painel',       tabBarIcon: ({ color }) => <DashboardIcon color={color} /> }} />
+      <Tabs.Screen name="feed"          options={{ title: 'Painel',        tabBarIcon: ({ color }) => <DashboardIcon color={color} /> }} />
       <Tabs.Screen name="oportunidades" options={{ title: 'Oportunidades', tabBarIcon: ({ color }) => <StarIcon      color={color} /> }} />
       <Tabs.Screen name="marketplace"   options={{ title: 'Marketplace',   tabBarIcon: ({ color }) => <CartIcon      color={color} /> }} />
       <Tabs.Screen name="empresas"      options={{ title: 'Páginas',       tabBarIcon: ({ color }) => <BuildingIcon  color={color} /> }} />
@@ -100,3 +382,281 @@ export default function TabsLayout() {
     </Tabs>
   )
 }
+
+// ── Root Layout export ─────────────────────────────────────────────────────────
+
+export default function TabsLayout() {
+  const { width } = useWindowDimensions()
+  const isDesktop = Platform.OS === 'web' && width >= DESKTOP_BREAKPOINT
+
+  if (isDesktop) {
+    return <DesktopShell />
+  }
+
+  return <MobileTabLayout />
+}
+
+// ── Styles: Desktop Sidebar ───────────────────────────────────────────────────
+
+const ds = StyleSheet.create({
+  sidebar: {
+    backgroundColor: PRIMARY,
+    overflow: 'hidden',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(0,0,0,0.08)',
+  },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.12)',
+    minHeight: 64,
+  },
+  logoText: {
+    fontSize: 22,
+    fontFamily: 'Poppins-ExtraBold',
+    letterSpacing: -0.5,
+    flexShrink: 1,
+  },
+  hamburgerBtn: {
+    padding: 4,
+    flexShrink: 0,
+  },
+  navItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 8,
+    marginVertical: 2,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+  },
+  navItemCollapsed: {
+    justifyContent: 'center',
+  },
+  navItemActive: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  navLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.65)',
+    flexShrink: 1,
+  },
+  navLabelActive: {
+    color: '#fff',
+  },
+})
+
+// ── Styles: Desktop Header ────────────────────────────────────────────────────
+
+const dh = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#D0E8DA',
+    height: 60,
+  },
+  searchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#F0F8F4',
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#D0E8DA',
+    paddingHorizontal: 12,
+    height: 38,
+  },
+  searchPlaceholder: {
+    fontSize: 14,
+    color: '#7A9E8E',
+  },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EEF7F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  avatarFb: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: PRIMARY,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarFbT: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 14,
+  },
+})
+
+// ── Styles: Right Panel ───────────────────────────────────────────────────────
+
+const rp = StyleSheet.create({
+  panel: {
+    flex: 1,
+  },
+  scroll: {
+    padding: 16,
+    paddingBottom: 32,
+    gap: 16,
+  },
+  profileCard: {
+    backgroundColor: '#F0F8F4',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D0E8DA',
+    gap: 4,
+  },
+  profileAvatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: PRIMARY,
+  },
+  profileAvatarFb: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: PRIMARY,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  profileAvatarT: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  profileName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0A1C14',
+    textAlign: 'center',
+  },
+  profileProfissao: {
+    fontSize: 12,
+    color: '#4A7060',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  profileLoc: {
+    fontSize: 11,
+    color: '#7A9E8E',
+    textAlign: 'center',
+  },
+  profileLink: {
+    marginTop: 8,
+    backgroundColor: PRIMARY,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+  },
+  profileLinkT: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  section: {
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#3A6550',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 4,
+  },
+  vagaItem: {
+    backgroundColor: '#F0F8F4',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#D0E8DA',
+    gap: 2,
+  },
+  vagaCargo: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0A1C14',
+  },
+  vagaEmpresa: {
+    fontSize: 12,
+    color: PRIMARY,
+    fontWeight: '600',
+  },
+  vagaLoc: {
+    fontSize: 11,
+    color: '#7A9E8E',
+  },
+  verTodas: {
+    fontSize: 12,
+    color: PRIMARY,
+    fontWeight: '700',
+    textAlign: 'right',
+    marginTop: 4,
+  },
+  sugestaoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF7F2',
+  },
+  sugestaoAv: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: PRIMARY,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  sugestaoAvT: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 16,
+  },
+  sugestaoNome: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0A1C14',
+  },
+  sugestaoProf: {
+    fontSize: 11,
+    color: '#7A9E8E',
+    fontWeight: '600',
+  },
+})
