@@ -1141,7 +1141,7 @@ const dm = StyleSheet.create({
   statusBadge: { fontSize: 13, fontWeight: '800', borderRadius: 100, paddingHorizontal: 12, paddingVertical: 5, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#EEF7F2', gap: 12 },
   rowLabel: { fontSize: 12, fontWeight: '800', color: '#7A9E8E', textTransform: 'uppercase', letterSpacing: 0.5 },
-  rowValue: { fontSize: 14, fontWeight: '600', color: '#0A1C14', flex: 1, textAlign: 'right' },
+  rowValue: { fontSize: 14, fontWeight: '600', color: '#0A1C14', flex: 1, textAlign: 'left' },
   reqChip: { borderWidth: 1, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 },
   data: { fontSize: 12, color: '#AECEBE', marginTop: 16, textAlign: 'center' },
   candidatarBtn: { borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8 },

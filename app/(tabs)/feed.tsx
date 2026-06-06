@@ -295,35 +295,6 @@ function FeedVagaModal({ vagaId, isOwner, user, onClose }: {
                 <Text style={fm.loc}>📍 {[vagaFull.cidade, vagaFull.estado].filter(Boolean).join(', ')}</Text>
               ) : null}
 
-              {/* Compatibilidade com perfil */}
-              {(() => {
-                const compat = calcCompatPerfil(user, vagaFull)
-                if (compat != null) {
-                  const barCor = compat >= 70 ? '#00A880' : compat >= 40 ? '#C49800' : '#EF4444'
-                  return (
-                    <View style={fm.compatCard}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#3A6550', textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                          Compatibilidade com seu perfil
-                        </Text>
-                        <Text style={{ fontSize: 20, fontWeight: '900', color: barCor }}>{compat}%</Text>
-                      </View>
-                      <CompatBarFeed pct={compat} />
-                    </View>
-                  )
-                }
-                return (
-                  <TouchableOpacity
-                    style={[fm.compatCard, { alignItems: 'center' }]}
-                    onPress={() => { onClose(); router.push('/(tabs)/editar-perfil' as any) }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={{ fontSize: 12, color: '#7A9E8E', fontWeight: '600', textAlign: 'center' }}>
-                      Complete seu perfil para ver compatibilidade →
-                    </Text>
-                  </TouchableOpacity>
-                )
-              })()}
 
               {(jaCandidatou || candidatou) && (
                 <View style={[fm.statusCard, { borderColor: STATUS_COR[statusAtual || 'em_analise'] + '40' }]}>
@@ -1451,7 +1422,7 @@ const fm = StyleSheet.create({
   statusBadge:  { fontSize: 13, fontWeight: '800', borderRadius: 100, paddingHorizontal: 12, paddingVertical: 5, overflow: 'hidden' as const },
   row:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#EEF7F2', gap: 12 },
   rowLabel:     { fontSize: 12, fontWeight: '800', color: '#7A9E8E', textTransform: 'uppercase', letterSpacing: 0.5 },
-  rowValue:     { fontSize: 14, fontWeight: '600', color: '#0A1C14', flex: 1, textAlign: 'right' },
+  rowValue:     { fontSize: 14, fontWeight: '600', color: '#0A1C14', flex: 1, textAlign: 'left' },
   reqChip:      { borderWidth: 1, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 },
   data:         { fontSize: 12, color: '#AECEBE', marginTop: 16, textAlign: 'center' },
   candidatarBtn:  { borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8 },

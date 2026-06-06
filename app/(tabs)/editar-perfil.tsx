@@ -445,7 +445,7 @@ export default function EditarPerfil() {
 
       console.log('[avatar] URL final:', fullUrl)
       setAvatarRemote(fullUrl)
-      useAuthStore.getState().updateUser({ avatar_url: res.data.avatar_url })
+      useAuthStore.getState().updateUser({ avatar_url: fullUrl })
       Alert.alert('Foto atualizada', 'Sua foto de perfil foi salva com sucesso.')
     } catch (err: any) {
       console.log('[avatar] ERRO:', err?.message)

@@ -101,6 +101,12 @@ export default function Sobre() {
         </ScrollView>
 
         <View style={styles.footer}>
+          <Text style={styles.privacyText}>
+            Ao criar sua conta, você concorda com nossa{' '}
+            <Text style={styles.privacyLink} onPress={() => router.push('/privacidade' as any)}>
+              Política de Privacidade
+            </Text>
+          </Text>
           <TouchableOpacity style={styles.btn} onPress={finalizar} disabled={loading}>
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnT}>{bio.length > 0 ? '🚀 Criar minha conta' : 'Pular e criar conta →'}</Text>}
           </TouchableOpacity>
@@ -131,6 +137,8 @@ const styles = StyleSheet.create({
   dicasTitle: { fontSize: 13, fontWeight: '800', color: '#0A1C14', marginBottom: 10 },
   dica: { fontSize: 12, color: '#7A9E8E', lineHeight: 22 },
   footer: { padding: 16, borderTopWidth: 1, borderTopColor: '#D0E8DA' },
+  privacyText: { fontSize: 11, color: '#7A9E8E', textAlign: 'center', marginBottom: 12, lineHeight: 16 },
+  privacyLink: { color: '#1c909b', fontWeight: '700', textDecorationLine: 'underline' },
   btn: { backgroundColor: '#007A6E', borderRadius: 14, padding: 16, alignItems: 'center' },
   btnT: { color: '#fff', fontSize: 15, fontWeight: '800' },
 })

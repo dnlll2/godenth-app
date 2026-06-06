@@ -847,7 +847,7 @@ const s = StyleSheet.create({
     backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border,
     paddingHorizontal: 12, height: 44,
   },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.text, height: 44 },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.text, padding: 0, textAlignVertical: 'center' },
   filterBtn: {
     width: 44, height: 44, borderRadius: 12, borderWidth: 1.5,
     borderColor: Colors.border, backgroundColor: Colors.bg,
