@@ -375,8 +375,10 @@ function FeedVagaModal({ vagaId, isOwner, user, onClose }: {
 
               {reqObrig.length > 0 && (
                 <>
-                  <Text style={fap.sectionTitle}>🔴 Requisitos Obrigatórios</Text>
-                  <Text style={fap.sectionHint}>Peso: 70% da compatibilidade</Text>
+                  <View style={fap.obrigHeader}>
+                    <Text style={fap.obrigHeaderTitle}>🔴 Requisitos Obrigatórios</Text>
+                    <Text style={fap.sectionHint}>Peso: 70% da compatibilidade</Text>
+                  </View>
                   {reqObrig.map((r, i) => (
                     <View key={i} style={fap.reqRow}>
                       <Text style={fap.reqText}>{r}</Text>
@@ -395,8 +397,10 @@ function FeedVagaModal({ vagaId, isOwner, user, onClose }: {
 
               {reqDesej.length > 0 && (
                 <>
-                  <Text style={[fap.sectionTitle, { marginTop: 20 }]}>🔵 Requisitos Desejáveis</Text>
-                  <Text style={fap.sectionHint}>Peso: 30% da compatibilidade</Text>
+                  <View style={fap.desejHeader}>
+                    <Text style={fap.desejHeaderTitle}>🔵 Requisitos Desejáveis</Text>
+                    <Text style={fap.sectionHint}>Peso: 30% da compatibilidade</Text>
+                  </View>
                   {reqDesej.map((r, i) => (
                     <View key={i} style={fap.reqRow}>
                       <Text style={fap.reqText}>{r}</Text>
@@ -460,13 +464,13 @@ function FeedVagaModal({ vagaId, isOwner, user, onClose }: {
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={[fm.candidatarBtn, { backgroundColor: '#1c909b' }, sending && { opacity: 0.7 }]}
+                style={[fm.candidatarBtn, { backgroundColor: '#1c909b', alignSelf: 'stretch' }, sending && { opacity: 0.7 }]}
                 onPress={confirmar}
                 disabled={sending}
               >
                 {sending
                   ? <ActivityIndicator color="#fff" />
-                  : <Text style={fm.candidatarBtnT}>Confirmar candidatura com {calcPct()}% →</Text>}
+                  : <Text style={fm.candidatarBtnT}>Confirmar candidatura — {calcPct()}% ✓</Text>}
               </TouchableOpacity>
             )
           )}
@@ -1434,17 +1438,20 @@ const fm = StyleSheet.create({
 })
 
 const fap = StyleSheet.create({
-  sectionTitle: { fontSize: 12, fontWeight: '800', color: '#0A1C14', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },
-  sectionHint:  { fontSize: 11, color: '#7A9E8E', marginBottom: 10 },
-  reqRow:       { backgroundColor: '#F8FCFA', borderWidth: 1, borderColor: '#D0E8DA', borderRadius: 12, padding: 12, marginBottom: 8, gap: 10 },
-  reqText:      { fontSize: 13, fontWeight: '600', color: '#0A1C14', lineHeight: 18 },
-  simnaoRow:    { flexDirection: 'row', gap: 8 },
-  simBtn:       { flex: 1, borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 8, paddingVertical: 8, alignItems: 'center', backgroundColor: '#fff' },
-  simBtnOn:     { backgroundColor: '#00A880', borderColor: '#00A880' },
-  naoBtn:       { flex: 1, borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 8, paddingVertical: 8, alignItems: 'center', backgroundColor: '#fff' },
-  naoBtnOn:     { backgroundColor: '#EF4444', borderColor: '#EF4444' },
-  simnaoT:      { fontSize: 13, fontWeight: '700', color: '#3A6550' },
-  simTOn:       { color: '#fff' },
-  naoTOn:       { color: '#fff' },
-  input:        { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 13, fontSize: 14, color: '#0A1C14', marginBottom: 2 },
+  obrigHeader:      { backgroundColor: '#FFF3F3', borderRadius: 10, padding: 12, marginBottom: 10, borderLeftWidth: 4, borderLeftColor: '#E53935' },
+  obrigHeaderTitle: { fontSize: 12, fontWeight: '800', color: '#C62828', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
+  desejHeader:      { backgroundColor: '#EEF5FF', borderRadius: 10, padding: 12, marginBottom: 10, borderLeftWidth: 4, borderLeftColor: '#1976D2', marginTop: 16 },
+  desejHeaderTitle: { fontSize: 12, fontWeight: '800', color: '#1565C0', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
+  sectionHint:      { fontSize: 11, color: '#7A9E8E' },
+  reqRow:           { backgroundColor: '#F5F5F5', borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 12, padding: 12, marginBottom: 8, gap: 10 },
+  reqText:          { fontSize: 13, fontWeight: '700', color: '#0A1C14', lineHeight: 18 },
+  simnaoRow:        { flexDirection: 'row', gap: 8 },
+  simBtn:           { flex: 1, borderWidth: 1.5, borderColor: '#1c909b', borderRadius: 8, paddingVertical: 12, alignItems: 'center', backgroundColor: '#fff' },
+  simBtnOn:         { backgroundColor: '#0B9E8E', borderColor: '#0B9E8E' },
+  naoBtn:           { flex: 1, borderWidth: 1.5, borderColor: '#1c909b', borderRadius: 8, paddingVertical: 12, alignItems: 'center', backgroundColor: '#fff' },
+  naoBtnOn:         { backgroundColor: '#E53935', borderColor: '#E53935' },
+  simnaoT:          { fontSize: 13, fontWeight: '800', color: '#1c909b' },
+  simTOn:           { color: '#fff' },
+  naoTOn:           { color: '#fff' },
+  input:            { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#D0E8DA', borderRadius: 12, padding: 13, fontSize: 14, color: '#0A1C14', marginBottom: 2 },
 })
