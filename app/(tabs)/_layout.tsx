@@ -130,7 +130,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Oportunidades', href: '/(tabs)/oportunidades', Icon: StarIcon },
   { label: 'Marketplace',  href: '/(tabs)/marketplace',  Icon: CartIcon },
   { label: 'Páginas',      href: '/(tabs)/empresas',     Icon: BuildingIcon },
-  { label: 'Grupos',       href: '/(tabs)/grupos',        Icon: GroupsIcon },
+  // { label: 'Grupos',       href: '/(tabs)/grupos',        Icon: GroupsIcon },
   { label: 'Perfil',       href: '/(tabs)/perfil',       Icon: PersonIcon },
 ]
 

@@ -886,7 +886,7 @@ const ABAS: { key: Aba; label: string }[] = [
   { key: 'cursos',      label: 'Cursos e Eventos'    },
   { key: 'feed_geral',  label: 'Feed geral'          },
   { key: 'paginas',     label: 'Páginas'             },
-  { key: 'grupos',      label: 'Grupos'              },
+  // { key: 'grupos',      label: 'Grupos'              },
 ]
 
 const EMPTY_DATA: Record<Aba, any[]> = {
