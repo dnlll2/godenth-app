@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Tabs, Slot, router, usePathname } from 'expo-router'
+import { BottomTabBar } from '@react-navigation/bottom-tabs'
 import {
   Platform, useWindowDimensions, View, Text, TouchableOpacity,
   StyleSheet, Animated, ScrollView, Image, ActivityIndicator,
@@ -354,12 +355,13 @@ function DesktopShell() {
 // ── Mobile Tab Layout ──────────────────────────────────────────────────────────
 
 function MobileTabLayout() {
-  const { width } = useWindowDimensions()
-  const hideBar   = width >= DESKTOP_BREAKPOINT
-
   return (
     <Tabs
-      tabBar={hideBar ? () => null : undefined}
+      tabBar={(props) => {
+        const { width } = useWindowDimensions()
+        if (Platform.OS === 'web' && width >= 768) return null
+        return <BottomTabBar {...props} />
+      }}
       screenOptions={{
       headerShown: false,
       tabBarActiveTintColor: IC_ON,
