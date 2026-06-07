@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   View, Text, ScrollView, FlatList, TouchableOpacity, StyleSheet,
   ActivityIndicator, Image, Linking, Platform, Alert,
-  Modal, TextInput, KeyboardAvoidingView, Dimensions,
+  Modal, TextInput, KeyboardAvoidingView, Dimensions, Switch,
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -548,6 +548,7 @@ function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
   const [novoDesej, setNovoDesej] = useState('')
   const [perguntas, setPerguntas] = useState<string[]>([])
   const [novaPergunta, setNovaPergunta] = useState('')
+  const [anonima, setAnonima] = useState(false)
   const [saving, setSaving] = useState(false)
   const [cargoModal, setCargoModal] = useState(false)
   const [estadoModal, setEstadoModal] = useState(false)
@@ -570,7 +571,7 @@ function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
     setCidade(''); setEstado(''); setPrazo(''); setDescricao(''); setBeneficios('')
     setTipoFiltro(''); setReqObrig([]); setReqDesej([])
     setNovoObrig(''); setNovoDesej(''); setPerguntas([]); setNovaPergunta('')
-    setCidades([])
+    setCidades([]); setAnonima(false)
   }
   const close = () => { reset(); onClose() }
 
@@ -614,7 +615,7 @@ function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
         cidade: cidade.trim() || null, estado: estado || null,
         prazo_candidatura: dateDisplayToIso(prazo) || null,
         descricao: descricao.trim() || null, beneficios: beneficios.trim() || null,
-        requisitos_obrigatorios: reqObrig, requisitos_desejaveis: reqDesej, perguntas,
+        requisitos_obrigatorios: reqObrig, requisitos_desejaveis: reqDesej, perguntas, anonima,
       })
       reset(); onCreated(); onClose()
     } catch (err: any) {
@@ -684,6 +685,13 @@ function VagaModal({ visible, pageId, pageName, onClose, onCreated }: {
               <TextInput style={[m.input, m.textarea]} placeholder="Descreva os requisitos…" placeholderTextColor={Colors.text3} value={descricao} onChangeText={setDescricao} multiline numberOfLines={3} textAlignVertical="top" />
               <Text style={m.label}>Benefícios</Text>
               <TextInput style={m.input} placeholder="Ex: VR, VT, plano..." placeholderTextColor={Colors.text3} value={beneficios} onChangeText={setBeneficios} />
+              <View style={m.toggleRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={m.label}>Empresa anônima</Text>
+                  <Text style={{ fontSize: 11, color: Colors.text3, marginTop: 2 }}>Oculta o nome e logo da empresa no feed</Text>
+                </View>
+                <Switch value={anonima} onValueChange={setAnonima} thumbColor={anonima ? Colors.primary : '#ccc'} trackColor={{ false: '#E0E0E0', true: Colors.primary + '55' }} />
+              </View>
             </ScrollView>
           )}
 
@@ -2101,6 +2109,7 @@ const m = StyleSheet.create({
   metricValue: { fontSize: 22, fontWeight: '900', color: Colors.text },
   metricLabel: { fontSize: 10, color: Colors.text3, fontWeight: '600', marginTop: 2, textAlign: 'center' },
   sheetFull: { backgroundColor: Colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 28, maxHeight: '94%' },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', marginTop: 14, marginBottom: 6, gap: 12 },
 })
 
 // ─── Styles full-screen modals ────────────────────────────────────────────────

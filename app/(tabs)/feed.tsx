@@ -488,6 +488,26 @@ function FeedVagaModal({ vagaId, isOwner, user, onClose }: {
   )
 }
 
+// ── Banner promocional ────────────────────────────────────────────────────────
+
+function PromoBanner() {
+  return (
+    <TouchableOpacity
+      style={s.promoBanner}
+      onPress={() => router.push('/criar-pagina' as any)}
+      activeOpacity={0.85}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={s.promoBannerTitle}>Contratando?</Text>
+        <Text style={s.promoBannerSub}>Cadastre sua empresa e publique vagas grátis!</Text>
+      </View>
+      <View style={s.promoBannerBtn}>
+        <Text style={s.promoBannerBtnT}>Criar empresa →</Text>
+      </View>
+    </TouchableOpacity>
+  )
+}
+
 // ── Card: Vaga (compatibilidade) ──────────────────────────────────────────────
 
 function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?: () => void }) {
@@ -503,10 +523,11 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
   const salario     = salMin
     ? `R$ ${Number(salMin).toLocaleString('pt-BR')}${salMax ? ` – ${Number(salMax).toLocaleString('pt-BR')}` : ''}`
     : null
-  const empresaNome = vaga.empresa_nome || vaga.page_nome
+  const isAnonima  = !!vaga.anonima
+  const empresaNome = isAnonima ? 'Empresa Confidencial' : (vaga.empresa_nome || vaga.page_nome)
   const descricao   = vaga.descricao || vaga.beneficios || null
 
-  const goToPage = () => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)
+  const goToPage = () => !isAnonima && vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)
   const goToVaga = () => onVerVaga ? onVerVaga() : router.push('/(tabs)/vagas' as any)
 
   const chipsEl = (
@@ -525,17 +546,17 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
     <View style={s.vagaCard}>
       {/* Linha superior: logo + empresa/cargo (sempre visível) */}
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-        <TouchableOpacity onPress={goToPage} activeOpacity={vaga.page_id ? 0.72 : 1} disabled={!vaga.page_id}>
-          {logoUrl
+        <TouchableOpacity onPress={goToPage} activeOpacity={!isAnonima && vaga.page_id ? 0.72 : 1} disabled={isAnonima || !vaga.page_id}>
+          {!isAnonima && logoUrl
             ? <Image source={{ uri: logoUrl }} style={s.vagaLogo} />
             : <View style={[s.vagaLogo, s.vagaLogoFb]}>
-                <Text style={s.vagaLogoFbT}>{(empresaNome || '?').charAt(0)}</Text>
+                <Text style={s.vagaLogoFbT}>{isAnonima ? '?' : (empresaNome || '?').charAt(0)}</Text>
               </View>
           }
         </TouchableOpacity>
         <View style={{ flex: 1, gap: 3 }}>
-          <TouchableOpacity onPress={goToPage} activeOpacity={vaga.page_id ? 0.78 : 1} disabled={!vaga.page_id}>
-            <Text style={s.vagaEmpresaLink} numberOfLines={1}>{empresaNome}</Text>
+          <TouchableOpacity onPress={goToPage} activeOpacity={!isAnonima && vaga.page_id ? 0.78 : 1} disabled={isAnonima || !vaga.page_id}>
+            <Text style={[s.vagaEmpresaLink, isAnonima && { color: '#7A9E8E', fontStyle: 'italic' }]} numberOfLines={1}>{empresaNome}</Text>
           </TouchableOpacity>
           <Text style={s.vagaCargo} numberOfLines={2}>{cargo}</Text>
           {/* Desktop: chips + desc + data dentro da coluna, ao lado do botão */}
@@ -580,10 +601,12 @@ function VagaInteresseCard({ vaga, user, onVerVaga }: { vaga: any; user: any; on
   const isDesktop   = Platform.OS === 'web' && width >= 768
   const cCor        = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
   const loc         = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
+  const isAnonima2  = !!vaga.anonima
   const logoUrl     = vaga.logo_url || null
   const descricao   = vaga.descricao || vaga.beneficios || null
+  const nomeEmpresa = isAnonima2 ? 'Empresa Confidencial' : (vaga.empresa_nome || '')
 
-  const goToPage = () => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)
+  const goToPage = () => !isAnonima2 && vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)
   const goToVaga = () => onVerVaga ? onVerVaga() : router.push('/(tabs)/vagas' as any)
 
   const chipsEl = (
@@ -601,17 +624,17 @@ function VagaInteresseCard({ vaga, user, onVerVaga }: { vaga: any; user: any; on
     <View style={s.vagaCard}>
       {/* Linha superior: logo + empresa/cargo (sempre visível) */}
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-        <TouchableOpacity onPress={goToPage} activeOpacity={vaga.page_id ? 0.72 : 1} disabled={!vaga.page_id}>
-          {logoUrl
+        <TouchableOpacity onPress={goToPage} activeOpacity={!isAnonima2 && vaga.page_id ? 0.72 : 1} disabled={isAnonima2 || !vaga.page_id}>
+          {!isAnonima2 && logoUrl
             ? <Image source={{ uri: logoUrl }} style={s.vagaLogo} />
             : <View style={[s.vagaLogo, s.vagaLogoFb]}>
-                <Text style={s.vagaLogoFbT}>{(vaga.empresa_nome || '?').charAt(0)}</Text>
+                <Text style={s.vagaLogoFbT}>{isAnonima2 ? '?' : (nomeEmpresa || '?').charAt(0)}</Text>
               </View>
           }
         </TouchableOpacity>
         <View style={{ flex: 1, gap: 3 }}>
-          <TouchableOpacity onPress={goToPage} activeOpacity={vaga.page_id ? 0.78 : 1} disabled={!vaga.page_id}>
-            <Text style={s.vagaEmpresaLink} numberOfLines={1}>{vaga.empresa_nome}</Text>
+          <TouchableOpacity onPress={goToPage} activeOpacity={!isAnonima2 && vaga.page_id ? 0.78 : 1} disabled={isAnonima2 || !vaga.page_id}>
+            <Text style={[s.vagaEmpresaLink, isAnonima2 && { color: '#7A9E8E', fontStyle: 'italic' }]} numberOfLines={1}>{nomeEmpresa}</Text>
           </TouchableOpacity>
           <Text style={s.vagaCargo} numberOfLines={2}>{vaga.cargo}</Text>
           {/* Desktop: chips + desc + data dentro da coluna, ao lado do botão */}
@@ -1214,45 +1237,51 @@ export default function Painel() {
             <EmptyState icon={emptyMeta.icon} title={emptyMeta.title} sub={emptyMeta.sub} />
           ) : aba === 'vagas' ? (
             <View style={{ gap: 12 }}>
-              {items.map(v => (
-                <VagaCard
-                  key={v.id}
-                  vaga={v}
-                  user={user}
-                  onVerVaga={() => {
-                    setFeedVagaIsOwner(false)
-                    setFeedVagaId(v.id)
-                  }}
-                />
+              {items.map((v, i) => (
+                <View key={v.id}>
+                  {i > 0 && i % 6 === 0 && <PromoBanner />}
+                  <VagaCard
+                    vaga={v}
+                    user={user}
+                    onVerVaga={() => {
+                      setFeedVagaIsOwner(false)
+                      setFeedVagaId(v.id)
+                    }}
+                  />
+                </View>
               ))}
             </View>
           ) : aba === 'interesse' ? (
             <View style={{ gap: 12 }}>
-              {items.map(v => (
-                <VagaInteresseCard
-                  key={v.id}
-                  vaga={v}
-                  user={user}
-                  onVerVaga={() => {
-                    setFeedVagaIsOwner(false)
-                    setFeedVagaId(v.id)
-                  }}
-                />
+              {items.map((v, i) => (
+                <View key={v.id}>
+                  {i > 0 && i % 6 === 0 && <PromoBanner />}
+                  <VagaInteresseCard
+                    vaga={v}
+                    user={user}
+                    onVerVaga={() => {
+                      setFeedVagaIsOwner(false)
+                      setFeedVagaId(v.id)
+                    }}
+                  />
+                </View>
               ))}
             </View>
           ) : aba === 'recentes' || aba === 'feed_geral' ? (
             <View style={{ gap: 12 }}>
-              {items.map(p =>
+              {items.map((p, i) =>
                 p.source_type === 'vaga' || p.tipo_post === 'vaga'
-                  ? <VagaCard
-                      key={`${p.source_type}-${p.id}`}
-                      vaga={p}
-                      user={user}
-                      onVerVaga={p.source_type === 'vaga'
-                        ? () => { setFeedVagaIsOwner(false); setFeedVagaId(p.id) }
-                        : p.page_id ? () => router.push(`/pagina/${p.page_id}` as any) : undefined
-                      }
-                    />
+                  ? <View key={`${p.source_type}-${p.id}`}>
+                      {i > 0 && i % 6 === 0 && <PromoBanner />}
+                      <VagaCard
+                        vaga={p}
+                        user={user}
+                        onVerVaga={p.source_type === 'vaga'
+                          ? () => { setFeedVagaIsOwner(false); setFeedVagaId(p.id) }
+                          : p.page_id ? () => router.push(`/pagina/${p.page_id}` as any) : undefined
+                        }
+                      />
+                    </View>
                   : <RecentPostCard key={`post-${p.id}`} post={p} />
               )}
             </View>
@@ -1384,6 +1413,13 @@ const s = StyleSheet.create({
   compatFill: { height: '100%', borderRadius: 3 },
   actionBtn: { borderRadius: 20, paddingHorizontal: 24, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   actionBtnT: { color: '#fff', fontSize: 14, fontWeight: '800' },
+
+  // Promo banner
+  promoBanner: { backgroundColor: PRIMARY, borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+  promoBannerTitle: { fontSize: 15, fontWeight: '900', color: '#fff' },
+  promoBannerSub: { fontSize: 11, color: 'rgba(255,255,255,0.82)', marginTop: 2 },
+  promoBannerBtn: { backgroundColor: '#fff', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, flexShrink: 0 },
+  promoBannerBtnT: { fontSize: 12, fontWeight: '800', color: PRIMARY },
 
   // Recent / feed geral post card
   recentCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D0E8DA', borderLeftWidth: 4, gap: 8 },
