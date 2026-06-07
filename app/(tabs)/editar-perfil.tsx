@@ -461,23 +461,33 @@ export default function EditarPerfil() {
 
   const handleApagarFoto = () => {
     console.log('clicou apagar foto')
-    Alert.alert(
-      'Remover foto',
-      'Tem certeza que deseja remover sua foto de perfil?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Remover',
-          style: 'destructive',
-          onPress: async () => {
-            await api.patch('/users/me', { avatar_url: null })
-            updateUser({ avatar_url: null })
-            setAvatarUri(null)
-            setAvatarRemote(null)
+    if (Platform.OS === 'web') {
+      const confirmado = window.confirm('Tem certeza que deseja remover sua foto de perfil?')
+      if (confirmado) {
+        api.patch('/users/me', { avatar_url: null })
+        updateUser({ avatar_url: null })
+        setAvatarUri(null)
+        setAvatarRemote(null)
+      }
+    } else {
+      Alert.alert(
+        'Remover foto',
+        'Tem certeza que deseja remover sua foto de perfil?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Remover',
+            style: 'destructive',
+            onPress: async () => {
+              await api.patch('/users/me', { avatar_url: null })
+              updateUser({ avatar_url: null })
+              setAvatarUri(null)
+              setAvatarRemote(null)
+            },
           },
-        },
-      ]
-    )
+        ]
+      )
+    }
   }
 
   const profissoes = [tipoProf, ...cargosExtras.map((e: any) => e.label || e)].filter(Boolean)
