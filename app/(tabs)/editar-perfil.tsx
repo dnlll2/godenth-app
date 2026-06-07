@@ -334,6 +334,7 @@ export default function EditarPerfil() {
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const { updateUser } = useAuthStore()
+  const [confirmModal, setConfirmModal] = useState(false)
 
   useEffect(() => { loadProfile(); loadEstados() }, [])
 
@@ -460,34 +461,15 @@ export default function EditarPerfil() {
   }
 
   const handleApagarFoto = () => {
-    console.log('clicou apagar foto')
-    if (Platform.OS === 'web') {
-      const confirmado = window.confirm('Tem certeza que deseja remover sua foto de perfil?')
-      if (confirmado) {
-        api.patch('/users/me', { avatar_url: null })
-        updateUser({ avatar_url: null })
-        setAvatarUri(null)
-        setAvatarRemote(null)
-      }
-    } else {
-      Alert.alert(
-        'Remover foto',
-        'Tem certeza que deseja remover sua foto de perfil?',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Remover',
-            style: 'destructive',
-            onPress: async () => {
-              await api.patch('/users/me', { avatar_url: null })
-              updateUser({ avatar_url: null })
-              setAvatarUri(null)
-              setAvatarRemote(null)
-            },
-          },
-        ]
-      )
-    }
+    setConfirmModal(true)
+  }
+
+  const confirmarApagarFoto = async () => {
+    setConfirmModal(false)
+    await api.patch('/users/me', { avatar_url: null })
+    updateUser({ avatar_url: null })
+    setAvatarUri(null)
+    setAvatarRemote(null)
   }
 
   const profissoes = [tipoProf, ...cargosExtras.map((e: any) => e.label || e)].filter(Boolean)
@@ -1178,6 +1160,30 @@ export default function EditarPerfil() {
         onSelect={(v: string) => { setEInicio(v); setEInicioModal(false) }} onClose={() => setEInicioModal(false)} />
       <PickerModal visible={eFimModal} title="Ano de Fim" data={ANOS}
         onSelect={(v: string) => { setEFim(v); setEFimModal(false) }} onClose={() => setEFimModal(false)} />
+
+      {/* ── MODAL CONFIRMAR APAGAR FOTO ───────────────────────────────────── */}
+      <Modal visible={confirmModal} transparent animationType="fade" onRequestClose={() => setConfirmModal(false)}>
+        <TouchableOpacity
+          style={s.confirmOverlay}
+          activeOpacity={1}
+          onPress={() => setConfirmModal(false)}
+        >
+          <TouchableOpacity activeOpacity={1} style={s.confirmCard} onPress={() => {}}>
+            <Text style={s.confirmTitle}>Remover foto</Text>
+            <Text style={s.confirmMsg}>
+              Tem certeza que deseja remover sua foto de perfil? Esta ação não pode ser desfeita.
+            </Text>
+            <View style={s.confirmBtns}>
+              <TouchableOpacity style={s.confirmCancelBtn} onPress={() => setConfirmModal(false)}>
+                <Text style={s.confirmCancelBtnT}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.confirmDeleteBtn} onPress={confirmarApagarFoto}>
+                <Text style={s.confirmDeleteBtnT}>Remover</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   )
 }
@@ -1383,4 +1389,15 @@ const s = StyleSheet.create({
   cancelBtnT: { fontSize: 14, fontWeight: '800', color: '#3A6550' },
   confirmBtn: { flex: 1, backgroundColor: '#007A6E', borderRadius: 12, padding: 14, alignItems: 'center' },
   confirmBtnT: { fontSize: 14, fontWeight: '800', color: '#fff' },
+
+  // Modal confirmar apagar foto
+  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: 32 },
+  confirmCard: { backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 360 },
+  confirmTitle: { fontSize: 18, fontWeight: '800', color: '#0A1C14', marginBottom: 10 },
+  confirmMsg: { fontSize: 14, color: '#4A7060', lineHeight: 20, marginBottom: 24 },
+  confirmBtns: { flexDirection: 'row', gap: 12 },
+  confirmCancelBtn: { flex: 1, borderRadius: 12, borderWidth: 1.5, borderColor: '#D0D0D0', paddingVertical: 13, alignItems: 'center', backgroundColor: '#fff' },
+  confirmCancelBtnT: { fontSize: 14, fontWeight: '700', color: '#3A6550' },
+  confirmDeleteBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#E53935' },
+  confirmDeleteBtnT: { fontSize: 14, fontWeight: '800', color: '#fff' },
 })
