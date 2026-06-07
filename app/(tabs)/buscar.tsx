@@ -222,11 +222,11 @@ const FORMACAO_OPCOES: Record<string, string[]> = {
 }
 
 const PAGE_TIPOS = [
-  { key: '',          label: 'Todos' },
-  { key: 'clinica',     label: 'Clínica Odontológica' },
+  { key: '',            label: 'Todos' },
+  { key: 'clinica',     label: 'Clínica' },
   { key: 'laboratorio', label: 'Laboratório' },
+  { key: 'ensino',      label: 'Escola' },
   { key: 'fabricante',  label: 'Distribuidora' },
-  { key: 'ensino',      label: 'Escola/Cursos' },
   { key: '_outros',     label: 'Outros' },
 ]
 
