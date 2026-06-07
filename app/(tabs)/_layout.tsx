@@ -358,8 +358,7 @@ function MobileTabLayout() {
   return (
     <Tabs
       tabBar={(props) => {
-        const { width } = useWindowDimensions()
-        if (Platform.OS === 'web' && width >= 768) return null
+        if (Platform.OS === 'web') return null
         return <BottomTabBar {...props} />
       }}
       screenOptions={{
