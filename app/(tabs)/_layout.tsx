@@ -354,12 +354,15 @@ function DesktopShell() {
 // ── Mobile Tab Layout ──────────────────────────────────────────────────────────
 
 function MobileTabLayout() {
+  const { width } = useWindowDimensions()
+  const hideBar   = width >= DESKTOP_BREAKPOINT
+
   return (
     <Tabs screenOptions={{
       headerShown: false,
       tabBarActiveTintColor: IC_ON,
       tabBarInactiveTintColor: IC_OFF,
-      tabBarStyle: {
+      tabBarStyle: hideBar ? { display: 'none' } : {
         backgroundColor: '#fff',
         borderTopColor: '#E8F0EC',
         borderTopWidth: 1,
