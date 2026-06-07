@@ -517,11 +517,22 @@ const BANNER_CONFIGS = [
   },
 ] as const
 
-// Sequência determinista que parece aleatória (não muda a cada re-render)
-const BANNER_SEQ = [0, 2, 1, 0, 1, 2, 2, 0, 1]
+// Gera sequência aleatória sem repetição consecutiva (calculada 1x no módulo)
+function genBannerSeq(n: number): number[] {
+  const out: number[] = []
+  let prev = -1
+  for (let i = 0; i < n; i++) {
+    const choices = [0, 1, 2].filter(x => x !== prev)
+    const pick = choices[Math.floor(Math.random() * choices.length)]
+    out.push(pick)
+    prev = pick
+  }
+  return out
+}
+const BANNER_SEQ = genBannerSeq(30)
 
-function PromoBanner({ slot }: { slot: number }) {
-  const cfg = BANNER_CONFIGS[BANNER_SEQ[slot % BANNER_SEQ.length]]
+function PromoBanner({ slot, offset = 0 }: { slot: number; offset?: number }) {
+  const cfg = BANNER_CONFIGS[BANNER_SEQ[(slot + offset) % BANNER_SEQ.length]]
   const isDark = cfg.bg !== '#F5C400'
   return (
     <TouchableOpacity
@@ -1271,7 +1282,7 @@ export default function Painel() {
             <View style={{ gap: 12 }}>
               {items.map((v, i) => (
                 <View key={v.id}>
-                  {i > 0 && i % 5 === 0 && <PromoBanner slot={Math.floor(i / 5)} />}
+                  {i > 0 && i % 5 === 0 && <PromoBanner slot={Math.floor(i / 5)} offset={0} />}
                   <VagaCard
                     vaga={v}
                     user={user}
@@ -1287,7 +1298,7 @@ export default function Painel() {
             <View style={{ gap: 12 }}>
               {items.map((v, i) => (
                 <View key={v.id}>
-                  {i > 0 && i % 5 === 0 && <PromoBanner slot={Math.floor(i / 5)} />}
+                  {i > 0 && i % 5 === 0 && <PromoBanner slot={Math.floor(i / 5)} offset={10} />}
                   <VagaInteresseCard
                     vaga={v}
                     user={user}
@@ -1304,7 +1315,7 @@ export default function Painel() {
               {items.map((p, i) =>
                 p.source_type === 'vaga' || p.tipo_post === 'vaga'
                   ? <View key={`${p.source_type}-${p.id}`}>
-                      {i > 0 && i % 5 === 0 && <PromoBanner slot={Math.floor(i / 5)} />}
+                      {i > 0 && i % 5 === 0 && <PromoBanner slot={Math.floor(i / 5)} offset={20} />}
                       <VagaCard
                         vaga={p}
                         user={user}
