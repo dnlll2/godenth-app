@@ -11,6 +11,7 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const { login } = useAuthStore()
 
   const handleLogin = async () => {
@@ -50,14 +51,19 @@ export default function Login() {
           />
 
           <Text style={styles.label}>Senha</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Sua senha"
-            placeholderTextColor={Colors.text3}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <View style={styles.passwordRow}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Sua senha"
+              placeholderTextColor={Colors.text3}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(v => !v)}>
+              <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁️'}</Text>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity style={styles.btn} onPress={handleLogin} disabled={loading}>
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Entrar →</Text>}
@@ -93,6 +99,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bg, borderWidth: 1.5, borderColor: Colors.border,
     borderRadius: 12, padding: 14, fontSize: 15, color: Colors.text, marginBottom: 14
   },
+  passwordRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.bg, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: 12, marginBottom: 14,
+  },
+  passwordInput: {
+    flex: 1, padding: 14, fontSize: 15, color: Colors.text,
+  },
+  eyeBtn: { paddingHorizontal: 14, paddingVertical: 14 },
+  eyeIcon: { fontSize: 18 },
   btn: {
     backgroundColor: Colors.primary, borderRadius: 13, padding: 15,
     alignItems: 'center', marginTop: 6,
