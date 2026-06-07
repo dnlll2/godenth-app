@@ -221,6 +221,26 @@ const FORMACAO_OPCOES: Record<string, string[]> = {
   'Estudante de Marketing':       ['Graduação em Marketing (em curso)'],
 }
 
+const PAGE_TIPOS = [
+  { key: '',          label: 'Todos' },
+  { key: 'clinica',     label: 'Clínica Odontológica' },
+  { key: 'laboratorio', label: 'Laboratório' },
+  { key: 'fabricante',  label: 'Distribuidora' },
+  { key: 'ensino',      label: 'Escola/Cursos' },
+  { key: '_outros',     label: 'Outros' },
+]
+
+const PAGE_TIPO_COR: Record<string, string> = {
+  clinica: '#00A880', laboratorio: '#1A6FD4', fabricante: '#C49800',
+  ensino: '#7B3FC4', marketing: '#D4186A', gestao: '#0891B2', servicos: '#7A9E8E',
+}
+
+const PAGE_TIPO_LABEL: Record<string, string> = {
+  clinica: 'Clínica Odontológica', laboratorio: 'Laboratório',
+  fabricante: 'Distribuidora', ensino: 'Escola/Cursos',
+  marketing: 'Marketing', gestao: 'Gestão', servicos: 'Serviços',
+}
+
 const DISPONIBILIDADES = [
   { key: '', label: 'Todos' },
   { key: 'disponivel', label: 'Disponível', cor: '#00A880' },
@@ -586,6 +606,9 @@ export default function Buscar() {
   const { width } = useWindowDimensions()
   const isDesktop = Platform.OS === 'web' && width >= 768
 
+  const [tabMode, setTabMode] = useState<'profissionais' | 'empresas'>('profissionais')
+
+  // ── Profissionais ─────────────────────────────────────────────────────────────
   const [q, setQ] = useState('')
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [filterModal, setFilterModal] = useState(false)
@@ -596,6 +619,45 @@ export default function Buscar() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
   const [searched, setSearched] = useState(false)
+
+  // ── Empresas ──────────────────────────────────────────────────────────────────
+  const [eQ, setEQ] = useState('')
+  const [eTipo, setETipo] = useState('')
+  const [empresas, setEmpresas] = useState<any[]>([])
+  const [eLoading, setELoading] = useState(false)
+  const [eLoadingMore, setELoadingMore] = useState(false)
+  const [ePage, setEPage] = useState(1)
+  const [eHasMore, setEHasMore] = useState(false)
+  const [eSearched, setESearched] = useState(false)
+
+  const searchEmpresas = async (overrideQ?: string, overrideTipo?: string, overridePage = 1) => {
+    const q2 = overrideQ !== undefined ? overrideQ : eQ
+    const tipo2 = overrideTipo !== undefined ? overrideTipo : eTipo
+    const isFirst = overridePage === 1
+    if (isFirst) { setELoading(true); setESearched(true); setEPage(1) }
+    else setELoadingMore(true)
+    try {
+      const params: Record<string, any> = { page: overridePage, limit: 20 }
+      if (q2.trim()) params.q = q2.trim()
+      if (tipo2 && tipo2 !== '_outros') params.categoria = tipo2
+      const res = await api.get('/pages', { params })
+      let rows: any[] = res.data.pages || []
+      if (tipo2 === '_outros') {
+        const main = ['clinica','laboratorio','fabricante','ensino']
+        rows = rows.filter((p: any) => !main.includes(p.categoria))
+      }
+      if (isFirst) setEmpresas(rows)
+      else setEmpresas(prev => [...prev, ...rows])
+      setEPage(overridePage)
+      setEHasMore(res.data.has_more || false)
+    } catch (err) { console.log(err) }
+    finally { setELoading(false); setELoadingMore(false) }
+  }
+
+  const handleETipoSelect = (key: string) => {
+    setETipo(key)
+    searchEmpresas(eQ, key, 1)
+  }
 
   const activeCount = Object.entries(filters).filter(([k, v]) => v && k !== 'estadoNome').length
 
@@ -646,6 +708,41 @@ export default function Buscar() {
     if (f.anos_min) return `${f.anos_min}+ anos`
     if (f.anos_max) return `até ${f.anos_max} anos`
     return ''
+  }
+
+  const renderEmpresa = ({ item }: any) => {
+    const cor = PAGE_TIPO_COR[item.categoria] || PRIMARY
+    const tipoLabel = PAGE_TIPO_LABEL[item.categoria] || item.categoria || ''
+    const vagas = parseInt(item.total_vagas) || 0
+    return (
+      <TouchableOpacity style={s.card} onPress={() => router.push(`/pagina/${item.id}` as any)} activeOpacity={0.8}>
+        {item.logo_url
+          ? <Image source={{ uri: item.logo_url }} style={s.empresaLogo} />
+          : (
+            <View style={[s.empresaLogo, { backgroundColor: cor + '22', justifyContent: 'center', alignItems: 'center' }]}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: cor }}>{(item.nome || '?').charAt(0)}</Text>
+            </View>
+          )
+        }
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={s.nome} numberOfLines={1}>{item.nome}</Text>
+          {tipoLabel ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={[s.tipoBadge, { borderColor: cor + '60', backgroundColor: cor + '14' }]}>
+                <Text style={[s.tipoBadgeT, { color: cor }]}>{tipoLabel}</Text>
+              </View>
+            </View>
+          ) : null}
+          {(item.cidade || item.estado) ? (
+            <Text style={s.loc}>📍 {[item.cidade, item.estado].filter(Boolean).join(' · ')}</Text>
+          ) : null}
+          {vagas > 0 && (
+            <Text style={[s.loc, { color: PRIMARY, fontWeight: '700' }]}>{vagas} vaga{vagas > 1 ? 's' : ''} ativa{vagas > 1 ? 's' : ''}</Text>
+          )}
+        </View>
+        <Text style={s.chevron}>›</Text>
+      </TouchableOpacity>
+    )
   }
 
   const renderUser = ({ item }: any) => {
@@ -711,113 +808,198 @@ export default function Buscar() {
         </View>
       )}
 
-      <View style={s.searchRow}>
-        <View style={s.searchBox}>
-          <View style={{ marginRight: 6 }}><SearchBoxIcon /></View>
-          <TextInput
-            style={s.searchInput}
-            placeholder="Nome, especialidade, habilidade..."
-            placeholderTextColor={Colors.text3}
-            value={q}
-            onChangeText={setQ}
-            onSubmitEditing={() => search()}
-            returnKeyType="search"
-          />
-          {q.length > 0 && (
-            <TouchableOpacity onPress={() => setQ('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={{ color: Colors.text3, fontSize: 18, paddingHorizontal: 4 }}>×</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        <TouchableOpacity style={[s.filterBtn, activeCount > 0 && s.filterBtnOn]} onPress={() => setFilterModal(true)}>
-          <Text style={{ fontSize: 16 }}>⚙️</Text>
-          {activeCount > 0 && (
-            <View style={s.filterCount}>
-              <Text style={s.filterCountT}>{activeCount}</Text>
-            </View>
-          )}
+      {/* ── Toggle de abas ── */}
+      <View style={s.tabToggleBar}>
+        <TouchableOpacity
+          style={[s.tabToggleBtn, tabMode === 'profissionais' && s.tabToggleBtnOn]}
+          onPress={() => setTabMode('profissionais')}
+        >
+          <Text style={[s.tabToggleBtnT, tabMode === 'profissionais' && s.tabToggleBtnTOn]}>👤 Profissionais</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.searchBtn} onPress={() => search()}>
-          <Text style={s.searchBtnT}>Buscar</Text>
+        <TouchableOpacity
+          style={[s.tabToggleBtn, tabMode === 'empresas' && s.tabToggleBtnOn]}
+          onPress={() => { setTabMode('empresas'); if (!eSearched) searchEmpresas('', '', 1) }}
+        >
+          <Text style={[s.tabToggleBtnT, tabMode === 'empresas' && s.tabToggleBtnTOn]}>🏢 Empresas</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Filtros ativos como tags */}
-      {activeCount > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.activeFiltersBar} contentContainerStyle={{ gap: 8, paddingHorizontal: 14, paddingVertical: 8 }}>
-          {filters.tipo ? (
-            <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, tipo: '', especialidade: '', habilidade: '', formacao: '' })}>
-              <Text style={s.activeTagT}>{filters.tipo} ×</Text>
-            </TouchableOpacity>
-          ) : null}
-          {filters.especialidade ? (
-            <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, especialidade: '' })}>
-              <Text style={s.activeTagT}>{filters.especialidade} ×</Text>
-            </TouchableOpacity>
-          ) : null}
-          {filters.habilidade ? (
-            <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, habilidade: '' })}>
-              <Text style={s.activeTagT}>{filters.habilidade} ×</Text>
-            </TouchableOpacity>
-          ) : null}
-          {filters.formacao ? (
-            <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, formacao: '' })}>
-              <Text style={s.activeTagT}>{filters.formacao} ×</Text>
-            </TouchableOpacity>
-          ) : null}
-          {filters.disponibilidade ? (
-            <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, disponibilidade: '' })}>
-              <Text style={s.activeTagT}>{DISPONIBILIDADES.find(d => d.key === filters.disponibilidade)?.label} ×</Text>
-            </TouchableOpacity>
-          ) : null}
-          {filters.estadoNome ? (
-            <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, estadoSigla: '', estadoNome: '', cidade: '' })}>
-              <Text style={s.activeTagT}>{filters.estadoNome} ×</Text>
-            </TouchableOpacity>
-          ) : null}
-          {filters.cidade ? (
-            <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, cidade: '' })}>
-              <Text style={s.activeTagT}>{filters.cidade} ×</Text>
-            </TouchableOpacity>
-          ) : null}
-          {(filters.anos_min || filters.anos_max) ? (
-            <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, anos_min: '', anos_max: '' })}>
-              <Text style={s.activeTagT}>{anosLabel(filters)} ×</Text>
-            </TouchableOpacity>
-          ) : null}
-          <TouchableOpacity style={s.clearAllTag} onPress={() => applyFilters(EMPTY_FILTERS)}>
-            <Text style={s.clearAllTagT}>Limpar tudo</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      )}
-
-      {loading ? (
-        <View style={s.center}><ActivityIndicator size="large" color={Colors.primary} /></View>
-      ) : (
-        <FlatList
-          data={users}
-          keyExtractor={item => item.id.toString()}
-          renderItem={renderUser}
-          contentContainerStyle={users.length === 0 ? s.emptyContainer : { paddingVertical: 8, paddingBottom: 40 }}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.3}
-          ListFooterComponent={loadingMore ? <ActivityIndicator color={Colors.primary} style={{ margin: 16 }} /> : null}
-          ListEmptyComponent={
-            <View style={s.emptyBox}>
-              <Text style={{ fontSize: 44, marginBottom: 12 }}>{searched ? '🔍' : '👥'}</Text>
-              <Text style={s.emptyTitle}>{searched ? 'Nenhum resultado' : 'Encontre profissionais'}</Text>
-              <Text style={s.emptySub}>{searched ? 'Tente outros termos ou ajuste os filtros' : 'Busque por nome ou use os filtros para encontrar o profissional certo'}</Text>
+      {tabMode === 'profissionais' ? (
+        <>
+          <View style={s.searchRow}>
+            <View style={s.searchBox}>
+              <View style={{ marginRight: 6 }}><SearchBoxIcon /></View>
+              <TextInput
+                style={s.searchInput}
+                placeholder="Nome, especialidade, habilidade..."
+                placeholderTextColor={Colors.text3}
+                value={q}
+                onChangeText={setQ}
+                onSubmitEditing={() => search()}
+                returnKeyType="search"
+              />
+              {q.length > 0 && (
+                <TouchableOpacity onPress={() => setQ('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={{ color: Colors.text3, fontSize: 18, paddingHorizontal: 4 }}>×</Text>
+                </TouchableOpacity>
+              )}
             </View>
-          }
-        />
-      )}
+            <TouchableOpacity style={[s.filterBtn, activeCount > 0 && s.filterBtnOn]} onPress={() => setFilterModal(true)}>
+              <Text style={{ fontSize: 16 }}>⚙️</Text>
+              {activeCount > 0 && (
+                <View style={s.filterCount}>
+                  <Text style={s.filterCountT}>{activeCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={s.searchBtn} onPress={() => search()}>
+              <Text style={s.searchBtnT}>Buscar</Text>
+            </TouchableOpacity>
+          </View>
 
-      <FilterModal
-        visible={filterModal}
-        initial={filters}
-        onApply={applyFilters}
-        onClose={() => setFilterModal(false)}
-      />
+          {activeCount > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.activeFiltersBar} contentContainerStyle={{ gap: 8, paddingHorizontal: 14, paddingVertical: 8 }}>
+              {filters.tipo ? (
+                <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, tipo: '', especialidade: '', habilidade: '', formacao: '' })}>
+                  <Text style={s.activeTagT}>{filters.tipo} ×</Text>
+                </TouchableOpacity>
+              ) : null}
+              {filters.especialidade ? (
+                <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, especialidade: '' })}>
+                  <Text style={s.activeTagT}>{filters.especialidade} ×</Text>
+                </TouchableOpacity>
+              ) : null}
+              {filters.habilidade ? (
+                <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, habilidade: '' })}>
+                  <Text style={s.activeTagT}>{filters.habilidade} ×</Text>
+                </TouchableOpacity>
+              ) : null}
+              {filters.formacao ? (
+                <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, formacao: '' })}>
+                  <Text style={s.activeTagT}>{filters.formacao} ×</Text>
+                </TouchableOpacity>
+              ) : null}
+              {filters.disponibilidade ? (
+                <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, disponibilidade: '' })}>
+                  <Text style={s.activeTagT}>{DISPONIBILIDADES.find(d => d.key === filters.disponibilidade)?.label} ×</Text>
+                </TouchableOpacity>
+              ) : null}
+              {filters.estadoNome ? (
+                <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, estadoSigla: '', estadoNome: '', cidade: '' })}>
+                  <Text style={s.activeTagT}>{filters.estadoNome} ×</Text>
+                </TouchableOpacity>
+              ) : null}
+              {filters.cidade ? (
+                <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, cidade: '' })}>
+                  <Text style={s.activeTagT}>{filters.cidade} ×</Text>
+                </TouchableOpacity>
+              ) : null}
+              {(filters.anos_min || filters.anos_max) ? (
+                <TouchableOpacity style={s.activeTag} onPress={() => applyFilters({ ...filters, anos_min: '', anos_max: '' })}>
+                  <Text style={s.activeTagT}>{anosLabel(filters)} ×</Text>
+                </TouchableOpacity>
+              ) : null}
+              <TouchableOpacity style={s.clearAllTag} onPress={() => applyFilters(EMPTY_FILTERS)}>
+                <Text style={s.clearAllTagT}>Limpar tudo</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          )}
+
+          {loading ? (
+            <View style={s.center}><ActivityIndicator size="large" color={Colors.primary} /></View>
+          ) : (
+            <FlatList
+              data={users}
+              keyExtractor={item => item.id.toString()}
+              renderItem={renderUser}
+              contentContainerStyle={users.length === 0 ? s.emptyContainer : { paddingVertical: 8, paddingBottom: 40 }}
+              onEndReached={loadMore}
+              onEndReachedThreshold={0.3}
+              ListFooterComponent={loadingMore ? <ActivityIndicator color={Colors.primary} style={{ margin: 16 }} /> : null}
+              ListEmptyComponent={
+                <View style={s.emptyBox}>
+                  <Text style={{ fontSize: 44, marginBottom: 12 }}>{searched ? '🔍' : '👥'}</Text>
+                  <Text style={s.emptyTitle}>{searched ? 'Nenhum resultado' : 'Encontre profissionais'}</Text>
+                  <Text style={s.emptySub}>{searched ? 'Tente outros termos ou ajuste os filtros' : 'Busque por nome ou use os filtros para encontrar o profissional certo'}</Text>
+                </View>
+              }
+            />
+          )}
+
+          <FilterModal
+            visible={filterModal}
+            initial={filters}
+            onApply={applyFilters}
+            onClose={() => setFilterModal(false)}
+          />
+        </>
+      ) : (
+        <>
+          {/* ── Busca de empresas ── */}
+          <View style={s.searchRow}>
+            <View style={s.searchBox}>
+              <View style={{ marginRight: 6 }}><SearchBoxIcon /></View>
+              <TextInput
+                style={s.searchInput}
+                placeholder="Nome da empresa..."
+                placeholderTextColor={Colors.text3}
+                value={eQ}
+                onChangeText={setEQ}
+                onSubmitEditing={() => searchEmpresas(eQ, eTipo, 1)}
+                returnKeyType="search"
+              />
+              {eQ.length > 0 && (
+                <TouchableOpacity onPress={() => { setEQ(''); searchEmpresas('', eTipo, 1) }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={{ color: Colors.text3, fontSize: 18, paddingHorizontal: 4 }}>×</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <TouchableOpacity style={s.searchBtn} onPress={() => searchEmpresas(eQ, eTipo, 1)}>
+              <Text style={s.searchBtnT}>Buscar</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Filtro por tipo */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 14, paddingVertical: 10 }} style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: Colors.border }}>
+            {PAGE_TIPOS.map(t => {
+              const on = eTipo === t.key
+              const cor = PAGE_TIPO_COR[t.key] || Colors.primary
+              return (
+                <TouchableOpacity
+                  key={t.key}
+                  style={[s.chip, on && { borderColor: cor, backgroundColor: cor + '18' }]}
+                  onPress={() => handleETipoSelect(on ? '' : t.key)}
+                >
+                  <Text style={[s.chipT, on && { color: cor, fontWeight: '800' }]}>
+                    {on ? '✓ ' : ''}{t.label}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </ScrollView>
+
+          {eLoading ? (
+            <View style={s.center}><ActivityIndicator size="large" color={Colors.primary} /></View>
+          ) : (
+            <FlatList
+              data={empresas}
+              keyExtractor={item => item.id.toString()}
+              renderItem={renderEmpresa}
+              contentContainerStyle={empresas.length === 0 ? s.emptyContainer : { paddingVertical: 8, paddingBottom: 40 }}
+              onEndReached={() => { if (eHasMore && !eLoadingMore) searchEmpresas(eQ, eTipo, ePage + 1) }}
+              onEndReachedThreshold={0.3}
+              ListFooterComponent={eLoadingMore ? <ActivityIndicator color={Colors.primary} style={{ margin: 16 }} /> : null}
+              ListEmptyComponent={
+                <View style={s.emptyBox}>
+                  <Text style={{ fontSize: 44, marginBottom: 12 }}>{eSearched ? '🔍' : '🏢'}</Text>
+                  <Text style={s.emptyTitle}>{eSearched ? 'Nenhuma empresa encontrada' : 'Encontre empresas'}</Text>
+                  <Text style={s.emptySub}>{eSearched ? 'Tente outros termos ou filtros' : 'Busque clínicas, laboratórios e outras empresas da odontologia'}</Text>
+                </View>
+              }
+            />
+          )}
+        </>
+      )}
     </View>
   )
 }
@@ -872,6 +1054,18 @@ const s = StyleSheet.create({
   activeTagT: { fontSize: 12, fontWeight: '700', color: Colors.primary },
   clearAllTag: { backgroundColor: Colors.bg, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 100, paddingHorizontal: 12, paddingVertical: 6 },
   clearAllTagT: { fontSize: 12, fontWeight: '700', color: Colors.text3 },
+
+  // Tab toggle
+  tabToggleBar: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: Colors.border, paddingHorizontal: 14, paddingTop: 8, gap: 6 },
+  tabToggleBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10, borderWidth: 1.5, borderColor: Colors.border },
+  tabToggleBtnOn: { borderColor: PRIMARY, backgroundColor: PRIMARY + '12' },
+  tabToggleBtnT: { fontSize: 13, fontWeight: '700', color: Colors.text3 },
+  tabToggleBtnTOn: { color: PRIMARY },
+
+  // Empresa card
+  empresaLogo: { width: 48, height: 48, borderRadius: 12, flexShrink: 0 },
+  tipoBadge: { borderWidth: 1, borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
+  tipoBadgeT: { fontSize: 10, fontWeight: '700' },
 
   card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
   av: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },

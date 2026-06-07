@@ -458,22 +458,31 @@ export default function EditarPerfil() {
     }
   }
 
-  const removeAvatar = async () => {
-    Alert.alert('Apagar foto', 'Deseja remover sua foto de perfil?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Apagar', style: 'destructive', onPress: async () => {
-          try {
-            await api.delete('/users/me/avatar')
-            setAvatarUri(null)
-            setAvatarRemote(null)
-            useAuthStore.getState().updateUser({ avatar_url: null })
-          } catch (err: any) {
-            Alert.alert('Erro', err?.response?.data?.error || 'Não foi possível remover a foto.')
-          }
-        }
-      }
-    ])
+  const removeAvatar = () => {
+    Alert.alert(
+      'Remover foto',
+      'Tem certeza que deseja remover sua foto de perfil?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Remover',
+          style: 'destructive',
+          onPress: async () => {
+            setUploadingAvatar(true)
+            try {
+              await api.delete('/users/me/avatar')
+            } catch {
+              // ignora erro de rede — remove localmente de qualquer forma
+            } finally {
+              setAvatarUri(null)
+              setAvatarRemote(null)
+              useAuthStore.getState().updateUser({ avatar_url: null })
+              setUploadingAvatar(false)
+            }
+          },
+        },
+      ]
+    )
   }
 
   const profissoes = [tipoProf, ...cargosExtras.map((e: any) => e.label || e)].filter(Boolean)
