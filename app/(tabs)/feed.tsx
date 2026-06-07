@@ -491,6 +491,8 @@ function FeedVagaModal({ vagaId, isOwner, user, onClose }: {
 // ── Card: Vaga (compatibilidade) ──────────────────────────────────────────────
 
 function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?: () => void }) {
+  const { width }   = useWindowDimensions()
+  const isDesktop   = Platform.OS === 'web' && width >= 768
   const cargo       = vaga.cargo    || vaga.data_json?.cargo
   const contrato    = vaga.contrato || vaga.data_json?.contrato
   const cCor        = CONTRATO_COR[contrato] || '#7A9E8E'
@@ -504,14 +506,26 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
   const empresaNome = vaga.empresa_nome || vaga.page_nome
   const descricao   = vaga.descricao || vaga.beneficios || null
 
+  const goToPage = () => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)
+  const goToVaga = () => onVerVaga ? onVerVaga() : router.push('/(tabs)/vagas' as any)
+
+  const chipsEl = (
+    <View style={[s.chips, { marginTop: 4 }]}>
+      {contrato ? (
+        <View style={[s.chip, { borderColor: cCor + '70', backgroundColor: cCor + '14' }]}>
+          <Text style={[s.chipT, { color: cCor }]}>{contrato}</Text>
+        </View>
+      ) : null}
+      {loc     ? <View style={s.chip}><Text style={s.chipT}>📍 {loc}</Text></View>     : null}
+      {salario ? <View style={s.chip}><Text style={s.chipT}>{salario}</Text></View> : null}
+    </View>
+  )
+
   return (
     <View style={s.vagaCard}>
+      {/* Linha superior: logo + empresa/cargo (sempre visível) */}
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-        <TouchableOpacity
-          onPress={() => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)}
-          activeOpacity={vaga.page_id ? 0.72 : 1}
-          disabled={!vaga.page_id}
-        >
+        <TouchableOpacity onPress={goToPage} activeOpacity={vaga.page_id ? 0.72 : 1} disabled={!vaga.page_id}>
           {logoUrl
             ? <Image source={{ uri: logoUrl }} style={s.vagaLogo} />
             : <View style={[s.vagaLogo, s.vagaLogoFb]}>
@@ -520,38 +534,41 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
           }
         </TouchableOpacity>
         <View style={{ flex: 1, gap: 3 }}>
-          <TouchableOpacity
-            onPress={() => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)}
-            activeOpacity={vaga.page_id ? 0.78 : 1}
-            disabled={!vaga.page_id}
-          >
+          <TouchableOpacity onPress={goToPage} activeOpacity={vaga.page_id ? 0.78 : 1} disabled={!vaga.page_id}>
             <Text style={s.vagaEmpresaLink} numberOfLines={1}>{empresaNome}</Text>
           </TouchableOpacity>
           <Text style={s.vagaCargo} numberOfLines={2}>{cargo}</Text>
-          {descricao ? (
-            <Text style={s.vagaDesc} numberOfLines={2} ellipsizeMode="tail">{descricao}</Text>
-          ) : null}
-          <View style={[s.chips, { marginTop: 4 }]}>
-            {contrato ? (
-              <View style={[s.chip, { borderColor: cCor + '70', backgroundColor: cCor + '14' }]}>
-                <Text style={[s.chipT, { color: cCor }]}>{contrato}</Text>
-              </View>
-            ) : null}
-            {loc     ? <View style={s.chip}><Text style={s.chipT}>📍 {loc}</Text></View>     : null}
-            {salario ? <View style={s.chip}><Text style={s.chipT}>{salario}</Text></View> : null}
-          </View>
-          {vaga.created_at ? (
-            <Text style={s.vagaData}>{diasRelativo(vaga.created_at)}</Text>
-          ) : null}
+          {/* Desktop: chips + desc + data dentro da coluna, ao lado do botão */}
+          {isDesktop && chipsEl}
+          {isDesktop && descricao
+            ? <Text style={s.vagaDesc} numberOfLines={2} ellipsizeMode="tail">{descricao}</Text>
+            : null}
+          {isDesktop && vaga.created_at
+            ? <Text style={s.vagaData}>{diasRelativo(vaga.created_at)}</Text>
+            : null}
         </View>
-        <TouchableOpacity
-          style={[s.actionBtn, { backgroundColor: PRIMARY }]}
-          onPress={() => onVerVaga ? onVerVaga() : router.push('/(tabs)/vagas' as any)}
-          activeOpacity={0.8}
-        >
-          <Text style={s.actionBtnT}>Ver vaga →</Text>
-        </TouchableOpacity>
+        {/* Desktop: botão à direita */}
+        {isDesktop && (
+          <TouchableOpacity style={[s.actionBtn, { backgroundColor: PRIMARY }]} onPress={goToVaga} activeOpacity={0.8}>
+            <Text style={s.actionBtnT}>Ver vaga →</Text>
+          </TouchableOpacity>
+        )}
       </View>
+      {/* Mobile: badges → desc → botão full-width → data */}
+      {!isDesktop && (
+        <>
+          {chipsEl}
+          {descricao
+            ? <Text style={s.vagaDesc} numberOfLines={2} ellipsizeMode="tail">{descricao}</Text>
+            : null}
+          <TouchableOpacity style={[s.actionBtn, { backgroundColor: PRIMARY, alignSelf: 'stretch' }]} onPress={goToVaga} activeOpacity={0.8}>
+            <Text style={s.actionBtnT}>Ver vaga →</Text>
+          </TouchableOpacity>
+          {vaga.created_at
+            ? <Text style={s.vagaData}>{diasRelativo(vaga.created_at)}</Text>
+            : null}
+        </>
+      )}
     </View>
   )
 }
@@ -559,19 +576,32 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
 // ── Card: Vaga de interesse (por data) ────────────────────────────────────────
 
 function VagaInteresseCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?: () => void }) {
-  const cCor      = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
-  const loc       = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
-  const logoUrl   = vaga.logo_url || null
-  const descricao = vaga.descricao || vaga.beneficios || null
+  const { width }   = useWindowDimensions()
+  const isDesktop   = Platform.OS === 'web' && width >= 768
+  const cCor        = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
+  const loc         = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
+  const logoUrl     = vaga.logo_url || null
+  const descricao   = vaga.descricao || vaga.beneficios || null
+
+  const goToPage = () => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)
+  const goToVaga = () => onVerVaga ? onVerVaga() : router.push('/(tabs)/vagas' as any)
+
+  const chipsEl = (
+    <View style={[s.chips, { marginTop: 4 }]}>
+      {vaga.contrato ? (
+        <View style={[s.chip, { borderColor: cCor + '70', backgroundColor: cCor + '14' }]}>
+          <Text style={[s.chipT, { color: cCor }]}>{vaga.contrato}</Text>
+        </View>
+      ) : null}
+      {loc ? <View style={s.chip}><Text style={s.chipT}>📍 {loc}</Text></View> : null}
+    </View>
+  )
 
   return (
     <View style={s.vagaCard}>
+      {/* Linha superior: logo + empresa/cargo (sempre visível) */}
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-        <TouchableOpacity
-          onPress={() => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)}
-          activeOpacity={vaga.page_id ? 0.72 : 1}
-          disabled={!vaga.page_id}
-        >
+        <TouchableOpacity onPress={goToPage} activeOpacity={vaga.page_id ? 0.72 : 1} disabled={!vaga.page_id}>
           {logoUrl
             ? <Image source={{ uri: logoUrl }} style={s.vagaLogo} />
             : <View style={[s.vagaLogo, s.vagaLogoFb]}>
@@ -580,37 +610,41 @@ function VagaInteresseCard({ vaga, user, onVerVaga }: { vaga: any; user: any; on
           }
         </TouchableOpacity>
         <View style={{ flex: 1, gap: 3 }}>
-          <TouchableOpacity
-            onPress={() => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)}
-            activeOpacity={vaga.page_id ? 0.78 : 1}
-            disabled={!vaga.page_id}
-          >
+          <TouchableOpacity onPress={goToPage} activeOpacity={vaga.page_id ? 0.78 : 1} disabled={!vaga.page_id}>
             <Text style={s.vagaEmpresaLink} numberOfLines={1}>{vaga.empresa_nome}</Text>
           </TouchableOpacity>
           <Text style={s.vagaCargo} numberOfLines={2}>{vaga.cargo}</Text>
-          {descricao ? (
-            <Text style={s.vagaDesc} numberOfLines={2} ellipsizeMode="tail">{descricao}</Text>
-          ) : null}
-          <View style={[s.chips, { marginTop: 4 }]}>
-            {vaga.contrato ? (
-              <View style={[s.chip, { borderColor: cCor + '70', backgroundColor: cCor + '14' }]}>
-                <Text style={[s.chipT, { color: cCor }]}>{vaga.contrato}</Text>
-              </View>
-            ) : null}
-            {loc ? <View style={s.chip}><Text style={s.chipT}>📍 {loc}</Text></View> : null}
-          </View>
-          {vaga.created_at ? (
-            <Text style={s.vagaData}>{diasRelativo(vaga.created_at)}</Text>
-          ) : null}
+          {/* Desktop: chips + desc + data dentro da coluna, ao lado do botão */}
+          {isDesktop && chipsEl}
+          {isDesktop && descricao
+            ? <Text style={s.vagaDesc} numberOfLines={2} ellipsizeMode="tail">{descricao}</Text>
+            : null}
+          {isDesktop && vaga.created_at
+            ? <Text style={s.vagaData}>{diasRelativo(vaga.created_at)}</Text>
+            : null}
         </View>
-        <TouchableOpacity
-          style={[s.actionBtn, { backgroundColor: '#475569' }]}
-          onPress={() => onVerVaga ? onVerVaga() : router.push('/(tabs)/vagas' as any)}
-          activeOpacity={0.8}
-        >
-          <Text style={s.actionBtnT}>Ver vaga →</Text>
-        </TouchableOpacity>
+        {/* Desktop: botão à direita */}
+        {isDesktop && (
+          <TouchableOpacity style={[s.actionBtn, { backgroundColor: '#475569' }]} onPress={goToVaga} activeOpacity={0.8}>
+            <Text style={s.actionBtnT}>Ver vaga →</Text>
+          </TouchableOpacity>
+        )}
       </View>
+      {/* Mobile: badges → desc → botão full-width → data */}
+      {!isDesktop && (
+        <>
+          {chipsEl}
+          {descricao
+            ? <Text style={s.vagaDesc} numberOfLines={2} ellipsizeMode="tail">{descricao}</Text>
+            : null}
+          <TouchableOpacity style={[s.actionBtn, { backgroundColor: '#475569', alignSelf: 'stretch' }]} onPress={goToVaga} activeOpacity={0.8}>
+            <Text style={s.actionBtnT}>Ver vaga →</Text>
+          </TouchableOpacity>
+          {vaga.created_at
+            ? <Text style={s.vagaData}>{diasRelativo(vaga.created_at)}</Text>
+            : null}
+        </>
+      )}
     </View>
   )
 }
