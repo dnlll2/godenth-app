@@ -333,6 +333,7 @@ export default function EditarPerfil() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const { updateUser } = useAuthStore()
 
   useEffect(() => { loadProfile(); loadEstados() }, [])
 
@@ -458,7 +459,7 @@ export default function EditarPerfil() {
     }
   }
 
-  const removeAvatar = () => {
+  const handleApagarFoto = () => {
     Alert.alert(
       'Remover foto',
       'Tem certeza que deseja remover sua foto de perfil?',
@@ -468,17 +469,10 @@ export default function EditarPerfil() {
           text: 'Remover',
           style: 'destructive',
           onPress: async () => {
-            setUploadingAvatar(true)
-            try {
-              await api.delete('/users/me/avatar')
-            } catch {
-              // ignora erro de rede — remove localmente de qualquer forma
-            } finally {
-              setAvatarUri(null)
-              setAvatarRemote(null)
-              useAuthStore.getState().updateUser({ avatar_url: null })
-              setUploadingAvatar(false)
-            }
+            await api.patch('/users/me', { avatar_url: null })
+            updateUser({ avatar_url: null })
+            setAvatarUri(null)
+            setAvatarRemote(null)
           },
         },
       ]
@@ -603,7 +597,7 @@ export default function EditarPerfil() {
         <Text style={s.avatarName}>{nome || 'Seu nome'}</Text>
         <Text style={s.avatarHint}>Toque na foto para alterar</Text>
         {avatarSrc && !uploadingAvatar && (
-          <TouchableOpacity onPress={removeAvatar} style={s.avatarRemoveBtn}>
+          <TouchableOpacity onPress={handleApagarFoto} style={s.avatarRemoveBtn}>
             <Text style={s.avatarRemoveTxt}>Apagar foto</Text>
           </TouchableOpacity>
         )}
