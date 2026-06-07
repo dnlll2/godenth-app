@@ -460,6 +460,7 @@ export default function EditarPerfil() {
   }
 
   const handleApagarFoto = () => {
+    console.log('clicou apagar foto')
     Alert.alert(
       'Remover foto',
       'Tem certeza que deseja remover sua foto de perfil?',
@@ -596,12 +597,16 @@ export default function EditarPerfil() {
         </TouchableOpacity>
         <Text style={s.avatarName}>{nome || 'Seu nome'}</Text>
         <Text style={s.avatarHint}>Toque na foto para alterar</Text>
-        {avatarSrc && !uploadingAvatar && (
-          <TouchableOpacity onPress={handleApagarFoto} style={s.avatarRemoveBtn}>
-            <Text style={s.avatarRemoveTxt}>Apagar foto</Text>
-          </TouchableOpacity>
-        )}
       </View>
+      {avatarSrc && !uploadingAvatar && (
+        <TouchableOpacity
+          onPress={handleApagarFoto}
+          style={s.avatarRemoveBtn}
+          activeOpacity={0.7}
+        >
+          <Text style={s.avatarRemoveTxt}>Apagar foto</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Campos travados */}
       <View style={s.card}>
@@ -1222,7 +1227,7 @@ const s = StyleSheet.create({
   cameraBadge: { position: 'absolute', bottom: 2, right: 2, width: 28, height: 28, borderRadius: 14, backgroundColor: '#F5C800', justifyContent: 'center', alignItems: 'center', borderWidth: 2.5, borderColor: '#fff' },
   avatarName: { fontSize: 16, fontWeight: '800', color: '#0A1C14', marginTop: 10 },
   avatarHint: { fontSize: 11, color: '#7A9E8E', marginTop: 3, fontWeight: '500' },
-  avatarRemoveBtn: { marginTop: 8, paddingVertical: 4, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E57373' },
+  avatarRemoveBtn: { marginTop: 8, paddingVertical: 6, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: '#E57373', zIndex: 10, alignSelf: 'center' },
   avatarRemoveTxt: { fontSize: 12, color: '#E57373', fontWeight: '600' },
 
   // Section label
