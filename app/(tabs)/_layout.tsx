@@ -358,11 +358,13 @@ function MobileTabLayout() {
   const hideBar   = width >= DESKTOP_BREAKPOINT
 
   return (
-    <Tabs screenOptions={{
+    <Tabs
+      tabBar={hideBar ? () => null : undefined}
+      screenOptions={{
       headerShown: false,
       tabBarActiveTintColor: IC_ON,
       tabBarInactiveTintColor: IC_OFF,
-      tabBarStyle: hideBar ? { display: 'none' } : {
+      tabBarStyle: {
         backgroundColor: '#fff',
         borderTopColor: '#E8F0EC',
         borderTopWidth: 1,

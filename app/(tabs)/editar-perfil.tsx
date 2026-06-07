@@ -458,6 +458,24 @@ export default function EditarPerfil() {
     }
   }
 
+  const removeAvatar = async () => {
+    Alert.alert('Apagar foto', 'Deseja remover sua foto de perfil?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Apagar', style: 'destructive', onPress: async () => {
+          try {
+            await api.delete('/users/me/avatar')
+            setAvatarUri(null)
+            setAvatarRemote(null)
+            useAuthStore.getState().updateUser({ avatar_url: null })
+          } catch (err: any) {
+            Alert.alert('Erro', err?.response?.data?.error || 'Não foi possível remover a foto.')
+          }
+        }
+      }
+    ])
+  }
+
   const profissoes = [tipoProf, ...cargosExtras.map((e: any) => e.label || e)].filter(Boolean)
   const espDisponiveis = [...new Set(profissoes.flatMap(p => ESPECIALIDADES[p] || []))]
   const habCategorias: Record<string, string[]> = {}
@@ -575,6 +593,11 @@ export default function EditarPerfil() {
         </TouchableOpacity>
         <Text style={s.avatarName}>{nome || 'Seu nome'}</Text>
         <Text style={s.avatarHint}>Toque na foto para alterar</Text>
+        {avatarSrc && !uploadingAvatar && (
+          <TouchableOpacity onPress={removeAvatar} style={s.avatarRemoveBtn}>
+            <Text style={s.avatarRemoveTxt}>Apagar foto</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Campos travados */}
@@ -1196,6 +1219,8 @@ const s = StyleSheet.create({
   cameraBadge: { position: 'absolute', bottom: 2, right: 2, width: 28, height: 28, borderRadius: 14, backgroundColor: '#F5C800', justifyContent: 'center', alignItems: 'center', borderWidth: 2.5, borderColor: '#fff' },
   avatarName: { fontSize: 16, fontWeight: '800', color: '#0A1C14', marginTop: 10 },
   avatarHint: { fontSize: 11, color: '#7A9E8E', marginTop: 3, fontWeight: '500' },
+  avatarRemoveBtn: { marginTop: 8, paddingVertical: 4, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E57373' },
+  avatarRemoveTxt: { fontSize: 12, color: '#E57373', fontWeight: '600' },
 
   // Section label
   sectionLabel: { fontSize: 11, fontWeight: '800', color: '#007A6E', textTransform: 'uppercase', letterSpacing: 1.2, paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8 },
