@@ -488,21 +488,53 @@ function FeedVagaModal({ vagaId, isOwner, user, onClose }: {
   )
 }
 
-// ── Banner promocional ────────────────────────────────────────────────────────
+// ── Banners promocionais ──────────────────────────────────────────────────────
 
-function PromoBanner() {
+const BANNER_CONFIGS = [
+  {
+    bg: PRIMARY,
+    title: 'Contratando?',
+    sub: 'Cadastre sua empresa e publique vagas grátis!',
+    btnLabel: 'Criar empresa →',
+    btnColor: PRIMARY,
+    route: '/criar-pagina',
+  },
+  {
+    bg: '#F5C400',
+    title: 'Ofereça cursos!',
+    sub: 'Ofereça cursos e treinamentos para profissionais da odontologia!',
+    btnLabel: 'Cadastrar curso →',
+    btnColor: '#7A5800',
+    route: '/(tabs)/empresas',
+  },
+  {
+    bg: '#4A3DBF',
+    title: 'Precisa de profissionais?',
+    sub: 'Encontre o profissional certo para sua clínica ou laboratório',
+    btnLabel: 'Pesquisar agora →',
+    btnColor: '#4A3DBF',
+    route: '/(tabs)/buscar',
+  },
+] as const
+
+// Sequência determinista que parece aleatória (não muda a cada re-render)
+const BANNER_SEQ = [0, 2, 1, 0, 1, 2, 2, 0, 1]
+
+function PromoBanner({ slot }: { slot: number }) {
+  const cfg = BANNER_CONFIGS[BANNER_SEQ[slot % BANNER_SEQ.length]]
+  const isDark = cfg.bg !== '#F5C400'
   return (
     <TouchableOpacity
-      style={s.promoBanner}
-      onPress={() => router.push('/criar-pagina' as any)}
+      style={[s.promoBanner, { backgroundColor: cfg.bg, marginBottom: 4 }]}
+      onPress={() => router.push(cfg.route as any)}
       activeOpacity={0.85}
     >
       <View style={{ flex: 1 }}>
-        <Text style={s.promoBannerTitle}>Contratando?</Text>
-        <Text style={s.promoBannerSub}>Cadastre sua empresa e publique vagas grátis!</Text>
+        <Text style={[s.promoBannerTitle, !isDark && { color: '#1A1000' }]}>{cfg.title}</Text>
+        <Text style={[s.promoBannerSub, !isDark && { color: 'rgba(0,0,0,0.6)' }]}>{cfg.sub}</Text>
       </View>
-      <View style={s.promoBannerBtn}>
-        <Text style={s.promoBannerBtnT}>Criar empresa →</Text>
+      <View style={[s.promoBannerBtn, { backgroundColor: isDark ? '#fff' : 'rgba(0,0,0,0.12)' }]}>
+        <Text style={[s.promoBannerBtnT, { color: isDark ? cfg.btnColor : '#1A1000' }]}>{cfg.btnLabel}</Text>
       </View>
     </TouchableOpacity>
   )
@@ -1239,7 +1271,7 @@ export default function Painel() {
             <View style={{ gap: 12 }}>
               {items.map((v, i) => (
                 <View key={v.id}>
-                  {i > 0 && i % 6 === 0 && <PromoBanner />}
+                  {i > 0 && i % 5 === 0 && <PromoBanner slot={Math.floor(i / 5)} />}
                   <VagaCard
                     vaga={v}
                     user={user}
@@ -1255,7 +1287,7 @@ export default function Painel() {
             <View style={{ gap: 12 }}>
               {items.map((v, i) => (
                 <View key={v.id}>
-                  {i > 0 && i % 6 === 0 && <PromoBanner />}
+                  {i > 0 && i % 5 === 0 && <PromoBanner slot={Math.floor(i / 5)} />}
                   <VagaInteresseCard
                     vaga={v}
                     user={user}
@@ -1272,7 +1304,7 @@ export default function Painel() {
               {items.map((p, i) =>
                 p.source_type === 'vaga' || p.tipo_post === 'vaga'
                   ? <View key={`${p.source_type}-${p.id}`}>
-                      {i > 0 && i % 6 === 0 && <PromoBanner />}
+                      {i > 0 && i % 5 === 0 && <PromoBanner slot={Math.floor(i / 5)} />}
                       <VagaCard
                         vaga={p}
                         user={user}
