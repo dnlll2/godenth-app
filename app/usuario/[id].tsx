@@ -351,7 +351,7 @@ export default function PerfilPublico() {
       </View>
 
       <View style={[s.cover, { backgroundColor: tipoCor }]}>
-        <Text style={s.coverWatermark} numberOfLines={1} ellipsizeMode="clip">
+        <Text style={s.coverWatermark} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.5}>
           {(profile.tipo_profissional || '').toUpperCase()}
         </Text>
       </View>
@@ -509,7 +509,7 @@ const s = StyleSheet.create({
   cover: { height: 100, overflow: 'hidden' },
   coverWatermark: {
     position: 'absolute', bottom: -8, left: 10, right: 10,
-    fontSize: 58, fontWeight: '900', color: 'rgba(255,255,255,0.13)', letterSpacing: 3,
+    fontSize: 40, fontWeight: '900', color: 'rgba(255,255,255,0.13)', letterSpacing: 2,
   },
 
   avatarRow: {

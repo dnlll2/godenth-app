@@ -567,7 +567,7 @@ export default function Perfil() {
       </Modal>
 
       <View style={[styles.cover, { backgroundColor: tipoCor }]}>
-        <Text style={styles.coverWatermark} numberOfLines={1} ellipsizeMode="clip">
+        <Text style={styles.coverWatermark} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.5}>
           {(profile?.tipo_profissional || '').toUpperCase()}
         </Text>
       </View>
@@ -634,7 +634,7 @@ const styles = StyleSheet.create({
   menuLabel: { flex: 1, fontSize: 16, fontWeight: '700', color: '#0A1C14' },
   menuArrow: { fontSize: 22, color: '#7A9E8E' },
   cover: { height: 100, overflow: 'hidden' },
-  coverWatermark: { position: 'absolute', bottom: -8, left: 10, right: 10, fontSize: 58, fontWeight: '900', color: 'rgba(255,255,255,0.13)', letterSpacing: 3 },
+  coverWatermark: { position: 'absolute', bottom: -8, left: 10, right: 10, fontSize: 40, fontWeight: '900', color: 'rgba(255,255,255,0.13)', letterSpacing: 2 },
   avatarRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: -30, marginBottom: 8 },
   avatar: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#fff' },
   avatarImg: { width: 60, height: 60, borderRadius: 30, borderWidth: 3, borderColor: '#fff' },
