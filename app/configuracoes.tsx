@@ -39,10 +39,8 @@ export default function Configuracoes() {
   const [privacidade, setPrivacidade] = useState<any>(DEFAULT_PRIVACIDADE)
 
   const [emailVerificado, setEmailVerificado] = useState(false)
-  const [telefoneVerificado, setTelefoneVerificado] = useState(false)
   const [enviandoVerif, setEnviandoVerif] = useState(false)
   const [verifEnviado, setVerifEnviado] = useState(false)
-  const [mostrarTelefoneInput, setMostrarTelefoneInput] = useState(false)
 
   const [senhaModal, setSenhaModal] = useState(false)
   const [senhaAtual, setSenhaAtual] = useState('')
@@ -60,7 +58,6 @@ export default function Configuracoes() {
       setCelular(p.celular || '')
       setPrivacidade({ ...DEFAULT_PRIVACIDADE, ...(p.privacidade || {}) })
       setEmailVerificado(p.email_verificado || false)
-      setTelefoneVerificado(p.telefone_verificado || false)
     } catch (err) { console.log(err) }
     finally { setLoading(false) }
   }
@@ -180,44 +177,6 @@ export default function Configuracoes() {
             </View>
           )}
 
-          <View style={s.divider} />
-
-          {/* Telefone */}
-          <View style={s.verifRow}>
-            <View style={s.verifIcon}>
-              <Text style={{ fontSize: 20 }}>📱</Text>
-            </View>
-            <View style={s.verifInfo}>
-              <Text style={s.verifLabel}>Telefone</Text>
-              <Text style={s.verifSub}>{celular || 'Não informado'}</Text>
-            </View>
-            {telefoneVerificado ? (
-              <View style={s.badgeOk}>
-                <Text style={s.badgeOkT}>✓ Verificado</Text>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={s.verifBtn}
-                onPress={() => setMostrarTelefoneInput(v => !v)}
-              >
-                <Text style={s.verifBtnT}>Verificar</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {mostrarTelefoneInput && !telefoneVerificado && (
-            <View style={s.telInputWrap}>
-              <TextInput
-                style={s.telInput}
-                value={celular}
-                onChangeText={setCelular}
-                placeholder="(11) 99999-9999"
-                placeholderTextColor="#A0B8AC"
-                keyboardType="phone-pad"
-              />
-              <Text style={s.telHint}>Salve o número e aguarde a verificação por SMS em breve.</Text>
-            </View>
-          )}
         </View>
 
         {/* ── 1. Privacidade ─────────────────────────────────────────────── */}
@@ -407,10 +366,6 @@ const s = StyleSheet.create({
   badgePendingT: { color: '#B45309', fontSize: 11, fontWeight: '700' },
   verifMsg: { backgroundColor: '#FFF4E5', borderRadius: 10, padding: 12, marginTop: 2, marginBottom: 4 },
   verifMsgT: { fontSize: 12, color: '#92400E', lineHeight: 17 },
-  telInputWrap: { marginTop: 8, marginBottom: 4 },
-  telInput: { backgroundColor: '#F2F5F4', borderRadius: 12, padding: 14, fontSize: 15, color: '#0A1C14', marginBottom: 6 },
-  telHint: { fontSize: 11, color: '#7A9E8E', lineHeight: 16 },
-
   secRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   secIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EEF7F2', justifyContent: 'center', alignItems: 'center' },
   secInfo: { flex: 1 },
