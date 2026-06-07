@@ -129,7 +129,7 @@ type NavItem = { label: string; href: string; Icon: React.ComponentType<{ color:
 const NAV_ITEMS: NavItem[] = [
   { label: 'Painel',       href: '/(tabs)/feed',         Icon: DashboardIcon },
   { label: 'Oportunidades', href: '/(tabs)/oportunidades', Icon: StarIcon },
-  { label: 'Marketplace',  href: '/(tabs)/marketplace',  Icon: CartIcon },
+  // { label: 'Marketplace',  href: '/(tabs)/marketplace',  Icon: CartIcon },
   { label: 'Páginas',      href: '/(tabs)/empresas',     Icon: BuildingIcon },
   // { label: 'Grupos',       href: '/(tabs)/grupos',        Icon: GroupsIcon },
   { label: 'Perfil',       href: '/(tabs)/perfil',       Icon: PersonIcon },
@@ -148,10 +148,12 @@ function DesktopTopBar({ collapsed, onToggle }: { collapsed: boolean; onToggle: 
         <TouchableOpacity onPress={onToggle} style={tb.hamburgerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <HamburgerIcon color="#fff" />
         </TouchableOpacity>
-        <Text style={tb.logoText}>
-          <Text style={{ color: '#F5C800' }}>Go</Text>
-          <Text style={{ color: '#fff' }}>Denth</Text>
-        </Text>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/feed' as any)} activeOpacity={0.8}>
+          <Text style={tb.logoText}>
+            <Text style={{ color: '#F5C800' }}>Go</Text>
+            <Text style={{ color: '#fff' }}>Denth</Text>
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Right: action icons */}
@@ -382,7 +384,7 @@ function MobileTabLayout() {
     }}>
       <Tabs.Screen name="feed"          options={{ title: 'Painel',        tabBarIcon: ({ color }) => <DashboardIcon color={color} /> }} />
       <Tabs.Screen name="oportunidades" options={{ title: 'Oportunidades', tabBarIcon: ({ color }) => <StarIcon      color={color} /> }} />
-      <Tabs.Screen name="marketplace"   options={{ title: 'Marketplace',   tabBarIcon: ({ color }) => <CartIcon      color={color} /> }} />
+      <Tabs.Screen name="marketplace"   options={{ href: null }} />
       <Tabs.Screen name="empresas"      options={{ title: 'Páginas',       tabBarIcon: ({ color }) => <BuildingIcon  color={color} /> }} />
       <Tabs.Screen name="perfil"        options={{ title: 'Perfil',        tabBarIcon: ({ color }) => <PersonIcon    color={color} /> }} />
       <Tabs.Screen name="grupos"        options={{ href: null }} />
