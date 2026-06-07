@@ -98,6 +98,14 @@ function tempoRelativo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('pt-BR')
 }
 
+function diasRelativo(dateStr: string): string {
+  if (!dateStr) return ''
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24))
+  if (diff === 0) return 'Hoje'
+  if (diff === 1) return 'Há 1 dia'
+  return `Há ${diff} dias`
+}
+
 function isVendaGroup(grupo: any): boolean {
   const text = `${grupo.nome} ${grupo.descricao} ${grupo.categoria}`.toLowerCase()
   return ['venda', 'vend', 'equipament', 'insumo', 'material', 'produto', 'compra', 'loja'].some(k => text.includes(k))
@@ -483,20 +491,22 @@ function FeedVagaModal({ vagaId, isOwner, user, onClose }: {
 // ── Card: Vaga (compatibilidade) ──────────────────────────────────────────────
 
 function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?: () => void }) {
-  const cargo    = vaga.cargo    || vaga.data_json?.cargo
-  const contrato = vaga.contrato || vaga.data_json?.contrato
-  const cCor     = CONTRATO_COR[contrato] || '#7A9E8E'
-  const loc      = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
-  const logoUrl  = vaga.logo_url || null
-  const salMin   = vaga.salario_min ?? vaga.data_json?.salario_min
-  const salMax   = vaga.salario_max ?? vaga.data_json?.salario_max
-  const salario  = salMin
+  const cargo       = vaga.cargo    || vaga.data_json?.cargo
+  const contrato    = vaga.contrato || vaga.data_json?.contrato
+  const cCor        = CONTRATO_COR[contrato] || '#7A9E8E'
+  const loc         = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
+  const logoUrl     = vaga.logo_url || null
+  const salMin      = vaga.salario_min ?? vaga.data_json?.salario_min
+  const salMax      = vaga.salario_max ?? vaga.data_json?.salario_max
+  const salario     = salMin
     ? `R$ ${Number(salMin).toLocaleString('pt-BR')}${salMax ? ` – ${Number(salMax).toLocaleString('pt-BR')}` : ''}`
     : null
+  const empresaNome = vaga.empresa_nome || vaga.page_nome
+  const descricao   = vaga.descricao || vaga.beneficios || null
 
   return (
     <View style={s.vagaCard}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
         <TouchableOpacity
           onPress={() => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)}
           activeOpacity={vaga.page_id ? 0.72 : 1}
@@ -505,14 +515,23 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
           {logoUrl
             ? <Image source={{ uri: logoUrl }} style={s.vagaLogo} />
             : <View style={[s.vagaLogo, s.vagaLogoFb]}>
-                <Text style={s.vagaLogoFbT}>{(vaga.empresa_nome || vaga.page_nome || '?').charAt(0)}</Text>
+                <Text style={s.vagaLogoFbT}>{(empresaNome || '?').charAt(0)}</Text>
               </View>
           }
         </TouchableOpacity>
         <View style={{ flex: 1, gap: 3 }}>
-          <Text style={s.vagaEmpresa} numberOfLines={1}>{vaga.empresa_nome || vaga.page_nome}</Text>
-          <Text style={s.vagaCargo}   numberOfLines={2}>{cargo}</Text>
-          <View style={[s.chips, { marginTop: 2 }]}>
+          <TouchableOpacity
+            onPress={() => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)}
+            activeOpacity={vaga.page_id ? 0.78 : 1}
+            disabled={!vaga.page_id}
+          >
+            <Text style={s.vagaEmpresaLink} numberOfLines={1}>{empresaNome}</Text>
+          </TouchableOpacity>
+          <Text style={s.vagaCargo} numberOfLines={2}>{cargo}</Text>
+          {descricao ? (
+            <Text style={s.vagaDesc} numberOfLines={2} ellipsizeMode="tail">{descricao}</Text>
+          ) : null}
+          <View style={[s.chips, { marginTop: 4 }]}>
             {contrato ? (
               <View style={[s.chip, { borderColor: cCor + '70', backgroundColor: cCor + '14' }]}>
                 <Text style={[s.chipT, { color: cCor }]}>{contrato}</Text>
@@ -521,6 +540,9 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
             {loc     ? <View style={s.chip}><Text style={s.chipT}>📍 {loc}</Text></View>     : null}
             {salario ? <View style={s.chip}><Text style={s.chipT}>{salario}</Text></View> : null}
           </View>
+          {vaga.created_at ? (
+            <Text style={s.vagaData}>{diasRelativo(vaga.created_at)}</Text>
+          ) : null}
         </View>
         <TouchableOpacity
           style={[s.actionBtn, { backgroundColor: PRIMARY }]}
@@ -537,13 +559,14 @@ function VagaCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?:
 // ── Card: Vaga de interesse (por data) ────────────────────────────────────────
 
 function VagaInteresseCard({ vaga, user, onVerVaga }: { vaga: any; user: any; onVerVaga?: () => void }) {
-  const cCor    = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
-  const loc     = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
-  const logoUrl = vaga.logo_url || null
+  const cCor      = CONTRATO_COR[vaga.contrato] || '#7A9E8E'
+  const loc       = [vaga.cidade || vaga.empresa_cidade, vaga.estado || vaga.empresa_estado].filter(Boolean).join(' · ')
+  const logoUrl   = vaga.logo_url || null
+  const descricao = vaga.descricao || vaga.beneficios || null
 
   return (
     <View style={s.vagaCard}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
         <TouchableOpacity
           onPress={() => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)}
           activeOpacity={vaga.page_id ? 0.72 : 1}
@@ -557,9 +580,18 @@ function VagaInteresseCard({ vaga, user, onVerVaga }: { vaga: any; user: any; on
           }
         </TouchableOpacity>
         <View style={{ flex: 1, gap: 3 }}>
-          <Text style={s.vagaEmpresa} numberOfLines={1}>{vaga.empresa_nome}</Text>
-          <Text style={s.vagaCargo}   numberOfLines={2}>{vaga.cargo}</Text>
-          <View style={[s.chips, { marginTop: 2 }]}>
+          <TouchableOpacity
+            onPress={() => vaga.page_id && router.push(`/pagina/${vaga.page_id}` as any)}
+            activeOpacity={vaga.page_id ? 0.78 : 1}
+            disabled={!vaga.page_id}
+          >
+            <Text style={s.vagaEmpresaLink} numberOfLines={1}>{vaga.empresa_nome}</Text>
+          </TouchableOpacity>
+          <Text style={s.vagaCargo} numberOfLines={2}>{vaga.cargo}</Text>
+          {descricao ? (
+            <Text style={s.vagaDesc} numberOfLines={2} ellipsizeMode="tail">{descricao}</Text>
+          ) : null}
+          <View style={[s.chips, { marginTop: 4 }]}>
             {vaga.contrato ? (
               <View style={[s.chip, { borderColor: cCor + '70', backgroundColor: cCor + '14' }]}>
                 <Text style={[s.chipT, { color: cCor }]}>{vaga.contrato}</Text>
@@ -567,6 +599,9 @@ function VagaInteresseCard({ vaga, user, onVerVaga }: { vaga: any; user: any; on
             ) : null}
             {loc ? <View style={s.chip}><Text style={s.chipT}>📍 {loc}</Text></View> : null}
           </View>
+          {vaga.created_at ? (
+            <Text style={s.vagaData}>{diasRelativo(vaga.created_at)}</Text>
+          ) : null}
         </View>
         <TouchableOpacity
           style={[s.actionBtn, { backgroundColor: '#475569' }]}
@@ -1300,8 +1335,11 @@ const s = StyleSheet.create({
   vagaLogo: { width: 40, height: 40, borderRadius: 10, flexShrink: 0 },
   vagaLogoFb: { backgroundColor: '#D0E8DA', justifyContent: 'center', alignItems: 'center' },
   vagaLogoFbT: { fontSize: 16, fontWeight: '800', color: '#3A6550' },
-  vagaEmpresa: { fontSize: 12, fontWeight: '700', color: '#3A6550' },
-  vagaCargo: { fontSize: 15, fontWeight: '800', color: '#0A1C14', marginTop: 2, lineHeight: 20 },
+  vagaEmpresa:     { fontSize: 12, fontWeight: '700', color: '#3A6550' },
+  vagaEmpresaLink: { fontSize: 12, fontWeight: '700', color: PRIMARY },
+  vagaCargo:       { fontSize: 15, fontWeight: '800', color: '#0A1C14', marginTop: 2, lineHeight: 20 },
+  vagaDesc:        { fontSize: 12, color: '#4A7060', lineHeight: 17, marginTop: 2 },
+  vagaData:        { fontSize: 11, color: '#A0B8AC', fontWeight: '600', marginTop: 4 },
   pctCircle: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   pctBadge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, flexShrink: 0, alignItems: 'center' },
   pctT: { fontSize: 12, fontWeight: '900' },
